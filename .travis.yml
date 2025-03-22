@@ -5,6 +5,8 @@ node_js:
 os:
   - linux
 
+dist: focal
+
 cache:
   directories:
     - Mobile/node_modules
