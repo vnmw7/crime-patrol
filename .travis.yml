@@ -17,6 +17,7 @@ before_install:
 install:
   - curl -Ls --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | sudo sh
   - echo $DOPPLER_TOKEN | doppler configure set token --scope /
+  - export SENTRY_AUTH_TOKEN=$(doppler secrets get SENTRY_AUTH_TOKEN --plain)
   - npm install
 
 script:
@@ -29,10 +30,13 @@ jobs:
     - name: Create release and notify Sentry of deploy
       env: SENTRY_ORG=personal-62k SENTRY_PROJECT=crime-patrol SENTRY_ENVIRONMENT=production
       script: |
+        curl -Ls --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | sudo sh
+        echo $DOPPLER_TOKEN | doppler configure set token --scope /
+        export SENTRY_AUTH_TOKEN=$(doppler secrets get SENTRY_AUTH_TOKEN --plain)
         curl -sL https://sentry.io/get-cli/ | bash
         export SENTRY_RELEASE=$(sentry-cli releases propose-version)
-        doppler run -- sentry-cli releases new -p $SENTRY_PROJECT $SENTRY_RELEASE
-        doppler run -- sentry-cli releases set-commits $SENTRY_RELEASE --auto
-        doppler run -- sentry-cli sourcemaps upload --release $SENTRY_RELEASE path-to-sourcemaps-if-applicable
-        doppler run -- sentry-cli releases finalize $SENTRY_RELEASE
-        doppler run -- sentry-cli deploys new -e $SENTRY_ENVIRONMENT
+        sentry-cli releases new -p $SENTRY_PROJECT $SENTRY_RELEASE
+        sentry-cli releases set-commits $SENTRY_RELEASE --auto
+        sentry-cli sourcemaps upload --release $SENTRY_RELEASE path-to-sourcemaps-if-applicable
+        sentry-cli releases finalize $SENTRY_RELEASE
+        sentry-cli deploys new -e $SENTRY_ENVIRONMENT
