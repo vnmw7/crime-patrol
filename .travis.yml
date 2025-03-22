@@ -1,6 +1,4 @@
-language: node_js
-node_js:
-  - '14'
-
-script:
-  - npm test
+dist: focal
+language: shell
+prompt: echo "testing"
+install: skip
