@@ -1,4 +1,0 @@
-dist: focal
-language: shell
-prompt: echo "testing"
-install: skip
