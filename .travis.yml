@@ -17,8 +17,6 @@ before_install:
 install:
   - curl -Ls --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | sudo sh
   - echo $DOPPLER_TOKEN | doppler configure set token --scope /mobile/dev
-  - export SENTRY_AUTH_TOKEN=$(doppler secrets get SENTRY_AUTH_TOKEN --plain)
-  - echo "SENTRY_AUTH_TOKEN is set to: $SENTRY_AUTH_TOKEN"
   - npm install
 
 script:
