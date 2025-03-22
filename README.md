@@ -11,3 +11,16 @@ Developer Operations (DevOps) is the symbiotic relationship between teams, cultu
 
 - Travis CI
   Travis CI is a continuous integration and delivery (CI/CD) platform that automates the process of building, testing, and deploying code.
+
+  ## Issues
+
+  - Execution failed for task ':react-native-reanimated:buildCMakeDebug[arm64-v8a]
+    - Solution:
+      ```powershell
+      # clean prebuild
+      npx expo prebuild --clean
+      # install dependencies
+      npm install
+      # run expo
+      npx expo run:android
+      ```
