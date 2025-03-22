@@ -1,4 +1,5 @@
-import { Text, View } from "react-native";
+import { Text, View, Button } from "react-native";
+import * as Sentry from "@sentry/react-native";
 
 export default function Index() {
   return (
@@ -11,6 +12,12 @@ export default function Index() {
       testID="mainIndex"
     >
       <Text>Edit app/index.tsx to edit this screen.</Text>
+      <Button
+        title="Try!"
+        onPress={() => {
+          Sentry.captureException(new Error("First error"));
+        }}
+      />
     </View>
   );
 }

@@ -9,6 +9,8 @@ Developer Operations (DevOps) is the symbiotic relationship between teams, cultu
 - CodeScene
   One of its standout features is the Code Health metric, which evaluates the maintainability of source code based on complexity attributes and code smells.
 
+  [![CodeScene Average Code Health](https://codescene.io/projects/65157/status-badges/average-code-health)](https://codescene.io/projects/65157)
+
 - Travis CI
   Travis CI is a continuous integration and delivery (CI/CD) platform that automates the process of building, testing, and deploying code.
 

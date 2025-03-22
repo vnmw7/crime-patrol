@@ -19,3 +19,18 @@ install:
 
 script:
   - npx jest --ci
+  - npm run lint
+
+jobs:
+  include:
+    # ...
+    - name: Create release and notify Sentry of deploy
+      env: SENTRY_ORG=personal-62k SENTRY_PROJECT=crime-patrol SENTRY_ENVIRONMENT=production
+      script: |
+        curl -sL https://sentry.io/get-cli/ | bash
+        export SENTRY_RELEASE=$(sentry-cli releases propose-version)
+        sentry-cli releases new -p $SENTRY_PROJECT $SENTRY_RELEASE
+        sentry-cli releases set-commits $SENTRY_RELEASE --auto
+        sentry-cli sourcemaps upload --release $SENTRY_RELEASE path-to-sourcemaps-if-applicable
+        sentry-cli releases finalize $SENTRY_RELEASE
+        sentry-cli deploys new -e $SENTRY_ENVIRONMENT
