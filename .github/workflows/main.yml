@@ -1,22 +1,33 @@
-language: node_js
-node_js:
-  - 23.5.0
+name: Mobile CI
 
-os:
-  - linux
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
-dist: focal
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-cache:
-  directories:
-    - Mobile/node_modules
+    steps:
+      - uses: actions/checkout@v3
 
-before_install:
-  - cd Mobile
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 23.5.0
+          cache: "npm"
+          cache-dependency-path: "Mobile/package-lock.json"
 
-install:
-  - npm install
+      - name: Install dependencies
+        working-directory: ./Mobile
+        run: npm install
 
-script:
-  - npx jest --ci
-  - npm run lint
+      - name: Run tests
+        working-directory: ./Mobile
+        run: npx jest --ci
+
+      - name: Run linting
+        working-directory: ./Mobile
+        run: npm run lint
