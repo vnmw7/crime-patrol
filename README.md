@@ -1,5 +1,11 @@
 # crime_reporting_app
 
+## Quick Start
+
+```powershell
+.\scripts\dev-setup.ps1
+```
+
 ## Tech Stack
 
 ## Issues
