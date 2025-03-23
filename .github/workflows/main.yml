@@ -1,0 +1,22 @@
+language: node_js
+node_js:
+  - 23.5.0
+
+os:
+  - linux
+
+dist: focal
+
+cache:
+  directories:
+    - Mobile/node_modules
+
+before_install:
+  - cd Mobile
+
+install:
+  - npm install
+
+script:
+  - npx jest --ci
+  - npm run lint
