@@ -15,28 +15,8 @@ before_install:
   - cd Mobile
 
 install:
-  - curl -Ls --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | sudo sh
-  - echo $DOPPLER_TOKEN | doppler configure set token --scope /mobile/stg
   - npm install
 
 script:
   - npx jest --ci
   - npm run lint
-
-jobs:
-  include:
-    # ...
-    - name: Create release and notify Sentry of deploy
-      env: SENTRY_ORG=personal-62k SENTRY_PROJECT=crime-patrol SENTRY_ENVIRONMENT=production
-      script: |
-        curl -Ls --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | sudo sh
-        echo $DOPPLER_TOKEN | doppler configure set token --scope /mobile/stg
-        export SENTRY_AUTH_TOKEN=$(doppler secrets get SENTRY_AUTH_TOKEN --plain)
-        echo "SENTRY_AUTH_TOKEN is set to: $SENTRY_AUTH_TOKEN"
-        curl -sL https://sentry.io/get-cli/ | bash
-        export SENTRY_RELEASE=$(sentry-cli releases propose-version)
-        sentry-cli releases new -p $SENTRY_PROJECT $SENTRY_RELEASE
-        sentry-cli releases set-commits $SENTRY_RELEASE --auto
-        sentry-cli sourcemaps upload --release $SENTRY_RELEASE path-to-sourcemaps-if-applicable
-        sentry-cli releases finalize $SENTRY_RELEASE
-        sentry-cli deploys new -e $SENTRY_ENVIRONMENT
