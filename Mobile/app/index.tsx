@@ -6,10 +6,12 @@ import {
   Image,
   StyleSheet,
   Platform,
+  useColorScheme,
+  Animated,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import * as Haptics from "expo-haptics";
 import {
   Ionicons,
@@ -25,19 +27,65 @@ const mockUser = {
   avatar: null,
 };
 
+// App theme colors
+const themeColors = {
+  light: {
+    primary: "#0095F6", // Instagram blue as primary color
+    secondary: "#FF3B30", // Red for danger/emergency
+    tertiary: "#007AFF", // Blue for secondary actions
+    background: "#FAFAFA", // Light background
+    card: "#FFFFFF", // White card background
+    text: "#262626", // Dark text
+    textSecondary: "#8E8E8E", // Gray secondary text
+    border: "#DBDBDB", // Light gray border
+    inactiveTab: "#8E8E8E", // Inactive tab color
+  },
+  dark: {
+    primary: "#0095F6", // Keep Instagram blue as primary
+    secondary: "#FF453A", // Slightly adjusted red for dark mode
+    tertiary: "#0A84FF", // Adjusted blue for dark mode
+    background: "#121212", // Dark background
+    card: "#1E1E1E", // Dark card background
+    text: "#FFFFFF", // White text
+    textSecondary: "#ABABAB", // Light gray secondary text
+    border: "#2C2C2C", // Dark gray border
+    inactiveTab: "#6E6E6E", // Inactive tab color for dark mode
+  }
+};
+
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const [user, setUser] = useState(mockUser);
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const theme = themeColors[colorScheme === 'dark' ? 'dark' : 'light'];
+  
+  // Animated values for button feedback
+  const panicButtonScale = useRef(new Animated.Value(1)).current;
+  const reportButtonScale = useRef(new Animated.Value(1)).current;
 
   // Function to trigger haptic feedback
   const triggerHaptic = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
-  // Function to handle the panic button press
+  // Function to handle the panic button press with animation
   const handlePanic = () => {
     triggerHaptic();
+    // Add animation
+    Animated.sequence([
+      Animated.timing(panicButtonScale, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(panicButtonScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
     // Add logic for sending location to authorities
     console.log("PANIC button pressed - sending location");
     // Show confirmation alert
@@ -52,34 +100,61 @@ const HomeScreen = () => {
     });
   };
 
-  // Function to navigate to the report screen
+  // Function to navigate to the report screen with animation
   const navigateToReport = () => {
     triggerHaptic();
-    router.push("/(stack)/report");
+    
+    // Add animation
+    Animated.sequence([
+      Animated.timing(reportButtonScale, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(reportButtonScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      router.push("/(stack)/report");
+    });
   };
 
   return (
     <View
-      style={[styles.container, { paddingTop: insets.top }]}
+      style={[styles.container, { 
+        paddingTop: insets.top,
+        backgroundColor: theme.background,
+      }]}
       testID="mainIndex"
     >
-      <StatusBar style="dark" />
+      <StatusBar style={colorScheme === 'dark' ? "light" : "dark"} />
 
       {/* Instagram-style Header */}
-      <View style={styles.instagramHeader}>
-        <Text style={styles.instagramLogo}>Crime Patrol</Text>
+      <View style={[styles.instagramHeader, { 
+        borderBottomColor: theme.border,
+        backgroundColor: theme.card,
+      }]}>
+        <Text style={[styles.instagramLogo, { color: theme.text }]}>Crime Patrol</Text>
         {user.isLoggedIn ? (
           <TouchableOpacity
             onPress={() => {
               triggerHaptic();
               console.log("Notifications pressed");
             }}
+            accessibilityLabel="Notifications"
+            accessibilityRole="button"
           >
-            <Ionicons name="notifications" size={26} color="#000" />
+            <Ionicons name="notifications" size={26} color={theme.text} />
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity onPress={toggleLogin}>
-            <Ionicons name="log-in" size={26} color="#000" />
+          <TouchableOpacity 
+            onPress={toggleLogin}
+            accessibilityLabel="Log in"
+            accessibilityRole="button"
+          >
+            <Ionicons name="log-in" size={26} color={theme.text} />
           </TouchableOpacity>
         )}
       </View>
@@ -92,22 +167,27 @@ const HomeScreen = () => {
         {/* Instagram Story-like User Status */}
         {user.isLoggedIn && (
           <View style={styles.userStatusBar}>
-            <View style={styles.userProfileCircle}>
+            <View style={[styles.userProfileCircle, { backgroundColor: theme.primary }]}>
               <Ionicons name="person" size={24} color="#FFF" />
             </View>
-            <Text style={styles.usernameText}>{user.name}</Text>
+            <Text style={[styles.usernameText, { color: theme.text }]}>{user.name}</Text>
           </View>
         )}
 
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeText}>
+          <Text style={[styles.welcomeText, { color: theme.text }]}>
             {user.isLoggedIn
               ? `Welcome, ${user.name}`
               : "Stay Safe, Stay Alert"}
           </Text>
           {!user.isLoggedIn && (
-            <TouchableOpacity style={styles.signInButton} onPress={toggleLogin}>
+            <TouchableOpacity 
+              style={[styles.signInButton, { backgroundColor: theme.primary }]} 
+              onPress={toggleLogin}
+              accessibilityLabel="Login or Sign Up"
+              accessibilityRole="button"
+            >
               <Text style={styles.signInText}>Login/Sign Up</Text>
             </TouchableOpacity>
           )}
@@ -115,33 +195,43 @@ const HomeScreen = () => {
 
         {/* Emergency Buttons (Instagram Post-like Cards) */}
         <View style={styles.emergencySection}>
-          <View style={styles.emergencyCard}>
+          <View style={[styles.emergencyCard, { 
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+          }]}>
             <View style={styles.cardHeader}>
               <MaterialCommunityIcons
                 name="shield-alert"
                 size={22}
-                color="#E60023"
+                color={theme.secondary}
               />
-              <Text style={styles.cardTitle}>Emergency Options</Text>
+              <Text style={[styles.cardTitle, { color: theme.text }]}>Emergency Options</Text>
             </View>
 
             {/* Main Action Buttons */}
-            <TouchableOpacity
-              style={styles.panicButton}
-              onPress={handlePanic}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="warning" size={26} color="#FFF" />
-              <Text style={styles.panicButtonText}>PANIC</Text>
-            </TouchableOpacity>
+            <Animated.View style={{ transform: [{ scale: panicButtonScale }] }}>
+              <TouchableOpacity
+                style={[styles.panicButton, { backgroundColor: theme.secondary }]}
+                onPress={handlePanic}
+                activeOpacity={0.8}
+                accessibilityLabel="Panic button"
+                accessibilityRole="button"
+                accessibilityHint="Press to send emergency alert with your location"
+              >
+                <Ionicons name="warning" size={26} color="#FFF" />
+                <Text style={styles.panicButtonText}>PANIC</Text>
+              </TouchableOpacity>
+            </Animated.View>
 
             <TouchableOpacity
-              style={styles.callPoliceButton}
+              style={[styles.callPoliceButton, { backgroundColor: theme.tertiary }]}
               onPress={() => {
                 triggerHaptic();
                 console.log("Call Police pressed");
               }}
               activeOpacity={0.8}
+              accessibilityLabel="Call Police"
+              accessibilityRole="button"
             >
               <Ionicons name="call" size={22} color="#FFF" />
               <Text style={styles.callButtonText}>Call Police</Text>
@@ -150,133 +240,190 @@ const HomeScreen = () => {
         </View>
 
         {/* Report Incident - Instagram Post-like Card */}
-        <View style={styles.instagramCard}>
-          <TouchableOpacity activeOpacity={0.9} onPress={navigateToReport}>
-            <View style={styles.cardHeader}>
-              <MaterialCommunityIcons
-                name="clipboard-alert"
-                size={22}
-                color="#0095F6"
-              />
-              <Text style={styles.cardTitle}>Report an Incident</Text>
-            </View>
+        <Animated.View style={{ transform: [{ scale: reportButtonScale }] }}>
+          <View style={[styles.instagramCard, { 
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+          }]}>
+            <TouchableOpacity 
+              activeOpacity={0.9} 
+              onPress={navigateToReport}
+              accessibilityLabel="Report an Incident"
+              accessibilityRole="button"
+            >
+              <View style={styles.cardHeader}>
+                <MaterialCommunityIcons
+                  name="clipboard-alert"
+                  size={22}
+                  color={theme.primary}
+                />
+                <Text style={[styles.cardTitle, { color: theme.text }]}>Report an Incident</Text>
+              </View>
 
-            <View style={styles.reportButton}>
-              <Image
-                source={require("../assets/images/partial-react-logo.png")}
-                style={styles.reportImage}
-                resizeMode="cover"
-              />
-              <Text style={styles.reportButtonText}>Report Incident</Text>
-            </View>
+              <View style={[styles.reportButton, { backgroundColor: colorScheme === 'dark' ? '#2C2C2C' : '#F8F8F8' }]}>
+                <Image
+                  source={require("../assets/images/partial-react-logo.png")}
+                  style={styles.reportImage}
+                  resizeMode="cover"
+                  accessibilityLabel="Report incident illustration"
+                />
+                <Text style={[styles.reportButtonText, { color: theme.text }]}>Report Incident</Text>
+              </View>
 
-            <View style={styles.cardFooter}>
-              <Text style={styles.footerText}>Help keep your community safe</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+              <View style={[styles.cardFooter, { borderTopColor: theme.border }]}>
+                <Text style={[styles.footerText, { color: theme.textSecondary }]}>Help keep your community safe</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
 
         {/* Location Services - Instagram Post-like Card */}
-        <View style={styles.instagramCard}>
+        <View style={[styles.instagramCard, { 
+          backgroundColor: theme.card,
+          borderColor: theme.border,
+        }]}>
           <View style={styles.cardHeader}>
-            <Ionicons name="location" size={22} color="#0095F6" />
-            <Text style={styles.cardTitle}>Location Services</Text>
+            <Ionicons name="location" size={22} color={theme.primary} />
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Location Services</Text>
           </View>
 
           <View style={styles.locationButtonsContainer}>
             <TouchableOpacity
-              style={styles.locationButton}
+              style={[styles.locationButton, { backgroundColor: colorScheme === 'dark' ? '#2C2C2C' : '#F8F8F8' }]}
               onPress={() => {
                 triggerHaptic();
                 console.log("View Map pressed");
               }}
               activeOpacity={0.7}
+              accessibilityLabel="Crime Map"
+              accessibilityRole="button"
             >
-              <Ionicons name="map" size={26} color="#0095F6" />
-              <Text style={styles.locationButtonText}>Crime Map</Text>
+              <Ionicons name="map" size={26} color={theme.primary} />
+              <Text style={[styles.locationButtonText, { color: theme.text }]}>Crime Map</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.locationButton}
+              style={[styles.locationButton, { backgroundColor: colorScheme === 'dark' ? '#2C2C2C' : '#F8F8F8' }]}
               onPress={() => {
                 triggerHaptic();
                 console.log("View Police Stations pressed");
               }}
               activeOpacity={0.7}
+              accessibilityLabel="Police Stations"
+              accessibilityRole="button"
             >
-              <MaterialIcons name="local-police" size={26} color="#0095F6" />
-              <Text style={styles.locationButtonText}>Police Stations</Text>
+              <MaterialIcons name="local-police" size={26} color={theme.primary} />
+              <Text style={[styles.locationButtonText, { color: theme.text }]}>Police Stations</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Information Card */}
-        <View style={styles.instagramCard}>
+        <View style={[styles.instagramCard, { 
+          backgroundColor: theme.card,
+          borderColor: theme.border,
+        }]}>
           <View style={styles.cardHeader}>
-            <Ionicons name="information-circle" size={22} color="#0095F6" />
-            <Text style={styles.cardTitle}>Information</Text>
+            <Ionicons name="information-circle" size={22} color={theme.primary} />
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Information</Text>
           </View>
 
           <TouchableOpacity
-            style={styles.infoButton}
+            style={[styles.infoButton, { borderBottomColor: theme.border }]}
             onPress={() => {
               triggerHaptic();
               console.log("Information pressed");
             }}
             activeOpacity={0.7}
+            accessibilityLabel="Laws and Safety Guidelines"
+            accessibilityRole="button"
           >
-            <Text style={styles.infoButtonText}>Laws & Safety Guidelines</Text>
-            <Ionicons name="chevron-forward" size={20} color="#0095F6" />
+            <Text style={[styles.infoButtonText, { color: theme.text }]}>Laws & Safety Guidelines</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.primary} />
           </TouchableOpacity>
 
           {user.isLoggedIn && (
             <TouchableOpacity
-              style={styles.infoButton}
+              style={[styles.infoButton, { borderBottomColor: theme.border }]}
               onPress={() => {
                 triggerHaptic();
                 console.log("My Reports pressed");
               }}
               activeOpacity={0.7}
+              accessibilityLabel="My Reports"
+              accessibilityRole="button"
             >
-              <Text style={styles.infoButtonText}>My Reports</Text>
-              <Ionicons name="chevron-forward" size={20} color="#0095F6" />
+              <Text style={[styles.infoButtonText, { color: theme.text }]}>My Reports</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.primary} />
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
-            style={styles.infoButton}
+            style={[styles.infoButton, { borderBottomColor: theme.border }]}
             onPress={() => {
               triggerHaptic();
               console.log("Settings pressed");
             }}
             activeOpacity={0.7}
+            accessibilityLabel="Settings"
+            accessibilityRole="button"
           >
-            <Text style={styles.infoButtonText}>Settings</Text>
-            <Ionicons name="chevron-forward" size={20} color="#0095F6" />
+            <Text style={[styles.infoButtonText, { color: theme.text }]}>Settings</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.primary} />
           </TouchableOpacity>
         </View>
       </ScrollView>
 
       {/* Instagram-style Bottom Navigation */}
-      <View style={styles.instagramFooter}>
-        <TouchableOpacity style={styles.footerTab}>
-          <Ionicons name="home" size={26} color="#000" />
+      <View style={[styles.instagramFooter, { 
+        borderTopColor: theme.border,
+        backgroundColor: theme.card,
+        paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
+      }]}>
+        <TouchableOpacity 
+          style={styles.footerTab}
+          accessibilityLabel="Home"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: true }}
+        >
+          <Ionicons name="home" size={26} color={theme.text} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.footerTab}>
-          <Ionicons name="search" size={26} color="#8E8E8E" />
+        <TouchableOpacity 
+          style={styles.footerTab}
+          accessibilityLabel="Search"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: false }}
+        >
+          <Ionicons name="search" size={26} color={theme.inactiveTab} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.footerTab} onPress={navigateToReport}>
+        <TouchableOpacity 
+          style={styles.footerTab} 
+          onPress={navigateToReport}
+          accessibilityLabel="Report Incident"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: false }}
+        >
           <MaterialCommunityIcons
             name="clipboard-plus-outline"
             size={26}
-            color="#8E8E8E"
+            color={theme.inactiveTab}
           />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.footerTab}>
-          <Ionicons name="map-outline" size={26} color="#8E8E8E" />
+        <TouchableOpacity 
+          style={styles.footerTab}
+          accessibilityLabel="Map"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: false }}
+        >
+          <Ionicons name="map-outline" size={26} color={theme.inactiveTab} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.footerTab}>
-          <Ionicons name="person-circle-outline" size={26} color="#8E8E8E" />
+        <TouchableOpacity 
+          style={styles.footerTab}
+          accessibilityLabel="Profile"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: false }}
+        >
+          <Ionicons name="person-circle-outline" size={26} color={theme.inactiveTab} />
         </TouchableOpacity>
       </View>
     </View>
@@ -286,7 +433,6 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFA", // Instagram background color
   },
   instagramHeader: {
     flexDirection: "row",
@@ -295,7 +441,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#DBDBDB",
   },
   instagramLogo: {
     fontSize: 26,
@@ -319,7 +464,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#0095F6",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
@@ -337,39 +481,35 @@ const styles = StyleSheet.create({
     }),
   },
   usernameText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
     marginLeft: 12,
-    color: "#262626",
   },
   welcomeSection: {
     marginBottom: 20,
   },
   welcomeText: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: "#262626",
-    marginBottom: 10,
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 12,
   },
   signInButton: {
-    backgroundColor: "#0095F6",
-    padding: 10,
+    padding: 12,
     borderRadius: 5,
     alignItems: "center",
   },
   signInText: {
     color: "#FFFFFF",
     fontWeight: "600",
+    fontSize: 16,
   },
   emergencySection: {
     marginBottom: 20,
   },
   emergencyCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 8,
     borderWidth: 0.5,
-    borderColor: "#DBDBDB",
-    padding: 12,
+    padding: 16,
     marginBottom: 12,
     ...Platform.select({
       ios: {
@@ -384,12 +524,10 @@ const styles = StyleSheet.create({
     }),
   },
   instagramCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 8,
     borderWidth: 0.5,
-    borderColor: "#DBDBDB",
-    padding: 12,
-    marginBottom: 12,
+    padding: 16,
+    marginBottom: 16,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -409,42 +547,38 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
     marginLeft: 8,
-    color: "#262626",
   },
   panicButton: {
-    backgroundColor: "#FF3B30",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 12,
-    borderRadius: 6,
-    marginBottom: 10,
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 12,
   },
   panicButtonText: {
     color: "#FFFFFF",
-    fontWeight: "700",
+    fontWeight: "800",
     fontSize: 18,
     marginLeft: 10,
   },
   callPoliceButton: {
-    backgroundColor: "#007AFF",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 12,
-    borderRadius: 6,
+    padding: 14,
+    borderRadius: 8,
   },
   callButtonText: {
     color: "#FFFFFF",
-    fontWeight: "600",
+    fontWeight: "700",
     fontSize: 16,
     marginLeft: 10,
   },
   reportButton: {
-    backgroundColor: "#F8F8F8",
-    borderRadius: 6,
+    borderRadius: 8,
     overflow: "hidden",
     marginBottom: 12,
   },
@@ -455,19 +589,16 @@ const styles = StyleSheet.create({
   },
   reportButtonText: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#262626",
-    padding: 12,
+    fontWeight: "700",
+    padding: 14,
     textAlign: "center",
   },
   cardFooter: {
     paddingTop: 8,
     borderTopWidth: 0.5,
-    borderTopColor: "#DBDBDB",
   },
   footerText: {
     fontSize: 14,
-    color: "#8E8E8E",
   },
   locationButtonsContainer: {
     flexDirection: "row",
@@ -476,44 +607,39 @@ const styles = StyleSheet.create({
   },
   locationButton: {
     flex: 1,
-    backgroundColor: "#F8F8F8",
-    padding: 12,
-    borderRadius: 6,
+    padding: 14,
+    borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 5,
   },
   locationButtonText: {
     fontSize: 14,
-    fontWeight: "500",
-    color: "#262626",
-    marginTop: 6,
+    fontWeight: "600",
+    marginTop: 8,
   },
   infoButton: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 12,
+    padding: 14,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#EFEFEF",
   },
   infoButtonText: {
     fontSize: 15,
-    color: "#262626",
+    fontWeight: "500",
   },
   instagramFooter: {
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
     borderTopWidth: 0.5,
-    borderTopColor: "#DBDBDB",
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 10,
-    paddingBottom: Platform.OS === "ios" ? 25 : 10,
+    paddingVertical: 12,
   },
   footerTab: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 6,
+    paddingHorizontal: 12,
   },
 });
 
