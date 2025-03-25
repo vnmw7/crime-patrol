@@ -11,6 +11,10 @@ const _layout = () => {
         name="report"
         options={{ title: "Report", headerShown: false }}
       />
+      <Tabs.Screen
+        name="chat"
+        options={{ title: "Chat", headerShown: false }}
+      />
     </Tabs>
   );
 };

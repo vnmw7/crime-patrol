@@ -249,23 +249,6 @@ const HomeScreen = () => {
                 <Text style={styles.panicButtonText}>PANIC</Text>
               </TouchableOpacity>
             </Animated.View>
-
-            <TouchableOpacity
-              style={[
-                styles.callPoliceButton,
-                { backgroundColor: theme.tertiary },
-              ]}
-              onPress={() => {
-                triggerHaptic();
-                console.log("Call Police pressed");
-              }}
-              activeOpacity={0.8}
-              accessibilityLabel="Call Police"
-              accessibilityRole="button"
-            >
-              <Ionicons name="call" size={22} color="#FFF" />
-              <Text style={styles.callButtonText}>Call Police</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
