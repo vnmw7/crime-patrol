@@ -364,6 +364,7 @@ const HomeScreen = () => {
               onPress={() => {
                 triggerHaptic();
                 console.log("View Police Stations pressed");
+                router.push("/police-stations");
               }}
               activeOpacity={0.7}
               accessibilityLabel="Police Stations"
