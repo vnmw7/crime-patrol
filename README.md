@@ -19,6 +19,7 @@
     npx expo prebuild --clean
     # install dependencies
     npm install
+    npx expo install expo-dev-client
     # run expo
     npx expo run:android
     ```

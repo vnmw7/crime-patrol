@@ -9,7 +9,6 @@ import {
   useColorScheme,
   Switch,
   Alert,
-  Image,
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -55,19 +54,16 @@ const AccountScreen = () => {
   const [phone, setPhone] = useState("+1234567890");
 
   // Verification status
-  const [isEmailVerified, setIsEmailVerified] = useState(true);
-  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
-  const [isIdentityVerified, setIsIdentityVerified] = useState(false);
+  const [isEmailVerified] = useState(true);
+  const [isPhoneVerified] = useState(false);
+  const [isIdentityVerified] = useState(false);
 
   // Notification settings
   const [reportUpdates, setReportUpdates] = useState(true);
   const [nearbyAlerts, setNearbyAlerts] = useState(true);
   const [systemNotifications, setSystemNotifications] = useState(true);
 
-  // Privacy settings
-  const [showProfileToPublic, setShowProfileToPublic] = useState(false);
-  const [shareLocationInReports, setShareLocationInReports] = useState(true);
-  const [anonymousReporting, setAnonymousReporting] = useState(false);
+  const [shareLocationInReports] = useState(true);
 
   // Function to trigger haptic feedback
   const triggerHaptic = () => {
@@ -462,7 +458,6 @@ const AccountScreen = () => {
               value={shareLocationInReports}
               onValueChange={(value) => {
                 triggerHaptic();
-                setShareLocationInReports(value);
               }}
               trackColor={{ false: "#767577", true: theme.primary }}
               thumbColor="#FFFFFF"

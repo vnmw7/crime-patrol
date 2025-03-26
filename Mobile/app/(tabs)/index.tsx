@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import * as Haptics from "expo-haptics";
 import {
   Ionicons,

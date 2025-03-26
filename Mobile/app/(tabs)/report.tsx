@@ -15,14 +15,8 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  Ionicons,
-  MaterialIcons,
-  FontAwesome5,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
+import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { BlurView } from "expo-blur";
 import { Stack, useRouter } from "expo-router";
 
 // App theme colors - matching with index.tsx
@@ -131,14 +125,14 @@ const ReportScreen = () => {
   };
 
   // Select incident type
-  const selectIncidentType = (type) => {
+  const selectIncidentType = (type: string) => {
     triggerHaptic();
     setIncidentType(type);
     setShowTypeSelector(false);
   };
 
   // Add media attachment with animation
-  const handleAttachMedia = (type) => {
+  const handleAttachMedia = (type: string) => {
     triggerHaptic();
 
     // Add animation for feedback

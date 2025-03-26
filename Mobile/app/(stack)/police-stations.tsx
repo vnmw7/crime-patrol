@@ -6,12 +6,10 @@ import {
   TouchableOpacity,
   TextInput,
   FlatList,
-  Dimensions,
   Modal,
   ScrollView,
   Linking,
   Platform,
-  Image,
   useColorScheme,
   ActivityIndicator,
   Alert,
@@ -67,9 +65,6 @@ const themeColors = {
     mapControlBackground: "#1E1E1E",
   },
 };
-
-// Screen dimensions
-const { width } = Dimensions.get("window");
 
 // Types for our data
 type LocationType = {
