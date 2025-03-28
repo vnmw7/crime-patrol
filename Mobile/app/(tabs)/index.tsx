@@ -19,6 +19,7 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { Button } from "react-native";
 
 // Mock user state - in a real app, this would come from authentication
 const mockUser = {
@@ -132,8 +133,13 @@ const HomeScreen = () => {
       ]}
       testID="mainIndex"
     >
+      <Button
+        title="Press me"
+        onPress={() => {
+          throw new Error("Hello, again, Sentry!");
+        }}
+      />
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-
       {/* Instagram-style Header */}
       <View
         style={[
@@ -168,7 +174,6 @@ const HomeScreen = () => {
           </TouchableOpacity>
         )}
       </View>
-
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -458,7 +463,6 @@ const HomeScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
       {/* Instagram-style Bottom Navigation */}
       <View
         style={[
