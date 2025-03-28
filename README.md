@@ -10,16 +10,14 @@
 
 ## Issues
 
-- Execution failed for task ':react-native-reanimated:buildCMakeDebug[arm64-v8a]
+- Solution:
 
-  - Solution:
-
-    ```powershell
-    # clean prebuild
-    npx expo prebuild --clean
-    # install dependencies
-    npm install
-    npx expo install expo-dev-client
-    # run expo
-    npx expo run:android
-    ```
+  ```powershell
+  # clean prebuild
+  npx expo prebuild --clean
+  # install dependencies
+  npm install
+  npx expo install expo-dev-client
+  # run expo
+  npx expo run:android
+  ```
