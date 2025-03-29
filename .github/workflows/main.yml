@@ -26,7 +26,12 @@ jobs:
 
       - name: Run tests
         working-directory: ./Mobile
-        run: npx jest --ci
+        run: npx jest --coverage
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Run linting
         working-directory: ./Mobile

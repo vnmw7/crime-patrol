@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import * as Haptics from "expo-haptics";
 import {
   Ionicons,
@@ -19,7 +19,14 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Button } from "react-native";
+import { Account, Client } from "appwrite";
+
+// Initialize Appwrite client
+const client = new Client()
+  .setEndpoint("https://cloud.appwrite.io/v1")
+  .setProject(process.env.APPWRITE_PROJECT_ID || "");
+
+const account = new Account(client);
 
 // Mock user state - in a real app, this would come from authentication
 const mockUser = {
@@ -122,6 +129,29 @@ const HomeScreen = () => {
     });
   };
 
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const session = await account.getSession("current");
+        if (session) {
+          const userData = await account.get();
+          setUser({
+            isLoggedIn: true,
+            name: userData.name || "User",
+            avatar: userData.prefs?.avatar || null,
+          });
+        } else {
+          router.replace("/(stack)/auth");
+        }
+      } catch (error) {
+        console.log("No active session found:", error);
+        router.replace("/(stack)/auth");
+      }
+    };
+
+    checkSession();
+  }, [router]);
+
   return (
     <View
       style={[
@@ -133,12 +163,6 @@ const HomeScreen = () => {
       ]}
       testID="mainIndex"
     >
-      <Button
-        title="Press me"
-        onPress={() => {
-          throw new Error("Hello, again, Sentry!");
-        }}
-      />
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
       {/* Instagram-style Header */}
       <View
