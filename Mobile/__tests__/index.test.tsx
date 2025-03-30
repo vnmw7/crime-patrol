@@ -1,8 +1,8 @@
 import { render } from "@testing-library/react-native";
-import Index from "../app/(tabs)/index";
+import HomeScreen from "../app/(tabs)/index";
 
 test("index loads correctly", () => {
-  const { getByTestId } = render(<Index />);
+  const { getByTestId } = render(<HomeScreen />);
   const element = getByTestId("mainIndex");
   expect(element).toBeTruthy();
 });
