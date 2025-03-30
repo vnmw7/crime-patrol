@@ -44,10 +44,9 @@ jobs:
       - name: Run tests
         working-directory: ./Mobile
         run: |
-          export HISTIGNORE='export DOPPLER_TOKEN*'
-          export DOPPLER_TOKEN=${{ secrets.DOPPLER_TOKEN }}
+          export HISTIGNORE='doppler run'
 
-          doppler run -- npx jest --coverage
+          doppler run --token=${{ secrets.DOPPLER_TOKEN }} -- npx jest --coverage
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
