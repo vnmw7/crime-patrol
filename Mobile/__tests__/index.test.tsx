@@ -1,5 +1,6 @@
 import { render } from "@testing-library/react-native";
 import HomeScreen from "../app/(tabs)/index";
+import React from "react";
 
 // Mock safe area context
 jest.mock("react-native-safe-area-context", () => ({
@@ -35,6 +36,28 @@ jest.mock("expo-haptics", () => ({
     Medium: "medium",
   },
 }));
+
+// Improved mock for @expo/vector-icons
+jest.mock("@expo/vector-icons/Ionicons", () => {
+  const React = require("react");
+  return function MockIonicons(props: any) {
+    return React.createElement("Ionicons", props, null);
+  };
+});
+
+jest.mock("@expo/vector-icons/MaterialCommunityIcons", () => {
+  const React = require("react");
+  return function MockMaterialCommunityIcons(props: any) {
+    return React.createElement("MaterialCommunityIcons", props, null);
+  };
+});
+
+jest.mock("@expo/vector-icons/MaterialIcons", () => {
+  const React = require("react");
+  return function MockMaterialIcons(props: any) {
+    return React.createElement("MaterialIcons", props, null);
+  };
+});
 
 test("index loads correctly", () => {
   const { getByTestId } = render(<HomeScreen />);
