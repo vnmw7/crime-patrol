@@ -44,6 +44,8 @@ jobs:
       - name: Run tests
         working-directory: ./Mobile
         run: npx jest --coverage
+        env:
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -53,3 +55,5 @@ jobs:
       - name: Run linting
         working-directory: ./Mobile
         run: npm run lint
+        env:
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
