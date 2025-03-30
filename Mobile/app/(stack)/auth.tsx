@@ -14,8 +14,9 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Account, Client, ID } from "appwrite";
 import { FontAwesome } from "@expo/vector-icons";
+import { createAccount, signIn, getCurrentSession } from "../../lib/appwrite";
+import { usePostHog } from "posthog-react-native";
 
 // App theme colors
 const themeColors = {
@@ -39,13 +40,6 @@ const themeColors = {
   },
 };
 
-// Initialize Appwrite client
-const client = new Client()
-  .setEndpoint(process.env.APPWRITE_ENDPOINT || "https://cloud.appwrite.io/v1")
-  .setProject(process.env.APPWRITE_PROJECT_ID || "");
-
-const account = new Account(client);
-
 export default function AuthScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
@@ -54,6 +48,11 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    posthog.capture("Auth Screen Viewed");
+  }, [posthog]);
 
   // Get theme colors based on color scheme
   const colorScheme = useColorScheme();
@@ -77,15 +76,29 @@ export default function AuthScreen() {
       setLoading(true);
 
       if (isSignUp) {
-        // const newUserId = ID.unique();
-        const newName = email.split("@")[0];
-        await account.create(ID.unique(), email, password, newName);
+        try {
+          // Create account first
+          const newName = email.split("@")[0];
+          const account = await createAccount(email, password, newName);
+          console.log("Account created:", account);
 
-        await account.createEmailPasswordSession(email, password);
-        Alert.alert("Success", "Account created successfully!");
-        router.replace("/(tabs)");
+          // Then sign in
+          const session = await signIn(email, password);
+          console.log("Session created:", session);
+
+          Alert.alert("Success", "Account created successfully!");
+          router.replace("/(tabs)");
+        } catch (error) {
+          console.error("Account creation error:", error);
+          Alert.alert(
+            "Account Creation Failed",
+            error instanceof Error
+              ? error.message
+              : "Failed to create account. Check if Appwrite is configured correctly.",
+          );
+        }
       } else {
-        await account.createEmailPasswordSession(email, password);
+        await signIn(email, password);
         router.replace("/(tabs)");
       }
     } catch (error) {
@@ -103,7 +116,7 @@ export default function AuthScreen() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const session = await account.getSession("current");
+      const session = await getCurrentSession();
       if (session) {
         router.replace("/(tabs)");
       }

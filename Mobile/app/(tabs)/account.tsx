@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,16 +15,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
-import { Account, Client } from "appwrite";
 import { useRouter } from "expo-router";
+import { getCurrentUser, signOut } from "../../lib/appwrite";
 
 // Initialize Appwrite client
-const client = new Client()
-  .setEndpoint("https://cloud.appwrite.io/v1")
-  .setProject(process.env.APPWRITE_PROJECT_ID || "");
-
-const account = new Account(client);
-
 const themeColors = {
   light: {
     primary: "#0095F6",
@@ -108,7 +102,7 @@ const AccountScreen = () => {
         text: "Log Out",
         onPress: async () => {
           try {
-            await account.deleteSession("current");
+            await signOut();
             console.log("User logged out successfully");
             router.replace("/(stack)/auth"); // Navigate to auth screen after logout
           } catch (error) {

@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import * as Sentry from "@sentry/react-native";
+import { usePostHog, PostHogProvider } from "posthog-react-native";
 
 Sentry.init({
   dsn: "https://ae8534f842d2e455c1e4d247786fd3b3@o4509016564629504.ingest.us.sentry.io/4509054551195648",
@@ -10,11 +11,20 @@ Sentry.init({
 
 function RootLayout() {
   return (
-    <Stack>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="(stack)" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-    </Stack>
+    <PostHogProvider
+      apiKey="phc_RgcZKzTBHgJ2vTRw3CLkM22Z1jWdGDpz9HWZCGzCvcc"
+      options={{
+        // usually 'https://us.i.posthog.com' or 'https://eu.i.posthog.com'
+
+        host: "https://us.i.posthog.com",
+      }}
+    >
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(stack)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      </Stack>
+    </PostHogProvider>
   );
 }
 

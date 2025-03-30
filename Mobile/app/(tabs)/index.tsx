@@ -19,14 +19,8 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Account, Client } from "appwrite";
-
-// Initialize Appwrite client
-const client = new Client()
-  .setEndpoint("https://cloud.appwrite.io/v1")
-  .setProject(process.env.APPWRITE_PROJECT_ID || "");
-
-const account = new Account(client);
+import { getCurrentUser, getCurrentSession } from "../../lib/appwrite";
+import { usePostHog } from "posthog-react-native";
 
 // Mock user state - in a real app, this would come from authentication
 const mockUser = {
@@ -67,6 +61,11 @@ const HomeScreen = () => {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    posthog.capture("Home Screen Viewed");
+  }, [posthog]);
 
   // Animated values for button feedback
   const panicButtonScale = useRef(new Animated.Value(1)).current;
@@ -132,14 +131,16 @@ const HomeScreen = () => {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const session = await account.getSession("current");
+        const session = await getCurrentSession();
         if (session) {
-          const userData = await account.get();
-          setUser({
-            isLoggedIn: true,
-            name: userData.name || "User",
-            avatar: userData.prefs?.avatar || null,
-          });
+          const userData = await getCurrentUser();
+          if (userData) {
+            setUser({
+              isLoggedIn: true,
+              name: userData.name || "User",
+              avatar: userData.prefs?.avatar || null,
+            });
+          }
         } else {
           router.replace("/(stack)/auth");
         }
