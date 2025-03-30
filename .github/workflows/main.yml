@@ -20,22 +20,22 @@ jobs:
           cache: "npm"
           cache-dependency-path: "Mobile/package-lock.json"
 
-      - name: Install Doppler CLI
-        run: |
-          # Install pre-reqs
-          sudo apt-get update && sudo apt-get install -y apt-transport-https ca-certificates curl gnupg
+      # - name: Install Doppler CLI
+      #   run: |
+      #     # Install pre-reqs
+      #     sudo apt-get update && sudo apt-get install -y apt-transport-https ca-certificates curl gnupg
 
-          # Add Doppler's GPG key
-          curl -sLf --retry 3 --tlsv1.2 --proto "=https" 'https://packages.doppler.com/public/cli/gpg.DE2A7741A397C129.key' | sudo apt-key add -
+      #     # Add Doppler's GPG key
+      #     curl -sLf --retry 3 --tlsv1.2 --proto "=https" 'https://packages.doppler.com/public/cli/gpg.DE2A7741A397C129.key' | sudo apt-key add -
 
-          # Add Doppler's apt repo
-          echo "deb https://packages.doppler.com/public/cli/deb/debian any-version main" | sudo tee /etc/apt/sources.list.d/doppler-cli.list
+      #     # Add Doppler's apt repo
+      #     echo "deb https://packages.doppler.com/public/cli/deb/debian any-version main" | sudo tee /etc/apt/sources.list.d/doppler-cli.list
 
-          # Fetch and install latest doppler cli
-          sudo apt-get update && sudo apt-get install -y doppler
+      #     # Fetch and install latest doppler cli
+      #     sudo apt-get update && sudo apt-get install -y doppler
 
-      - name: Verify Doppler CLI installation
-        run: doppler --version
+      # - name: Verify Doppler CLI installation
+      #   run: doppler --version
 
       - name: Install dependencies
         working-directory: ./Mobile
@@ -43,9 +43,7 @@ jobs:
 
       - name: Run tests
         working-directory: ./Mobile
-        run: |
-          echo "APPWRITE_PROJECT_ID=${{ secrets.APPWRITE_PROJECT_ID }}" > .env
-          npx jest --coverage
+        run: npx jest --coverage
         env:
           APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
 
@@ -56,8 +54,6 @@ jobs:
 
       - name: Run linting
         working-directory: ./Mobile
-        run: |
-          echo "APPWRITE_PROJECT_ID=${{ secrets.APPWRITE_PROJECT_ID }}" > .env
-          npm run lint
+        run: npm run lint
         env:
           APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
