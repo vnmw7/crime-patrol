@@ -54,4 +54,6 @@ jobs:
 
       - name: Run linting
         working-directory: ./Mobile
-        run: npm run lint
+        run: |
+          export HISTIGNORE='doppler run*'
+          doppler run --token=${{ secrets.DOPPLER_TOKEN }} -- npm run lint
