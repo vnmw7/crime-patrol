@@ -2,9 +2,11 @@ import { Account, Client, ID } from "appwrite";
 import Constants from "expo-constants";
 
 // Initialize Appwrite client
-// Retrieve the project ID from Expo's extra config
+// Prioritize environment variable (for CI/testing), then Expo's extra config
 const APPWRITE_PROJECT_ID =
-  Constants.expoConfig?.extra?.APPWRITE_PROJECT_ID || "";
+  process.env.APPWRITE_PROJECT_ID ||
+  Constants.expoConfig?.extra?.APPWRITE_PROJECT_ID ||
+  "";
 
 // Check if project ID is missing and log a clear error message
 if (!APPWRITE_PROJECT_ID) {
