@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import * as Sentry from "@sentry/react-native";
-import { usePostHog, PostHogProvider } from "posthog-react-native";
+import { PostHogProvider } from "posthog-react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 Sentry.init({
