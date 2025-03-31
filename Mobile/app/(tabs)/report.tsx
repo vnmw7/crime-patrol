@@ -1,90 +1,227 @@
 import React, { useState, useRef } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   ScrollView,
-  Image,
   Platform,
   KeyboardAvoidingView,
   ActivityIndicator,
   useColorScheme,
   Animated,
+  Alert,
+  Linking,
+  Text,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 
-// App theme colors - matching with index.tsx
-const themeColors = {
-  light: {
-    primary: "#0095F6", // Instagram blue as primary color
-    secondary: "#FF3B30", // Red for danger/emergency
-    tertiary: "#007AFF", // Blue for secondary actions
-    background: "#FAFAFA", // Light background
-    card: "#FFFFFF", // White card background
-    text: "#262626", // Dark text
-    textSecondary: "#8E8E8E", // Gray secondary text
-    border: "#DBDBDB", // Light gray border
-    inactiveTab: "#8E8E8E", // Inactive tab color
-    inputBackground: "#F2F2F2", // Light gray for input backgrounds
-    progressBackground: "#DBDBDB", // Light gray for progress bars
-  },
-  dark: {
-    primary: "#0095F6", // Keep Instagram blue as primary
-    secondary: "#FF453A", // Slightly adjusted red for dark mode
-    tertiary: "#0A84FF", // Adjusted blue for dark mode
-    background: "#121212", // Dark background
-    card: "#1E1E1E", // Dark card background
-    text: "#FFFFFF", // White text
-    textSecondary: "#ABABAB", // Light gray secondary text
-    border: "#2C2C2C", // Dark gray border
-    inactiveTab: "#6E6E6E", // Inactive tab color for dark mode
-    inputBackground: "#2C2C2C", // Dark gray for input backgrounds
-    progressBackground: "#3D3D3D", // Darker gray for progress bars
-  },
-};
+// Import theme
+import { themeColors } from "../theme/colors";
 
-// Mock incident types
-const INCIDENT_TYPES = [
-  "Robbery",
-  "Assault",
-  "Theft",
-  "Vandalism",
-  "Suspicious Activity",
-  "Traffic Incident",
-  "Fire",
-  "Medical Emergency",
-  "Noise Complaint",
-  "Other",
-];
+// Import components
+import IncidentSection from "../components/report/IncidentSection";
+import LocationSection from "../components/report/LocationSection";
+import PeopleSection from "../components/report/PeopleSection";
+import PropertySection from "../components/report/PropertySection";
+import ReviewSection from "../components/report/ReviewSection";
 
-// Mock location - in real app, would use device GPS
-const MOCK_LOCATION = "Bacolod City";
+// Import types and constants
+import { FormData } from "../types/reportTypes";
+import { SECTION_TITLES, MOCK_LOCATION } from "../constants/reportConstants";
 
 const ReportScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const scrollViewRef = useRef(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
 
-  // State for report form data
-  const [incidentType, setIncidentType] = useState("");
-  const [description, setDescription] = useState("");
-  const [location, setLocation] = useState(MOCK_LOCATION);
-  const [mediaAttached, setMediaAttached] = useState(false);
-  const [showTypeSelector, setShowTypeSelector] = useState(false);
+  // Section navigation state
+  const [currentSection, setCurrentSection] = useState(0);
+
+  // State for report form data - comprehensive crime report fields
+  const [formData, setFormData] = useState<FormData>({
+    // Incident Information
+    incidentType: "",
+    incidentDate: new Date(),
+    incidentTime: new Date(),
+    isInProgress: false,
+    weaponsInvolved: false,
+    weaponsDescription: "",
+    description: "",
+
+    // Location Information
+    location: MOCK_LOCATION,
+    locationType: "",
+    locationDetails: "",
+
+    // People Involved
+    reporterName: "",
+    reporterPhone: "",
+    reporterEmail: "",
+    isVictimReporter: true,
+    victimName: "",
+    victimContact: "",
+    suspectDescription: "",
+    suspectVehicle: "",
+    witnessInfo: "",
+
+    // Property and Evidence
+    propertyInvolved: false,
+    propertyDescription: "",
+    propertyValue: "",
+    serialNumbers: "",
+    evidenceInfo: "",
+    mediaAttached: false,
+  });
+
+  // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Animation values for interaction feedback
-  const typeSelectorScale = useRef(new Animated.Value(1)).current;
-  const submitButtonScale = useRef(new Animated.Value(1)).current;
+  const selectorScale = useRef(new Animated.Value(1)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
   const mediaButtonsScale = useRef(new Animated.Value(1)).current;
+
+  // Function to update form data
+  const updateFormData = (field: keyof FormData, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // Navigation between sections
+  const goToNextSection = () => {
+    if (validateCurrentSection()) {
+      triggerHaptic();
+
+      // Animate transition
+      Animated.sequence([
+        Animated.timing(buttonScale, {
+          toValue: 0.95,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonScale, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // If this is the emergency section and incident is in progress
+      if (currentSection === 0 && formData.isInProgress) {
+        Alert.alert(
+          "Emergency Alert",
+          "If this incident is happening now and requires immediate attention, please call emergency services.",
+          [
+            {
+              text: "Call Emergency",
+              onPress: () => Linking.openURL("tel:911"),
+            },
+            {
+              text: "Continue Report",
+              onPress: () => {
+                setCurrentSection(currentSection + 1);
+                scrollToTop();
+              },
+            },
+          ],
+        );
+      } else {
+        // Standard next section
+        setCurrentSection(currentSection + 1);
+        scrollToTop();
+      }
+    }
+  };
+
+  const goToPrevSection = () => {
+    triggerHaptic();
+
+    // Animate transition
+    Animated.sequence([
+      Animated.timing(buttonScale, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    setCurrentSection(currentSection - 1);
+    scrollToTop();
+  };
+
+  // Scroll to top of form
+  const scrollToTop = () => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: 0, animated: true });
+    }
+  };
+
+  // Generalized validation function
+  const validateSection = (
+    rules: { field: keyof FormData; message: string }[],
+  ) => {
+    for (const rule of rules) {
+      if (!formData[rule.field]) {
+        Alert.alert("Missing Information", rule.message);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const validateIncidentSection = () =>
+    validateSection([
+      { field: "incidentType", message: "Please select an incident type" },
+      {
+        field: "description",
+        message: "Please provide a description of what happened",
+      },
+    ]);
+
+  const validateLocationSection = () =>
+    validateSection([
+      { field: "location", message: "Please enter a location" },
+      { field: "locationType", message: "Please select a location type" },
+    ]);
+
+  const validatePeopleSection = () =>
+    validateSection([
+      { field: "reporterName", message: "Please enter your name" },
+      {
+        field: "reporterPhone",
+        message: "Please enter your phone number for follow-up",
+      },
+    ]);
+
+  const validateCurrentSection = () => {
+    switch (currentSection) {
+      case 0:
+        return validateIncidentSection();
+      case 1:
+        return validateLocationSection();
+      case 2:
+        return validatePeopleSection();
+      case 3: // Property Information
+        return true; // No mandatory fields for this section
+      case 4: // Review
+        return true; // Final validation before submit
+      default:
+        return true;
+    }
+  };
 
   // Function to trigger haptic feedback
   const triggerHaptic = () => {
@@ -94,41 +231,13 @@ const ReportScreen = () => {
   // Handle going back with animation
   const handleBack = () => {
     triggerHaptic();
-    Animated.timing(typeSelectorScale, {
+    Animated.timing(selectorScale, {
       toValue: 0.97,
       duration: 100,
       useNativeDriver: true,
     }).start(() => {
       router.back();
     });
-  };
-
-  // Toggle incident type selector with animation
-  const toggleTypeSelector = () => {
-    triggerHaptic();
-
-    // Add animation for feedback
-    Animated.sequence([
-      Animated.timing(typeSelectorScale, {
-        toValue: 0.97,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(typeSelectorScale, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    setShowTypeSelector(!showTypeSelector);
-  };
-
-  // Select incident type
-  const selectIncidentType = (type: string) => {
-    triggerHaptic();
-    setIncidentType(type);
-    setShowTypeSelector(false);
   };
 
   // Add media attachment with animation
@@ -151,27 +260,21 @@ const ReportScreen = () => {
 
     console.log(`Attaching ${type}`);
     // In a real app, this would trigger camera/gallery/recording
-    setMediaAttached(true);
+    updateFormData("mediaAttached", true);
   };
 
   // Submit the report with animation
   const handleSubmit = async () => {
-    if (!incidentType || !description) {
-      triggerHaptic();
-      alert("Please fill in all required fields");
-      return;
-    }
-
     triggerHaptic();
 
     // Add animation for feedback
     Animated.sequence([
-      Animated.timing(submitButtonScale, {
+      Animated.timing(buttonScale, {
         toValue: 0.95,
         duration: 100,
         useNativeDriver: true,
       }),
-      Animated.timing(submitButtonScale, {
+      Animated.timing(buttonScale, {
         toValue: 1,
         duration: 100,
         useNativeDriver: true,
@@ -183,417 +286,256 @@ const ReportScreen = () => {
     // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false);
-      alert("Report submitted successfully!");
-      router.back();
+      Alert.alert(
+        "Report Submitted",
+        "Your crime report has been successfully submitted. A case number will be sent to your phone.",
+        [{ text: "OK", onPress: () => router.back() }],
+      );
     }, 2000);
   };
 
-  // Calculate how many steps are complete for progress indicator
+  // Calculate progress based on current section
   const calculateProgress = () => {
-    let progress = 0;
-    if (incidentType) progress++;
-    if (description) progress++;
-    if (mediaAttached) progress++;
-    return progress;
+    return (currentSection / 4) * 100; // 5 sections (0-4)
   };
 
-  const progress = calculateProgress();
-
-  return (
-    <KeyboardAvoidingView
-      style={[
-        styles.container,
-        {
-          paddingTop: insets.top,
-          backgroundColor: theme.background,
-        },
-      ]}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
-    >
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-
-      {/* Custom Header - Instagram Style */}
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
+  // Render section-specific progress indicators
+  const renderProgressIndicator = () => (
+    <View style={styles.progressContainer}>
+      {/* Base progress bar */}
+      <View
+        style={[
+          styles.progressBar,
+          { backgroundColor: theme.progressBackground },
+        ]}
       />
 
+      {/* Filled progress bar */}
       <View
         style={[
-          styles.header,
+          styles.progressBarFill,
           {
-            borderBottomColor: theme.border,
-            backgroundColor: theme.card,
+            width: `${calculateProgress()}%`,
+            backgroundColor: theme.primary,
           },
         ]}
-      >
-        <TouchableOpacity
-          onPress={handleBack}
-          style={styles.backButton}
-          accessibilityLabel="Back"
-          accessibilityRole="button"
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>
-          Report an Incident
-        </Text>
-        <View style={{ width: 24 }} /> {/* Empty view for spacing */}
+      />
+
+      {/* Section indicators */}
+      <View style={styles.sectionIndicators}>
+        {SECTION_TITLES.map((title, index) => (
+          <View key={index} style={styles.sectionIndicator}>
+            <View
+              style={[
+                styles.sectionDot,
+                {
+                  backgroundColor:
+                    index <= currentSection
+                      ? theme.primary
+                      : theme.progressBackground,
+                },
+              ]}
+            />
+            <Text
+              style={[
+                styles.sectionLabel,
+                {
+                  color:
+                    index <= currentSection
+                      ? theme.primary
+                      : theme.textSecondary,
+                  fontWeight: index === currentSection ? "600" : "400",
+                },
+              ]}
+            >
+              {title}
+            </Text>
+          </View>
+        ))}
       </View>
+    </View>
+  );
 
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Instagram-like Form Card */}
-        <View
-          style={[
-            styles.formCard,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-            },
-          ]}
-        >
-          {/* Progress Indicator - Like Instagram Stories */}
-          <View style={styles.progressContainer}>
-            <View
-              style={[
-                styles.progressBar,
-                { backgroundColor: theme.progressBackground },
-              ]}
-            />
-            <View
-              style={[
-                styles.progressBarFill,
-                {
-                  width: `${(progress / 3) * 100}%`,
-                  backgroundColor: theme.primary,
-                },
-              ]}
-            />
-          </View>
+  // Render different form sections based on currentSection
+  const renderSection = (sectionIndex: number) => {
+    const sectionComponents = [
+      <IncidentSection
+        formData={formData}
+        updateFormData={
+          updateFormData as (
+            field: string | number | symbol,
+            value: any,
+          ) => void
+        }
+        theme={theme}
+        colorScheme={colorScheme || "light"}
+        triggerHaptic={triggerHaptic}
+        selectorScale={selectorScale}
+      />, // Incident Section
+      <LocationSection
+        formData={formData}
+        updateFormData={
+          updateFormData as (
+            field: string | number | symbol,
+            value: any,
+          ) => void
+        }
+        theme={theme}
+        colorScheme={colorScheme || "light"}
+        triggerHaptic={triggerHaptic}
+        selectorScale={selectorScale}
+      />, // Location Section
+      <PeopleSection
+        formData={formData}
+        updateFormData={
+          updateFormData as (
+            field: string | number | symbol,
+            value: any,
+          ) => void
+        }
+        theme={theme}
+      />, // People Section
+      <PropertySection
+        formData={formData}
+        updateFormData={
+          updateFormData as (
+            field: string | number | symbol,
+            value: any,
+          ) => void
+        }
+        theme={theme}
+        triggerHaptic={triggerHaptic}
+        mediaButtonsScale={mediaButtonsScale}
+        handleAttachMedia={handleAttachMedia}
+      />, // Property Section
+      <ReviewSection
+        formData={formData}
+        theme={theme}
+        colorScheme={colorScheme || "light"}
+      />, // Review Section
+    ];
 
-          {/* Incident Type Field */}
-          <View style={styles.formSection}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              Incident Type <Text style={styles.requiredStar}>*</Text>
-            </Text>
-            <Animated.View
-              style={{ transform: [{ scale: typeSelectorScale }] }}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.typeSelector,
-                  {
-                    borderColor: theme.border,
-                    backgroundColor: theme.inputBackground,
-                  },
-                ]}
-                onPress={toggleTypeSelector}
-                activeOpacity={0.8}
-                accessibilityLabel="Select incident type"
-                accessibilityRole="button"
-                accessibilityHint="Opens a dropdown to select the type of incident"
-              >
-                <Text
-                  style={[
-                    incidentType
-                      ? { color: theme.text }
-                      : { color: theme.textSecondary },
-                  ]}
-                >
-                  {incidentType || "Select incident type"}
-                </Text>
-                <Ionicons
-                  name="chevron-down"
-                  size={20}
-                  color={theme.textSecondary}
-                />
-              </TouchableOpacity>
-            </Animated.View>
+    return sectionComponents[sectionIndex] || null;
+  };
 
-            {/* Incident Type Selector Dropdown */}
-            {showTypeSelector && (
-              <View
-                style={[
-                  styles.typeSelectorDropdown,
-                  {
-                    borderColor: theme.border,
-                    backgroundColor: theme.card,
-                    ...Platform.select({
-                      ios: {
-                        shadowColor: colorScheme === "dark" ? "#000" : "#555",
-                      },
-                      android: {
-                        elevation: 4,
-                      },
-                    }),
-                  },
-                ]}
-              >
-                <ScrollView
-                  nestedScrollEnabled={true}
-                  style={{ maxHeight: 180 }}
-                >
-                  {INCIDENT_TYPES.map((type, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={[
-                        styles.typeOption,
-                        {
-                          borderBottomColor: theme.border,
-                        },
-                      ]}
-                      onPress={() => selectIncidentType(type)}
-                      accessibilityLabel={type}
-                      accessibilityRole="menuitem"
-                    >
-                      <Text
-                        style={[styles.typeOptionText, { color: theme.text }]}
-                      >
-                        {type}
-                      </Text>
-                      {incidentType === type && (
-                        <Ionicons
-                          name="checkmark"
-                          size={20}
-                          color={theme.primary}
-                        />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </View>
-
-          {/* Description Field */}
-          <View style={styles.formSection}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              Description <Text style={styles.requiredStar}>*</Text>
-            </Text>
-            <TextInput
-              style={[
-                styles.descriptionInput,
-                {
-                  borderColor: theme.border,
-                  backgroundColor: theme.inputBackground,
-                  color: theme.text,
-                },
-              ]}
-              placeholder="Describe what happened..."
-              placeholderTextColor={theme.textSecondary}
-              multiline
-              textAlignVertical="top"
-              value={description}
-              onChangeText={setDescription}
-              accessibilityLabel="Description of the incident"
-              accessibilityHint="Enter details about what happened"
-            />
-          </View>
-
-          {/* Location Field */}
-          <View style={styles.formSection}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              Location
-            </Text>
-            <View
-              style={[
-                styles.locationContainer,
-                {
-                  borderColor: theme.border,
-                  backgroundColor: theme.inputBackground,
-                },
-              ]}
-            >
-              <Ionicons
-                name="location"
-                size={20}
-                color={theme.primary}
-                style={styles.locationIcon}
-              />
-              <TextInput
-                style={[styles.locationInput, { color: theme.text }]}
-                value={location}
-                onChangeText={setLocation}
-                placeholder="Enter location"
-                placeholderTextColor={theme.textSecondary}
-                accessibilityLabel="Location of incident"
-              />
-              <TouchableOpacity
-                style={styles.gpsButton}
-                onPress={() => {
-                  triggerHaptic();
-                  // In a real app, this would get current GPS coordinates
-                  console.log("Getting GPS location");
-                }}
-                accessibilityLabel="Get current location"
-                accessibilityRole="button"
-              >
-                <Ionicons name="locate" size={20} color={theme.primary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Media Attachments */}
-          <View style={styles.formSection}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              Attach Media
-            </Text>
-            <Animated.View
-              style={[
-                styles.mediaButtonsContainer,
-                { transform: [{ scale: mediaButtonsScale }] },
-              ]}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.mediaButton,
-                  {
-                    borderColor: theme.border,
-                    backgroundColor: theme.inputBackground,
-                  },
-                ]}
-                onPress={() => handleAttachMedia("photo")}
-                accessibilityLabel="Attach photo"
-                accessibilityRole="button"
-              >
-                <Ionicons name="camera" size={24} color={theme.primary} />
-                <Text style={[styles.mediaButtonText, { color: theme.text }]}>
-                  Photo
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.mediaButton,
-                  {
-                    borderColor: theme.border,
-                    backgroundColor: theme.inputBackground,
-                  },
-                ]}
-                onPress={() => handleAttachMedia("video")}
-                accessibilityLabel="Attach video"
-                accessibilityRole="button"
-              >
-                <Ionicons name="videocam" size={24} color={theme.primary} />
-                <Text style={[styles.mediaButtonText, { color: theme.text }]}>
-                  Video
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.mediaButton,
-                  {
-                    borderColor: theme.border,
-                    backgroundColor: theme.inputBackground,
-                  },
-                ]}
-                onPress={() => handleAttachMedia("audio")}
-                accessibilityLabel="Attach audio"
-                accessibilityRole="button"
-              >
-                <FontAwesome5
-                  name="microphone"
-                  size={24}
-                  color={theme.primary}
-                />
-                <Text style={[styles.mediaButtonText, { color: theme.text }]}>
-                  Audio
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
-
-            {/* Mock Media Preview (would come from camera/gallery) */}
-            {mediaAttached && (
-              <View style={styles.mediaPreviewContainer}>
-                <Image
-                  source={require("../../assets/images/partial-react-logo.png")}
-                  style={styles.mediaPreview}
-                  resizeMode="cover"
-                  accessibilityLabel="Media preview"
-                />
-                <TouchableOpacity
-                  style={styles.removeMediaButton}
-                  onPress={() => {
-                    triggerHaptic();
-                    setMediaAttached(false);
-                  }}
-                  accessibilityLabel="Remove media"
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="close-circle" size={24} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          {/* User Notice */}
-          <View
-            style={[
-              styles.noticeContainer,
-              {
-                backgroundColor: colorScheme === "dark" ? "#2C2C2C" : "#F8F8F8",
-              },
-            ]}
-          >
-            <MaterialIcons name="info" size={20} color={theme.textSecondary} />
-            <Text style={[styles.noticeText, { color: theme.textSecondary }]}>
-              Your report will be processed and shared with relevant
-              authorities. False reporting is prohibited.
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Submit Button - Instagram Style */}
-      <View
-        style={[
-          styles.submitContainer,
-          {
-            paddingBottom: insets.bottom > 0 ? insets.bottom : 20,
-            borderTopColor: theme.border,
-            backgroundColor: theme.card,
-          },
-        ]}
-      >
-        <Animated.View style={{ transform: [{ scale: submitButtonScale }] }}>
+  // Render the navigation buttons for section navigation
+  const renderNavigationButtons = () => (
+    <View style={styles.navigationContainer}>
+      {currentSection > 0 && (
+        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
           <TouchableOpacity
-            style={[
-              styles.submitButton,
-              {
-                backgroundColor:
-                  !incidentType || !description || isSubmitting
-                    ? colorScheme === "dark"
-                      ? "#1E4E7A"
-                      : "#B2DFFC"
-                    : theme.primary,
-              },
-            ]}
+            style={[styles.backButton, { borderColor: theme.border }]}
+            onPress={goToPrevSection}
+          >
+            <Ionicons
+              name="arrow-back"
+              size={18}
+              color={theme.text}
+              style={styles.buttonIcon}
+            />
+            <Text style={[styles.backButtonText, { color: theme.text }]}>
+              Back
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+        {currentSection < 4 ? (
+          <TouchableOpacity
+            style={[styles.nextButton, { backgroundColor: theme.primary }]}
+            onPress={goToNextSection}
+          >
+            <Text style={styles.nextButtonText}>Next</Text>
+            <Ionicons
+              name="arrow-forward"
+              size={18}
+              color="#FFFFFF"
+              style={styles.buttonIcon}
+            />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.submitButton, { backgroundColor: theme.primary }]}
             onPress={handleSubmit}
-            disabled={!incidentType || !description || isSubmitting}
-            activeOpacity={0.7}
-            accessibilityLabel="Submit report"
-            accessibilityRole="button"
-            accessibilityState={{
-              disabled: !incidentType || !description || isSubmitting,
-            }}
+            disabled={isSubmitting}
           >
             {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
               <Text style={styles.submitButtonText}>Submit Report</Text>
             )}
           </TouchableOpacity>
-        </Animated.View>
-      </View>
-    </KeyboardAvoidingView>
+        )}
+      </Animated.View>
+    </View>
+  );
+
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          title: "Report a Crime",
+          headerShadowVisible: false,
+          headerStyle: {
+            backgroundColor: theme.background,
+          },
+          headerTintColor: theme.text,
+          headerLeft: () => (
+            <TouchableOpacity onPress={handleBack} style={{ marginRight: 16 }}>
+              <Ionicons name="arrow-back" size={24} color={theme.text} />
+            </TouchableOpacity>
+          ),
+        }}
+      />
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: insets.bottom + 100 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View
+            style={[
+              styles.formCard,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            {/* Progress indicator */}
+            {renderProgressIndicator()}
+
+            {/* Current section form fields */}
+            {renderSection(currentSection)}
+          </View>
+        </ScrollView>
+
+        {/* Bottom navigation buttons */}
+        <View
+          style={[
+            styles.submitContainer,
+            {
+              borderTopColor: theme.border,
+              backgroundColor: theme.card,
+              paddingBottom: Math.max(insets.bottom, 16),
+            },
+          ]}
+        >
+          {renderNavigationButtons()}
+        </View>
+      </KeyboardAvoidingView>
+    </>
   );
 };
 
@@ -610,7 +552,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
   },
   backButton: {
-    padding: 4,
+    padding: 8,
+    borderWidth: 1,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   headerTitle: {
     fontSize: 16,
@@ -645,7 +594,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     borderRadius: 2,
     overflow: "hidden",
-    marginBottom: 20,
+    marginBottom: 35, // Increased to make room for section indicators
     position: "relative",
   },
   progressBar: {
@@ -663,140 +612,77 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 2,
   },
-  formSection: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  requiredStar: {
-    color: "#FF3B30",
-  },
-  typeSelector: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  typeSelectorDropdown: {
-    marginTop: 4,
-    borderWidth: 1,
-    borderRadius: 8,
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  typeOption: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    borderBottomWidth: 0.5,
-  },
-  typeOptionText: {
-    fontSize: 15,
-  },
-  descriptionInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    height: 120,
-    fontSize: 15,
-  },
-  locationContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-  },
-  locationIcon: {
-    marginRight: 8,
-  },
-  locationInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
-  gpsButton: {
-    padding: 8,
-  },
-  mediaButtonsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  mediaButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 14,
-    borderWidth: 1,
-    borderRadius: 8,
-    marginHorizontal: 4,
-  },
-  mediaButtonText: {
-    marginTop: 6,
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  mediaPreviewContainer: {
-    marginTop: 12,
-    position: "relative",
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  mediaPreview: {
-    width: "100%",
-    height: 200,
-  },
-  removeMediaButton: {
+  // Section indicators
+  sectionIndicators: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    borderRadius: 15,
-    padding: 2,
-  },
-  noticeContainer: {
+    top: 9, // Position below the progress bar
+    left: 0,
+    right: 0,
     flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    borderRadius: 8,
+    justifyContent: "space-between",
+    paddingHorizontal: 2,
   },
-  noticeText: {
-    flex: 1,
-    marginLeft: 10,
-    fontSize: 13,
-    lineHeight: 18,
+  sectionIndicator: {
+    alignItems: "center",
+    width: 60,
+  },
+  sectionDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginBottom: 4,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    textAlign: "center",
   },
   submitContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 16,
     paddingTop: 12,
     borderTopWidth: 0.5,
   },
+  navigationContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  nextButton: {
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    flexDirection: "row",
+  },
+  nextButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 16,
+    marginRight: 6,
+  },
+  backButtonText: {
+    fontWeight: "500",
+    fontSize: 16,
+    marginLeft: 6,
+  },
   submitButton: {
     borderRadius: 8,
     paddingVertical: 14,
+    paddingHorizontal: 20,
     alignItems: "center",
+    justifyContent: "center",
+    minWidth: 120,
   },
   submitButtonText: {
     color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 16,
+  },
+  buttonIcon: {
+    marginHorizontal: 4,
   },
 });
 

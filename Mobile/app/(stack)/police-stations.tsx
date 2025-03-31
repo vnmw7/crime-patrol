@@ -3,28 +3,26 @@ import {
   StyleSheet,
   View,
   Text,
-  TouchableOpacity,
-  TextInput,
   FlatList,
-  Modal,
-  ScrollView,
   Linking,
   Platform,
   useColorScheme,
   ActivityIndicator,
   Alert,
 } from "react-native";
-import MapView, { Marker, Callout, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView from "react-native-maps";
 import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
-import {
-  Ionicons,
-  MaterialIcons,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
-import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
+
+// App components
+import SearchHeader from "../components/police-stations/SearchHeader";
+import ViewToggleControls from "../components/police-stations/ViewToggleControls";
+import BarangayFilters from "../components/police-stations/BarangayFilters";
+import StationCard from "../components/police-stations/StationCard";
+import MapViewComponent from "../components/police-stations/MapViewComponent";
+import StationDetailsModal from "../components/police-stations/StationDetailsModal";
 
 // App theme colors
 const themeColors = {
@@ -439,6 +437,13 @@ const PoliceStationsScreen = () => {
       });
   };
 
+  // Function to check if coordinates are valid
+  const areCoordinatesValid = (lat: number, lon: number): boolean => {
+    return (
+      lat !== undefined && lat !== null && lon !== undefined && lon !== null
+    );
+  };
+
   // Function to calculate distance between two coordinates in kilometers
   const calculateDistance = (
     lat1: number,
@@ -446,7 +451,10 @@ const PoliceStationsScreen = () => {
     lat2: number,
     lon2: number,
   ) => {
-    if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+    // Check if all coordinates are valid
+    if (!areCoordinatesValid(lat1, lon1) || !areCoordinatesValid(lat2, lon2)) {
+      return null;
+    }
 
     const toRad = (value: number) => (value * Math.PI) / 180;
     const R = 6371; // Earth radius in km
@@ -483,7 +491,14 @@ const PoliceStationsScreen = () => {
     );
   };
 
-  // Function to render a police station card
+  // Determine if a station is an emergency respondent
+  const isEmergencyRespondent = (
+    item: PoliceStationType | EmergencyRespondentType,
+  ): boolean => {
+    return "type" in item;
+  };
+
+  // Function to render a police station or emergency respondent card
   const renderStationCard = ({
     item,
   }: {
@@ -500,107 +515,20 @@ const PoliceStationsScreen = () => {
       );
     }
 
-    const isEmergencyRespondent = "type" in item;
+    const isEmergency = isEmergencyRespondent(item);
 
     return (
-      <TouchableOpacity
-        style={[
-          styles.stationCard,
-          {
-            backgroundColor: theme.card,
-            borderColor: theme.border,
-          },
-          isEmergencyRespondent && styles.emergencyCard,
-        ]}
-        onPress={() =>
-          !isEmergencyRespondent && selectStation(item as PoliceStationType)
+      <StationCard
+        item={item}
+        theme={theme}
+        distance={distance}
+        isEmergency={isEmergency}
+        onCardPress={() =>
+          !isEmergency && selectStation(item as PoliceStationType)
         }
-        activeOpacity={0.7}
-      >
-        <View style={styles.stationCardHeader}>
-          <View style={styles.stationNameContainer}>
-            <View style={styles.stationIcon}>
-              {isEmergencyRespondent ? (
-                <MaterialCommunityIcons
-                  name="ambulance"
-                  size={20}
-                  color={theme.secondary}
-                />
-              ) : (
-                <MaterialIcons
-                  name="local-police"
-                  size={20}
-                  color={theme.primary}
-                />
-              )}
-            </View>
-            <Text
-              style={[
-                styles.stationName,
-                { color: theme.text },
-                isEmergencyRespondent && { color: theme.secondary },
-              ]}
-            >
-              {item.name}
-            </Text>
-          </View>
-          {distance !== null && (
-            <View style={styles.distanceBadge}>
-              <Text style={styles.distanceText}>
-                {distance < 1
-                  ? `${(distance * 1000).toFixed(0)}m`
-                  : `${distance.toFixed(1)}km`}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.addressContainer}>
-          <Ionicons
-            name="location-outline"
-            size={16}
-            color={theme.textSecondary}
-          />
-          <Text style={[styles.addressText, { color: theme.textSecondary }]}>
-            {item.address}
-          </Text>
-        </View>
-
-        <View style={styles.contactContainer}>
-          <Ionicons name="call-outline" size={16} color={theme.textSecondary} />
-          <Text style={[styles.contactText, { color: theme.textSecondary }]}>
-            {item.contactNumbers[0]}
-            {item.contactNumbers.length > 1 &&
-              ` +${item.contactNumbers.length - 1} more`}
-          </Text>
-        </View>
-
-        <View style={[styles.cardActions, { borderTopColor: theme.border }]}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => callStation(item.contactNumbers[0])}
-          >
-            <Ionicons name="call" size={20} color={theme.primary} />
-            <Text style={[styles.actionText, { color: theme.primary }]}>
-              Call
-            </Text>
-          </TouchableOpacity>
-
-          <View
-            style={[styles.actionDivider, { backgroundColor: theme.border }]}
-          />
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => getDirections(item as PoliceStationType)}
-          >
-            <Ionicons name="navigate" size={20} color={theme.tertiary} />
-            <Text style={[styles.actionText, { color: theme.tertiary }]}>
-              Directions
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
+        onCallPress={callStation}
+        onDirectionsPress={() => getDirections(item as PoliceStationType)}
+      />
     );
   };
 
@@ -620,191 +548,31 @@ const PoliceStationsScreen = () => {
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
 
       {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: theme.card,
-            borderBottomColor: theme.border,
-          },
-        ]}
-      >
-        {!isSearchActive ? (
-          <>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>
-              Police Stations
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setIsSearchActive(true);
-              }}
-              style={styles.searchButton}
-            >
-              <Ionicons name="search" size={24} color={theme.text} />
-            </TouchableOpacity>
-          </>
-        ) : (
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={theme.textSecondary} />
-            <TextInput
-              style={[
-                styles.searchInput,
-                { color: theme.text, backgroundColor: theme.inputBackground },
-              ]}
-              placeholder="Search by name, address or barangay"
-              placeholderTextColor={theme.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoFocus
-            />
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setSearchQuery("");
-                setIsSearchActive(false);
-              }}
-              style={styles.clearButton}
-            >
-              <Ionicons
-                name="close-circle"
-                size={20}
-                color={theme.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+      <SearchHeader
+        theme={theme}
+        isSearchActive={isSearchActive}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        setIsSearchActive={setIsSearchActive}
+      />
 
       {/* View toggle and filter controls */}
-      <View style={styles.controlsContainer}>
-        <View style={styles.viewToggle}>
-          <TouchableOpacity
-            style={[
-              styles.viewToggleButton,
-              viewMode === "list" && [
-                styles.activeViewToggleButton,
-                { backgroundColor: theme.primary },
-              ],
-            ]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setViewMode("list");
-            }}
-          >
-            <Ionicons
-              name="list"
-              size={20}
-              color={viewMode === "list" ? "#FFFFFF" : theme.text}
-            />
-            <Text
-              style={[
-                styles.viewToggleText,
-                { color: viewMode === "list" ? "#FFFFFF" : theme.text },
-              ]}
-            >
-              List
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.viewToggleButton,
-              viewMode === "map" && [
-                styles.activeViewToggleButton,
-                { backgroundColor: theme.primary },
-              ],
-            ]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setViewMode("map");
-              // Ensure map fits all stations when switching to map view
-              setTimeout(fitMapToStations, 300);
-            }}
-          >
-            <Ionicons
-              name="map"
-              size={20}
-              color={viewMode === "map" ? "#FFFFFF" : theme.text}
-            />
-            <Text
-              style={[
-                styles.viewToggleText,
-                { color: viewMode === "map" ? "#FFFFFF" : theme.text },
-              ]}
-            >
-              Map
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Emergency respondents toggle */}
-        <TouchableOpacity
-          style={[
-            styles.emergencyToggle,
-            showEmergencyRespondents && [
-              styles.activeEmergencyToggle,
-              { backgroundColor: theme.secondary },
-            ],
-          ]}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            setShowEmergencyRespondents(!showEmergencyRespondents);
-          }}
-        >
-          <MaterialCommunityIcons
-            name="ambulance"
-            size={16}
-            color={showEmergencyRespondents ? "#FFFFFF" : theme.secondary}
-          />
-          <Text
-            style={[
-              styles.emergencyToggleText,
-              {
-                color: showEmergencyRespondents ? "#FFFFFF" : theme.secondary,
-              },
-            ]}
-          >
-            Emergency
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <ViewToggleControls
+        theme={theme}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        showEmergencyRespondents={showEmergencyRespondents}
+        setShowEmergencyRespondents={setShowEmergencyRespondents}
+        fitMapToStations={fitMapToStations}
+      />
 
       {/* Barangay filters */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterScrollContent}
-        style={styles.filterContainer}
-      >
-        {barangays.map((barangay) => (
-          <TouchableOpacity
-            key={barangay}
-            style={[
-              styles.barangayFilter,
-              selectedBarangays.includes(barangay) && [
-                styles.activeBarangayFilter,
-                { backgroundColor: theme.primary },
-              ],
-              { borderColor: theme.border },
-            ]}
-            onPress={() => toggleBarangayFilter(barangay)}
-          >
-            <Text
-              style={[
-                styles.barangayFilterText,
-                {
-                  color: selectedBarangays.includes(barangay)
-                    ? "#FFFFFF"
-                    : theme.text,
-                },
-              ]}
-            >
-              {barangay}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <BarangayFilters
+        theme={theme}
+        barangays={barangays}
+        selectedBarangays={selectedBarangays}
+        toggleBarangayFilter={toggleBarangayFilter}
+      />
 
       {/* Results counter */}
       <View style={styles.resultsContainer}>
@@ -824,11 +592,6 @@ const PoliceStationsScreen = () => {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons
-                name="alert-circle-outline"
-                size={48}
-                color={theme.textSecondary}
-              />
               <Text style={[styles.emptyText, { color: theme.text }]}>
                 No police stations found
               </Text>
@@ -844,91 +607,16 @@ const PoliceStationsScreen = () => {
 
       {/* Map View */}
       {viewMode === "map" && (
-        <View style={styles.mapContainer}>
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            provider={PROVIDER_GOOGLE}
-            initialRegion={region}
-            showsUserLocation={true}
-            showsMyLocationButton={false}
-            showsCompass={true}
-            onMapReady={fitMapToStations}
-          >
-            {/* Render Station Markers */}
-            {filteredStations.map((station) => {
-              const isEmergencyRespondent = "type" in station;
-
-              return (
-                <Marker
-                  key={station.id}
-                  coordinate={station.location}
-                  title={station.name}
-                  description={station.address}
-                  pinColor={isEmergencyRespondent ? "red" : "blue"}
-                  onPress={() =>
-                    !isEmergencyRespondent &&
-                    selectStation(station as PoliceStationType)
-                  }
-                >
-                  <Callout tooltip>
-                    <View
-                      style={[
-                        styles.calloutContainer,
-                        {
-                          backgroundColor: theme.calloutBackground,
-                          borderColor: theme.calloutBorder,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[styles.calloutTitle, { color: theme.text }]}
-                      >
-                        {station.name}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.calloutDescription,
-                          { color: theme.textSecondary },
-                        ]}
-                      >
-                        {station.address}
-                      </Text>
-                      <Text
-                        style={[styles.calloutPhone, { color: theme.primary }]}
-                      >
-                        {station.contactNumbers[0]}
-                      </Text>
-                    </View>
-                  </Callout>
-                </Marker>
-              );
-            })}
-          </MapView>
-
-          {/* Map Controls */}
-          <View style={styles.mapControls}>
-            <TouchableOpacity
-              style={[
-                styles.mapButton,
-                { backgroundColor: theme.mapControlBackground },
-              ]}
-              onPress={getUserLocation}
-            >
-              <Ionicons name="locate" size={24} color={theme.text} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.mapButton,
-                { backgroundColor: theme.mapControlBackground },
-              ]}
-              onPress={fitMapToStations}
-            >
-              <Ionicons name="expand" size={24} color={theme.text} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <MapViewComponent
+          mapRef={mapRef}
+          theme={theme}
+          region={region}
+          stations={filteredStations}
+          isEmergencyRespondent={isEmergencyRespondent}
+          onMarkerPress={selectStation}
+          getUserLocation={getUserLocation}
+          fitMapToStations={fitMapToStations}
+        />
       )}
 
       {/* Loading Indicator */}
@@ -944,241 +632,17 @@ const PoliceStationsScreen = () => {
       )}
 
       {/* Station Details Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
+      <StationDetailsModal
         visible={detailModalVisible}
-        onRequestClose={() => setDetailModalVisible(false)}
-      >
-        <BlurView intensity={90} style={styles.modalBlur}>
-          {selectedStation && (
-            <View
-              style={[
-                styles.detailsContainer,
-                {
-                  backgroundColor: theme.card,
-                  shadowColor: colorScheme === "dark" ? "#000" : "#333",
-                },
-              ]}
-            >
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: theme.text }]}>
-                  {selectedStation.name}
-                </Text>
-                <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
-                  <Ionicons name="close-circle" size={28} color={theme.text} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={styles.modalContent}>
-                <View style={styles.detailsContent}>
-                  <View style={styles.detailsItem}>
-                    <Ionicons
-                      name="location"
-                      size={24}
-                      color={theme.textSecondary}
-                    />
-                    <Text style={[styles.detailsText, { color: theme.text }]}>
-                      {selectedStation.address}
-                    </Text>
-                  </View>
-
-                  <View style={styles.detailsItem}>
-                    <Ionicons
-                      name="business"
-                      size={24}
-                      color={theme.textSecondary}
-                    />
-                    <Text style={[styles.detailsText, { color: theme.text }]}>
-                      Barangay {selectedStation.barangay}
-                    </Text>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.contactSection,
-                      { borderTopColor: theme.border },
-                    ]}
-                  >
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                      Contact Information
-                    </Text>
-
-                    {selectedStation.contactNumbers.map((number, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={styles.contactItem}
-                        onPress={() => callStation(number)}
-                      >
-                        <Ionicons name="call" size={20} color={theme.primary} />
-                        <Text
-                          style={[
-                            styles.contactItemText,
-                            { color: theme.primary },
-                          ]}
-                        >
-                          {number}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  <View
-                    style={[
-                      styles.mapSection,
-                      { borderTopColor: theme.border },
-                    ]}
-                  >
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                      Location
-                    </Text>
-
-                    <View style={styles.miniMapContainer}>
-                      <MapView
-                        style={styles.miniMap}
-                        provider={PROVIDER_GOOGLE}
-                        initialRegion={{
-                          latitude: selectedStation.location.latitude,
-                          longitude: selectedStation.location.longitude,
-                          latitudeDelta: 0.01,
-                          longitudeDelta: 0.01,
-                        }}
-                        scrollEnabled={false}
-                        zoomEnabled={false}
-                        rotateEnabled={false}
-                      >
-                        <Marker
-                          coordinate={selectedStation.location}
-                          pinColor="blue"
-                        />
-                      </MapView>
-                    </View>
-
-                    {userLocation && (
-                      <View style={styles.distanceInfo}>
-                        <Ionicons
-                          name="navigate"
-                          size={20}
-                          color={theme.textSecondary}
-                        />
-                        <Text
-                          style={[
-                            styles.distanceInfoText,
-                            { color: theme.text },
-                          ]}
-                        >
-                          {calculateDistance(
-                            userLocation.latitude,
-                            userLocation.longitude,
-                            selectedStation.location.latitude,
-                            selectedStation.location.longitude,
-                          )?.toFixed(2)}{" "}
-                          km away from your location
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <View
-                    style={[
-                      styles.servicesSection,
-                      { borderTopColor: theme.border },
-                    ]}
-                  >
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                      Services
-                    </Text>
-
-                    <View style={styles.servicesList}>
-                      <View style={styles.serviceItem}>
-                        <Ionicons
-                          name="document-text"
-                          size={20}
-                          color={theme.textSecondary}
-                        />
-                        <Text
-                          style={[styles.serviceText, { color: theme.text }]}
-                        >
-                          File a Police Report
-                        </Text>
-                      </View>
-
-                      <View style={styles.serviceItem}>
-                        <Ionicons
-                          name="shield"
-                          size={20}
-                          color={theme.textSecondary}
-                        />
-                        <Text
-                          style={[styles.serviceText, { color: theme.text }]}
-                        >
-                          Police Assistance
-                        </Text>
-                      </View>
-
-                      <View style={styles.serviceItem}>
-                        <Ionicons
-                          name="finger-print"
-                          size={20}
-                          color={theme.textSecondary}
-                        />
-                        <Text
-                          style={[styles.serviceText, { color: theme.text }]}
-                        >
-                          Criminal Investigation
-                        </Text>
-                      </View>
-
-                      <View style={styles.serviceItem}>
-                        <Ionicons
-                          name="people"
-                          size={20}
-                          color={theme.textSecondary}
-                        />
-                        <Text
-                          style={[styles.serviceText, { color: theme.text }]}
-                        >
-                          Community Service
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </ScrollView>
-
-              <View style={styles.modalFooter}>
-                <TouchableOpacity
-                  style={[
-                    styles.footerButton,
-                    { backgroundColor: theme.primary },
-                  ]}
-                  onPress={() => {
-                    setDetailModalVisible(false);
-                    callStation(selectedStation.contactNumbers[0]);
-                  }}
-                >
-                  <Ionicons name="call" size={20} color="#FFFFFF" />
-                  <Text style={styles.footerButtonText}>Call</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.footerButton,
-                    { backgroundColor: theme.tertiary },
-                  ]}
-                  onPress={() => {
-                    setDetailModalVisible(false);
-                    getDirections(selectedStation);
-                  }}
-                >
-                  <Ionicons name="navigate" size={20} color="#FFFFFF" />
-                  <Text style={styles.footerButtonText}>Get Directions</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </BlurView>
-      </Modal>
+        station={selectedStation}
+        theme={theme}
+        colorScheme={colorScheme || "light"}
+        userLocation={userLocation}
+        onClose={() => setDetailModalVisible(false)}
+        onCall={callStation}
+        onDirections={getDirections}
+        calculateDistance={calculateDistance}
+      />
     </View>
   );
 };
@@ -1187,105 +651,6 @@ const PoliceStationsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  searchButton: {
-    padding: 6,
-  },
-  searchContainer: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-  },
-  searchInput: {
-    flex: 1,
-    padding: 8,
-    marginHorizontal: 8,
-    fontSize: 16,
-    borderRadius: 8,
-  },
-  clearButton: {
-    padding: 4,
-  },
-  controlsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  viewToggle: {
-    flexDirection: "row",
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  viewToggleButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  activeViewToggleButton: {
-    backgroundColor: "#0095F6",
-  },
-  viewToggleText: {
-    marginLeft: 4,
-    fontWeight: "600",
-  },
-  emergencyToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: "#FF3B30",
-  },
-  activeEmergencyToggle: {
-    backgroundColor: "#FF3B30",
-    borderColor: "transparent",
-  },
-  emergencyToggleText: {
-    marginLeft: 4,
-    fontWeight: "600",
-    fontSize: 12,
-  },
-  filterContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
-  filterScrollContent: {
-    paddingRight: 16,
-  },
-  barangayFilter: {
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-    borderWidth: 1,
-  },
-  activeBarangayFilter: {
-    backgroundColor: "#0095F6",
-    borderColor: "transparent",
-  },
-  barangayFilterText: {
-    fontSize: 12,
-    fontWeight: "500",
   },
   resultsContainer: {
     paddingHorizontal: 16,
@@ -1297,153 +662,6 @@ const styles = StyleSheet.create({
   stationList: {
     paddingHorizontal: 16,
     paddingBottom: 20,
-  },
-  stationCard: {
-    borderRadius: 12,
-    marginBottom: 16,
-    padding: 16,
-    borderWidth: 0.5,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  emergencyCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: "#FF3B30",
-  },
-  stationCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  stationNameContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  stationIcon: {
-    marginRight: 8,
-  },
-  stationName: {
-    fontSize: 16,
-    fontWeight: "700",
-    flex: 1,
-  },
-  distanceBadge: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginLeft: 8,
-  },
-  distanceText: {
-    fontSize: 12,
-    color: "#666",
-  },
-  addressContainer: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 8,
-  },
-  addressText: {
-    fontSize: 14,
-    marginLeft: 6,
-    flex: 1,
-  },
-  contactContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  contactText: {
-    fontSize: 14,
-    marginLeft: 6,
-  },
-  cardActions: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingTop: 12,
-    borderTopWidth: 0.5,
-  },
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  actionText: {
-    marginLeft: 6,
-    fontWeight: "600",
-  },
-  actionDivider: {
-    width: 1,
-    height: "100%",
-  },
-  mapContainer: {
-    flex: 1,
-    position: "relative",
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  mapControls: {
-    position: "absolute",
-    right: 16,
-    top: 16,
-    backgroundColor: "transparent",
-  },
-  mapButton: {
-    borderRadius: 50,
-    width: 44,
-    height: 44,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  calloutContainer: {
-    backgroundColor: "white",
-    borderRadius: 8,
-    padding: 12,
-    maxWidth: 200,
-    borderWidth: 1,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
-  },
-  calloutTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  calloutDescription: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  calloutPhone: {
-    fontSize: 12,
-    fontWeight: "500",
   },
   loadingContainer: {
     position: "absolute",
@@ -1475,128 +693,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     marginTop: 6,
-  },
-  modalBlur: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  detailsContainer: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: Platform.OS === "ios" ? 40 : 20, // Extra padding for iOS
-    maxHeight: "90%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 10,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  modalContent: {
-    flex: 1,
-  },
-  detailsContent: {
-    marginBottom: 16,
-  },
-  detailsItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-  detailsText: {
-    marginLeft: 12,
-    fontSize: 16,
-    flex: 1,
-  },
-  contactSection: {
-    paddingTop: 16,
-    marginTop: 16,
-    borderTopWidth: 0.5,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  contactItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  contactItemText: {
-    marginLeft: 10,
-    fontSize: 16,
-  },
-  mapSection: {
-    paddingTop: 16,
-    marginTop: 16,
-    borderTopWidth: 0.5,
-  },
-  miniMapContainer: {
-    height: 180,
-    borderRadius: 12,
-    overflow: "hidden",
-    marginBottom: 12,
-  },
-  miniMap: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  distanceInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  distanceInfoText: {
-    marginLeft: 8,
-    fontSize: 14,
-  },
-  servicesSection: {
-    paddingTop: 16,
-    marginTop: 16,
-    borderTopWidth: 0.5,
-  },
-  servicesList: {
-    marginTop: 8,
-  },
-  serviceItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  serviceText: {
-    marginLeft: 10,
-    fontSize: 14,
-  },
-  modalFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 16,
-  },
-  footerButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 8,
-    flex: 1,
-    marginHorizontal: 6,
-  },
-  footerButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    marginLeft: 6,
-    fontSize: 16,
   },
 });
 
