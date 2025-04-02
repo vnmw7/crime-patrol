@@ -10,7 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { FormData } from "../types/reportTypes";
+import { FormData } from "../../types/reportTypes";
 
 interface PropertySectionProps {
   formData: FormData;

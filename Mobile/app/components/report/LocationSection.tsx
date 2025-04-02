@@ -10,8 +10,8 @@ import {
   Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { LOCATION_TYPES } from "../constants/reportConstants";
-import { FormData } from "../types/reportTypes";
+import { LOCATION_TYPES } from "../../constants/reportConstants";
+import { FormData } from "../../types/reportTypes";
 
 interface LocationSectionProps {
   formData: FormData;
@@ -22,6 +22,176 @@ interface LocationSectionProps {
   selectorScale: Animated.Value;
 }
 
+// Address field component
+const AddressField: React.FC<{
+  location: string;
+  updateLocation: (text: string) => void;
+  theme: any;
+  triggerHaptic: () => void;
+}> = ({ location, updateLocation, theme, triggerHaptic }) => (
+  <View style={styles.formField}>
+    <Text style={[styles.fieldLabel, { color: theme.text }]}>
+      Specific Address <Text style={styles.requiredStar}>*</Text>
+    </Text>
+    <View
+      style={[
+        styles.locationContainer,
+        {
+          borderColor: theme.border,
+          backgroundColor: theme.inputBackground,
+        },
+      ]}
+    >
+      <Ionicons
+        name="location"
+        size={20}
+        color={theme.primary}
+        style={styles.locationIcon}
+      />
+      <TextInput
+        style={[styles.locationInput, { color: theme.text }]}
+        value={location}
+        onChangeText={updateLocation}
+        placeholder="Street address, city, etc."
+        placeholderTextColor={theme.textSecondary}
+      />
+      <TouchableOpacity
+        style={styles.gpsButton}
+        onPress={() => {
+          triggerHaptic();
+          // In a real app, this would get current GPS coordinates
+          console.log("Getting GPS location");
+        }}
+      >
+        <Ionicons name="locate" size={20} color={theme.primary} />
+      </TouchableOpacity>
+    </View>
+  </View>
+);
+
+// Location type selector component
+const LocationTypeSelector: React.FC<{
+  locationType: string;
+  theme: any;
+  colorScheme: string;
+  selectorScale: Animated.Value;
+  toggleSelector: () => void;
+  showSelector: boolean;
+  selectLocationType: (type: string) => void;
+}> = ({
+  locationType,
+  theme,
+  colorScheme,
+  selectorScale,
+  toggleSelector,
+  showSelector,
+  selectLocationType,
+}) => (
+  <View style={styles.formField}>
+    <Text style={[styles.fieldLabel, { color: theme.text }]}>
+      Location Type <Text style={styles.requiredStar}>*</Text>
+    </Text>
+    <Animated.View style={{ transform: [{ scale: selectorScale }] }}>
+      <TouchableOpacity
+        style={[
+          styles.typeSelector,
+          {
+            borderColor: theme.border,
+            backgroundColor: theme.inputBackground,
+          },
+        ]}
+        onPress={toggleSelector}
+        activeOpacity={0.8}
+      >
+        <Text
+          style={[
+            locationType
+              ? { color: theme.text }
+              : { color: theme.textSecondary },
+          ]}
+        >
+          {locationType || "Select location type"}
+        </Text>
+        <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
+      </TouchableOpacity>
+    </Animated.View>
+
+    {/* Location Type Selector Dropdown */}
+    {showSelector && (
+      <View
+        style={[
+          styles.typeSelectorDropdown,
+          {
+            borderColor: theme.border,
+            backgroundColor: theme.card,
+            ...Platform.select({
+              ios: {
+                shadowColor: colorScheme === "dark" ? "#000" : "#555",
+              },
+              android: {
+                elevation: 4,
+              },
+            }),
+          },
+        ]}
+      >
+        <ScrollView nestedScrollEnabled={true} style={{ maxHeight: 180 }}>
+          {LOCATION_TYPES.map((type, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.typeOption,
+                {
+                  borderBottomColor: theme.border,
+                },
+              ]}
+              onPress={() => selectLocationType(type)}
+            >
+              <Text style={[styles.typeOptionText, { color: theme.text }]}>
+                {type}
+              </Text>
+              {locationType === type && (
+                <Ionicons name="checkmark" size={20} color={theme.primary} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    )}
+  </View>
+);
+
+// Location details component
+const LocationDetailsField: React.FC<{
+  locationDetails: string;
+  updateDetails: (text: string) => void;
+  theme: any;
+}> = ({ locationDetails, updateDetails, theme }) => (
+  <View style={styles.formField}>
+    <Text style={[styles.fieldLabel, { color: theme.text }]}>
+      Additional Location Details
+    </Text>
+    <TextInput
+      style={[
+        styles.textInput,
+        {
+          borderColor: theme.border,
+          backgroundColor: theme.inputBackground,
+          color: theme.text,
+        },
+      ]}
+      placeholder="Apartment number, floor, nearby landmarks, etc."
+      placeholderTextColor={theme.textSecondary}
+      multiline
+      numberOfLines={3}
+      textAlignVertical="top"
+      value={locationDetails}
+      onChangeText={updateDetails}
+    />
+  </View>
+);
+
+// Main component
 const LocationSection: React.FC<LocationSectionProps> = ({
   formData,
   updateFormData,
@@ -67,151 +237,28 @@ const LocationSection: React.FC<LocationSectionProps> = ({
         Location Information
       </Text>
 
-      {/* Address Field */}
-      <View style={styles.formField}>
-        <Text style={[styles.fieldLabel, { color: theme.text }]}>
-          Specific Address <Text style={styles.requiredStar}>*</Text>
-        </Text>
-        <View
-          style={[
-            styles.locationContainer,
-            {
-              borderColor: theme.border,
-              backgroundColor: theme.inputBackground,
-            },
-          ]}
-        >
-          <Ionicons
-            name="location"
-            size={20}
-            color={theme.primary}
-            style={styles.locationIcon}
-          />
-          <TextInput
-            style={[styles.locationInput, { color: theme.text }]}
-            value={formData.location}
-            onChangeText={(text) => updateFormData("location", text)}
-            placeholder="Street address, city, etc."
-            placeholderTextColor={theme.textSecondary}
-          />
-          <TouchableOpacity
-            style={styles.gpsButton}
-            onPress={() => {
-              triggerHaptic();
-              // In a real app, this would get current GPS coordinates
-              console.log("Getting GPS location");
-            }}
-          >
-            <Ionicons name="locate" size={20} color={theme.primary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <AddressField
+        location={formData.location}
+        updateLocation={(text) => updateFormData("location", text)}
+        theme={theme}
+        triggerHaptic={triggerHaptic}
+      />
 
-      {/* Location Type */}
-      <View style={styles.formField}>
-        <Text style={[styles.fieldLabel, { color: theme.text }]}>
-          Location Type <Text style={styles.requiredStar}>*</Text>
-        </Text>
-        <Animated.View style={{ transform: [{ scale: selectorScale }] }}>
-          <TouchableOpacity
-            style={[
-              styles.typeSelector,
-              {
-                borderColor: theme.border,
-                backgroundColor: theme.inputBackground,
-              },
-            ]}
-            onPress={toggleLocationTypeSelector}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[
-                formData.locationType
-                  ? { color: theme.text }
-                  : { color: theme.textSecondary },
-              ]}
-            >
-              {formData.locationType || "Select location type"}
-            </Text>
-            <Ionicons
-              name="chevron-down"
-              size={20}
-              color={theme.textSecondary}
-            />
-          </TouchableOpacity>
-        </Animated.View>
+      <LocationTypeSelector
+        locationType={formData.locationType}
+        theme={theme}
+        colorScheme={colorScheme}
+        selectorScale={selectorScale}
+        toggleSelector={toggleLocationTypeSelector}
+        showSelector={showLocationTypeSelectorModal}
+        selectLocationType={selectLocationType}
+      />
 
-        {/* Location Type Selector Dropdown */}
-        {showLocationTypeSelectorModal && (
-          <View
-            style={[
-              styles.typeSelectorDropdown,
-              {
-                borderColor: theme.border,
-                backgroundColor: theme.card,
-                ...Platform.select({
-                  ios: {
-                    shadowColor: colorScheme === "dark" ? "#000" : "#555",
-                  },
-                  android: {
-                    elevation: 4,
-                  },
-                }),
-              },
-            ]}
-          >
-            <ScrollView nestedScrollEnabled={true} style={{ maxHeight: 180 }}>
-              {LOCATION_TYPES.map((type, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.typeOption,
-                    {
-                      borderBottomColor: theme.border,
-                    },
-                  ]}
-                  onPress={() => selectLocationType(type)}
-                >
-                  <Text style={[styles.typeOptionText, { color: theme.text }]}>
-                    {type}
-                  </Text>
-                  {formData.locationType === type && (
-                    <Ionicons
-                      name="checkmark"
-                      size={20}
-                      color={theme.primary}
-                    />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-      </View>
-
-      {/* Location Details */}
-      <View style={styles.formField}>
-        <Text style={[styles.fieldLabel, { color: theme.text }]}>
-          Additional Location Details
-        </Text>
-        <TextInput
-          style={[
-            styles.textInput,
-            {
-              borderColor: theme.border,
-              backgroundColor: theme.inputBackground,
-              color: theme.text,
-            },
-          ]}
-          placeholder="Apartment number, floor, nearby landmarks, etc."
-          placeholderTextColor={theme.textSecondary}
-          multiline
-          numberOfLines={3}
-          textAlignVertical="top"
-          value={formData.locationDetails}
-          onChangeText={(text) => updateFormData("locationDetails", text)}
-        />
-      </View>
+      <LocationDetailsField
+        locationDetails={formData.locationDetails}
+        updateDetails={(text) => updateFormData("locationDetails", text)}
+        theme={theme}
+      />
     </View>
   );
 };

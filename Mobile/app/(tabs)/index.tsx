@@ -124,7 +124,7 @@ const HomeScreen = () => {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      router.push("/report");
+      router.push({ pathname: "/report" });
     });
   };
 

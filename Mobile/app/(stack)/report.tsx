@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
+import { submitReport } from "../../lib/appwrite";
 
 // Import theme
 import { themeColors } from "../theme/colors";
@@ -283,15 +284,29 @@ const ReportScreen = () => {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
-      Alert.alert(
-        "Report Submitted",
-        "Your crime report has been successfully submitted. A case number will be sent to your phone.",
-        [{ text: "OK", onPress: () => router.back() }],
-      );
-    }, 2000);
+    // Test with incidentType only
+    await submitReport({ incidentType: formData.incidentType })
+      .then(() => {
+        setIsSubmitting(false);
+        Alert.alert(
+          "Report Submitted",
+          "Your crime report has been successfully submitted. A case number will be sent to your phone.",
+          [{ text: "OK", onPress: () => router.back() }],
+        );
+      })
+      .catch((error) => {
+        console.error("Error submitting report:", error);
+        Alert.alert("Error", "There was an error submitting your report.");
+      });
+    // Comment out the simulation as we're now using the real API call
+    // setTimeout(() => {
+    //   setIsSubmitting(false);
+    //   Alert.alert(
+    //     "Submission Failed",
+    //     "Your crime report could not be submitted. Please try again later.",
+    //     [{ text: "OK" }],
+    //   );
+    // }, 5000);
   };
 
   // Calculate progress based on current section

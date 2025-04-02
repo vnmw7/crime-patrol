@@ -55,6 +55,8 @@ export default ({ config }) => ({
     extra: {
       ...config.expo?.extra, // Spread any existing extra config
       APPWRITE_PROJECT_ID: process.env.APPWRITE_PROJECT_ID,
+      APPWRITE_DATABASE_ID: process.env.APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_ID: process.env.APPWRITE_COLLECTION_ID,
       // Add other environment variables you need here
     },
   },

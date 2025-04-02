@@ -7,7 +7,7 @@ import {
   Switch,
   Platform,
 } from "react-native";
-import { FormData } from "../types/reportTypes";
+import { FormData } from "../../types/reportTypes";
 
 interface PeopleSectionProps {
   formData: FormData;

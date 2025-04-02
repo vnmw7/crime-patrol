@@ -8,10 +8,6 @@ const _layout = () => {
         options={{ title: "Home", headerShown: false }}
       />
       <Tabs.Screen
-        name="report"
-        options={{ title: "Report", headerShown: false }}
-      />
-      <Tabs.Screen
         name="chat"
         options={{ title: "Chat", headerShown: false }}
       />

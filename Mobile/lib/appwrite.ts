@@ -1,4 +1,4 @@
-import { Account, Client, ID } from "appwrite";
+import { Account, Client, ID, Databases, Permission, Role } from "appwrite";
 import Constants from "expo-constants";
 
 // Initialize Appwrite client
@@ -6,6 +6,14 @@ import Constants from "expo-constants";
 const APPWRITE_PROJECT_ID =
   process.env.APPWRITE_PROJECT_ID ||
   Constants.expoConfig?.extra?.APPWRITE_PROJECT_ID ||
+  "";
+const APPWRITE_DATABASE_ID =
+  process.env.APPWRITE_DATABASE_ID ||
+  Constants.expoConfig?.extra?.APPWRITE_DATABASE_ID ||
+  "";
+const APPWRITE_COLLECTION_ID =
+  process.env.APPWRITE_COLLECTION_ID ||
+  Constants.expoConfig?.extra?.APPWRITE_COLLECTION_ID ||
   "";
 
 // Check if project ID is missing and log a clear error message
@@ -15,12 +23,25 @@ if (!APPWRITE_PROJECT_ID) {
   );
   console.error("Please set the APPWRITE_PROJECT_ID environment variable.");
 }
+if (!APPWRITE_DATABASE_ID) {
+  console.error(
+    "ERROR: Appwrite Database ID is not configured! Operations will fail.",
+  );
+  console.error("Please set the APPWRITE_DATABASE_ID environment variable.");
+}
+if (!APPWRITE_COLLECTION_ID) {
+  console.error(
+    "ERROR: Appwrite Collection ID is not configured! Operations will fail.",
+  );
+  console.error("Please set the APPWRITE_COLLECTION_ID environment variable.");
+}
 
 const client = new Client()
   .setEndpoint("https://cloud.appwrite.io/v1")
   .setProject(APPWRITE_PROJECT_ID); // Use the environment variable
 
 const account = new Account(client);
+const databases = new Databases(client);
 
 // Helper function to handle Appwrite operations with consistent error handling
 const handleAppwriteOperation = async <T>(
@@ -130,5 +151,43 @@ export const updateUserPhone = async (phone: string, password: string) => {
   );
 };
 
+export const submitReport = async (payload: any) => {
+  return handleAppwriteOperation("Submit report", () => {
+    // Handle if payload is just a string (e.g., incidentType)
+    if (typeof payload === "string") {
+      return databases.createDocument(
+        APPWRITE_DATABASE_ID,
+        APPWRITE_COLLECTION_ID,
+        ID.unique(),
+        { incidentType: payload },
+        [Permission.write(Role.any())],
+      );
+    }
+
+    // If payload is an object, create a serializable copy of the payload
+    const serializedPayload = JSON.parse(
+      JSON.stringify(
+        Object.fromEntries(
+          Object.entries(payload).map(([key, value]) => {
+            // Convert Date objects to ISO strings
+            if (value instanceof Date) {
+              return [key, value.toISOString()];
+            }
+            return [key, value];
+          }),
+        ),
+      ),
+    );
+
+    return databases.createDocument(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_ID,
+      ID.unique(), // Use ID.unique() for the document ID
+      serializedPayload, // Pass the serialized data object here
+      [Permission.write(Role.any())],
+    );
+  });
+};
+
 // Export the client and account for direct access if needed
-export { client, account };
+export { client, account, databases };

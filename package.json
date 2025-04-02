@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "dotenv": "^16.4.7",
-    "expo-constants": "^17.0.8"
-  }
-}

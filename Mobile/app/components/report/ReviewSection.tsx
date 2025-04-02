@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { FormData } from "../types/reportTypes";
+import { FormData } from "../../types/reportTypes";
 
 interface ReviewSectionProps {
   formData: FormData;
