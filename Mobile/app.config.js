@@ -14,6 +14,11 @@ export default ({ config }) => ({
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
+      bundleIdentifier: "com.crimepatrol.mobile",
+      config: {
+        googleMapsApiKey:
+          process.env.GOOGLE_MAPS_IOS_API_KEY || "YOUR_IOS_API_KEY_HERE",
+      },
     },
     android: {
       adaptiveIcon: {
@@ -21,6 +26,13 @@ export default ({ config }) => ({
         backgroundColor: "#ffffff",
       },
       package: "com.anonymous.Mobile",
+      config: {
+        googleMaps: {
+          apiKey:
+            process.env.GOOGLE_MAPS_ANDROID_API_KEY ||
+            "YOUR_ANDROID_API_KEY_HERE",
+        },
+      },
     },
     web: {
       bundler: "metro",
@@ -57,6 +69,7 @@ export default ({ config }) => ({
       APPWRITE_PROJECT_ID: process.env.APPWRITE_PROJECT_ID,
       APPWRITE_DATABASE_ID: process.env.APPWRITE_DATABASE_ID,
       APPWRITE_COLLECTION_ID: process.env.APPWRITE_COLLECTION_ID,
+      GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY,
       // Add other environment variables you need here
     },
   },

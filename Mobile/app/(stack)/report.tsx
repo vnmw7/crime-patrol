@@ -373,64 +373,55 @@ const ReportScreen = () => {
 
   // Render different form sections based on currentSection
   const renderSection = (sectionIndex: number) => {
-    const sectionComponents = [
-      <IncidentSection
-        formData={formData}
-        updateFormData={
-          updateFormData as (
-            field: string | number | symbol,
-            value: any,
-          ) => void
-        }
-        theme={theme}
-        colorScheme={colorScheme || "light"}
-        triggerHaptic={triggerHaptic}
-        selectorScale={selectorScale}
-      />, // Incident Section
-      <LocationSection
-        formData={formData}
-        updateFormData={
-          updateFormData as (
-            field: string | number | symbol,
-            value: any,
-          ) => void
-        }
-        theme={theme}
-        colorScheme={colorScheme || "light"}
-        triggerHaptic={triggerHaptic}
-        selectorScale={selectorScale}
-      />, // Location Section
-      <PeopleSection
-        formData={formData}
-        updateFormData={
-          updateFormData as (
-            field: string | number | symbol,
-            value: any,
-          ) => void
-        }
-        theme={theme}
-      />, // People Section
-      <PropertySection
-        formData={formData}
-        updateFormData={
-          updateFormData as (
-            field: string | number | symbol,
-            value: any,
-          ) => void
-        }
-        theme={theme}
-        triggerHaptic={triggerHaptic}
-        mediaButtonsScale={mediaButtonsScale}
-        handleAttachMedia={handleAttachMedia}
-      />, // Property Section
-      <ReviewSection
-        formData={formData}
-        theme={theme}
-        colorScheme={colorScheme || "light"}
-      />, // Review Section
-    ];
+    const commonProps = {
+      formData,
+      updateFormData: updateFormData as (
+        field: string | number | symbol,
+        value: any,
+      ) => void,
+      theme,
+      colorScheme: colorScheme || "light",
+    };
 
-    return sectionComponents[sectionIndex] || null;
+    switch (sectionIndex) {
+      case 0:
+        return (
+          <IncidentSection
+            {...commonProps}
+            triggerHaptic={triggerHaptic}
+            selectorScale={selectorScale}
+          />
+        );
+      case 1:
+        return (
+          <LocationSection
+            {...commonProps}
+            triggerHaptic={triggerHaptic}
+            selectorScale={selectorScale}
+          />
+        );
+      case 2:
+        return <PeopleSection {...commonProps} />;
+      case 3:
+        return (
+          <PropertySection
+            {...commonProps}
+            triggerHaptic={triggerHaptic}
+            mediaButtonsScale={mediaButtonsScale}
+            handleAttachMedia={handleAttachMedia}
+          />
+        );
+      case 4:
+        return (
+          <ReviewSection
+            formData={formData}
+            theme={theme}
+            colorScheme={colorScheme || "light"}
+          />
+        );
+      default:
+        return null;
+    }
   };
 
   // Render the navigation buttons for section navigation
