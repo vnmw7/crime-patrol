@@ -11,9 +11,22 @@ import {
   SafeAreaView,
   FlatList,
   useColorScheme,
+  Image,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import { launchImageLibrary } from "react-native-image-picker";
+import * as FileSystem from "expo-file-system";
+import { OpenAI } from "openai";
+import Constants from "expo-constants";
+
+// Get API key from environment variables or constants
+const HUGGINGFACE_API_KEY =
+  process.env.HUGGINGFACE_API_KEY ||
+  Constants.expoConfig?.extra?.HUGGINGFACE_API_KEY ||
+  "";
 
 // App theme colors
 const themeColors = {
@@ -53,7 +66,28 @@ interface Message {
   text: string;
   isUser: boolean;
   timestamp: Date;
+  imageUri?: string;
+  isLoading?: boolean;
+  role?: "user" | "assistant" | "system";
 }
+
+// OpenAI configuration with better error handling and configuration
+const openai = new OpenAI({
+  baseURL: "https://router.huggingface.co/nebius/v1",
+  apiKey: HUGGINGFACE_API_KEY,
+  timeout: 60000, // 60 second global timeout
+  maxRetries: 3, // Enable built-in retries for transient errors
+  defaultHeaders: {
+    "User-Agent": "CrimePatrolApp/0.0.1",
+  },
+});
+
+// Default system message for context with explicit role type
+const SYSTEM_MESSAGE: { role: "system"; content: string } = {
+  role: "system",
+  content:
+    "You are a helpful AI legal assistant for a crime reporting app. Provide clear, concise information about legal matters, crime reporting procedures, victim rights, and safety tips. Avoid giving specific legal advice.",
+};
 
 // Predefined topics for common queries
 const PREDEFINED_TOPICS = [
@@ -78,6 +112,7 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
@@ -90,8 +125,8 @@ export default function ChatScreen() {
   }, [messages]);
 
   // Handle sending a new message
-  const handleSendMessage = () => {
-    if (inputText.trim() === "") return;
+  const handleSendMessage = async () => {
+    if (inputText.trim() === "" && !selectedImage) return;
 
     // Add user message
     const userMessage: Message = {
@@ -99,22 +134,221 @@ export default function ChatScreen() {
       text: inputText,
       isUser: true,
       timestamp: new Date(),
+      imageUri: selectedImage || undefined,
     };
 
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInputText("");
     setIsTyping(true);
 
-    // Simulate AI response after a short delay
-    setTimeout(() => {
-      const aiResponse = generateAIResponse(inputText);
-      setMessages((prevMessages) => [...prevMessages, aiResponse]);
+    // Add a placeholder for AI response that's loading
+    const loadingMessageId = (Date.now() + 1).toString();
+    const loadingMessage: Message = {
+      id: loadingMessageId,
+      text: "",
+      isUser: false,
+      timestamp: new Date(),
+      isLoading: true,
+    };
+
+    setMessages((prevMessages) => [...prevMessages, loadingMessage]);
+
+    try {
+      let response;
+
+      // If there's an image, process it with OpenAI Vision API
+      if (selectedImage) {
+        response = await processImageWithOpenAI(
+          selectedImage,
+          inputText || "Describe this image in one sentence.",
+        );
+        setSelectedImage(null);
+      } else {
+        // Text-only response
+        response = await generateAIResponse(inputText);
+      }
+
+      // Replace loading message with actual response
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === loadingMessageId
+            ? { ...response, id: loadingMessageId }
+            : msg,
+        ),
+      );
+    } catch (error) {
+      console.error("Error processing message:", error);
+
+      // Replace loading message with error message
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === loadingMessageId
+            ? {
+                id: loadingMessageId,
+                text: "Sorry, there was an error processing your request. Please try again.",
+                isUser: false,
+                timestamp: new Date(),
+              }
+            : msg,
+        ),
+      );
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
+  };
+
+  // Retry function for API calls
+  // Added trailing comma after <T> to disambiguate from JSX in .tsx file
+  const retryApiCall = async <T,>(
+    apiCallFn: () => Promise<T>,
+    maxRetries: number,
+    delay: number,
+  ): Promise<T> => {
+    let lastError: any;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await apiCallFn();
+      } catch (error: any) {
+        lastError = error;
+
+        // Only retry on 500 errors or network issues
+        if (
+          error.status === 500 ||
+          error.code === "ECONNRESET" ||
+          error.code === "ETIMEDOUT" ||
+          error.message?.includes("network")
+        ) {
+          console.log(`Attempt ${attempt} failed, retrying in ${delay}ms...`);
+          // Wait before retrying
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          // Increase delay for next retry attempt (exponential backoff)
+          delay *= 1.5;
+        } else {
+          // Don't retry on other errors
+          throw error;
+        }
+      }
+    }
+
+    // If we've exhausted all retries
+    console.error(`Failed after ${maxRetries} retries`, lastError);
+    throw lastError;
+  };
+
+  // Process images with OpenAI Vision API
+  const processImageWithOpenAI = async (
+    imageUri: string,
+    prompt: string,
+  ): Promise<Message> => {
+    try {
+      // Convert image to base64
+      const base64Content = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      try {
+        // Create request to OpenAI with retry mechanism
+        const chatCompletion = await retryApiCall(
+          () =>
+            openai.chat.completions.create({
+              model: "google/gemma-3-27b-it-fast", // Using the specified model
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "text",
+                      text: prompt,
+                    },
+                    {
+                      type: "image_url",
+                      image_url: {
+                        url: `data:image/jpeg;base64,${base64Content}`,
+                      },
+                    },
+                  ],
+                },
+              ],
+              max_tokens: 500,
+              stream: false, // Ensure non-streaming response type
+            }),
+          3,
+          1000,
+        ); // Explicitly pass maxRetries and delay
+
+        return {
+          id: Date.now().toString(),
+          text:
+            chatCompletion.choices[0].message.content || "No response from AI",
+          isUser: false,
+          timestamp: new Date(),
+          role: "assistant",
+        };
+      } catch (apiError: any) {
+        console.error("OpenAI API image processing error:", apiError);
+
+        // Check for specific error types
+        if (apiError.status === 500) {
+          console.error(
+            "Server error (500) from API provider during image processing",
+          );
+          return getFallbackResponse(
+            "I'm having trouble processing this image due to a server error. Could you try with a different image or try again later?",
+          );
+        } else if (apiError.status === 429) {
+          console.error("Rate limit exceeded (429) during image processing");
+          return getFallbackResponse(
+            "I've reached my image processing capacity. Please try again in a little while.",
+          );
+        } else if (
+          apiError.status === 413 ||
+          apiError.message?.includes("too large")
+        ) {
+          console.error("Image too large");
+          return getFallbackResponse(
+            "This image is too large for me to process. Could you try with a smaller image?",
+          );
+        } else if (
+          apiError.status === 415 ||
+          apiError.message?.includes("unsupported")
+        ) {
+          console.error("Unsupported media type");
+          return getFallbackResponse(
+            "I can't process this image format. Please try with a JPEG or PNG image.",
+          );
+        } else if (apiError.status === 401 || apiError.status === 403) {
+          console.error("Authentication error:", apiError.status);
+          return getFallbackResponse(
+            "I'm having trouble accessing my image processing capabilities. This may be an API key issue.",
+          );
+        } else {
+          throw apiError; // Re-throw for the outer catch
+        }
+      }
+    } catch (error) {
+      console.error("General error in image processing:", error);
+      return getFallbackResponse(
+        "I encountered an error while processing your image. Please try again or with a different image.",
+      );
+    }
+  };
+
+  // Handle image selection
+  const handleSelectImage = async () => {
+    const result = await launchImageLibrary({
+      mediaType: "photo",
+      quality: 0.8,
+      includeBase64: false,
+    });
+
+    if (result.assets && result.assets.length > 0 && result.assets[0].uri) {
+      setSelectedImage(result.assets[0].uri);
+    }
   };
 
   // Handle selecting a predefined topic
-  const handleTopicSelect = (topic: string) => {
+  const handleTopicSelect = async (topic: string) => {
     const userMessage: Message = {
       id: Date.now().toString(),
       text: topic,
@@ -125,49 +359,147 @@ export default function ChatScreen() {
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setIsTyping(true);
 
-    // Simulate AI response for the selected topic
-    setTimeout(() => {
-      const aiResponse = generateAIResponse(topic);
-      setMessages((prevMessages) => [...prevMessages, aiResponse]);
-      setIsTyping(false);
-    }, 1500);
-  };
-
-  // Mock function to generate AI responses based on user input
-  const generateAIResponse = (input: string): Message => {
-    let response = "";
-    const lowerInput = input.toLowerCase();
-
-    if (lowerInput.includes("report") || lowerInput.includes("how to report")) {
-      response =
-        "To report a crime, you should provide detailed information including location, time, and description of the incident. Would you like me to guide you through the reporting process?";
-    } else if (lowerInput.includes("rights")) {
-      response =
-        "You have the right to report crimes without fear of retaliation. If you're a victim, you have rights to information, protection, and compensation. Would you like me to explain any specific right in more detail?";
-    } else if (lowerInput.includes("safety") || lowerInput.includes("tips")) {
-      response =
-        "Some safety tips include staying aware of your surroundings, keeping your devices secure, and having emergency contacts readily available. What specific safety concerns do you have?";
-    } else if (lowerInput.includes("evidence")) {
-      response =
-        "When collecting evidence, document everything without tampering with the scene. Take photos, note times and dates, and preserve any digital evidence like messages. How can I help you with evidence collection?";
-    } else if (
-      lowerInput.includes("emergency") ||
-      lowerInput.includes("contacts")
-    ) {
-      response =
-        "Emergency contacts include local police (911 for emergencies), non-emergency police lines, victim support services, and legal aid. Would you like specific contact information for your area?";
-    } else {
-      response =
-        "I understand you're asking about ' + input + '. Could you provide more details so I can assist you better?";
-    }
-
-    return {
-      id: (Date.now() + 1).toString(),
-      text: response,
+    // Add a placeholder for AI response that's loading
+    const loadingMessageId = (Date.now() + 1).toString();
+    const loadingMessage: Message = {
+      id: loadingMessageId,
+      text: "",
       isUser: false,
       timestamp: new Date(),
+      isLoading: true,
     };
+
+    setMessages((prevMessages) => [...prevMessages, loadingMessage]);
+
+    try {
+      // Get AI response for the topic with retry mechanism
+      const response = await generateAIResponse(topic);
+
+      // Replace loading message with actual response
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === loadingMessageId
+            ? { ...response, id: loadingMessageId }
+            : msg,
+        ),
+      );
+    } catch (error) {
+      console.error("Error processing topic:", error);
+
+      // Replace loading message with error message
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === loadingMessageId
+            ? {
+                id: loadingMessageId,
+                text: "Sorry, there was an error processing your request. Please try again.",
+                isUser: false,
+                timestamp: new Date(),
+              }
+            : msg,
+        ),
+      );
+    } finally {
+      setIsTyping(false);
+    }
   };
+
+  // Process text messages with OpenAI
+  const generateAIResponse = async (input: string): Promise<Message> => {
+    try {
+      // Convert previous messages to OpenAI format for context
+      const messageHistory = messages.map((msg) => ({
+        role: msg.isUser ? "user" : ("assistant" as const),
+        content: msg.text,
+      }));
+
+      // Add system message at the beginning for context
+      const apiMessages = [
+        SYSTEM_MESSAGE,
+        ...messageHistory.slice(-5), // Use last 5 messages for context
+        { role: "user" as const, content: input },
+      ];
+
+      try {
+        // Create request to OpenAI with timeout and retry logic
+        const chatCompletion = await retryApiCall(
+          () =>
+            openai.chat.completions.create({
+              model: "google/gemma-3-27b-it-fast", // Using the specified model
+              // Explicitly cast messages array to the required type
+              messages: apiMessages as OpenAI.Chat.ChatCompletionMessageParam[],
+              max_tokens: 500,
+              // Removed invalid timeout parameter; global timeout applies
+              stream: false, // Ensure non-streaming response type
+            }),
+          3,
+          1000,
+        ); // Explicitly pass maxRetries and delay
+
+        // Assert the type of chatCompletion to ensure .choices is accessible
+        const completionResult = chatCompletion as OpenAI.Chat.ChatCompletion;
+
+        return {
+          id: Date.now().toString(),
+          text:
+            completionResult.choices[0].message.content || // Use asserted type
+            "I'm sorry, I couldn't generate a response.",
+          isUser: false,
+          timestamp: new Date(),
+          role: "assistant",
+        };
+      } catch (apiError: any) {
+        console.error("OpenAI API specific error:", apiError);
+
+        // Check for specific error types
+        if (apiError.status === 500) {
+          console.error("Server error (500) from API provider");
+          return getFallbackResponse(
+            "I'm experiencing technical difficulties with my server. Please try again in a moment.",
+          );
+        } else if (apiError.status === 429) {
+          console.error("Rate limit exceeded (429)");
+          return getFallbackResponse(
+            "I've reached my capacity at the moment. Please try again in a little while.",
+          );
+        } else if (apiError.status === 401 || apiError.status === 403) {
+          console.error("Authentication error:", apiError.status);
+          return getFallbackResponse(
+            "I'm having trouble accessing my knowledge. This may be an API key issue.",
+          );
+        } else if (apiError.status >= 400 && apiError.status < 500) {
+          console.error("Client error:", apiError.status);
+          return getFallbackResponse(
+            "There was a problem with my request. Please try again with a different question.",
+          );
+        } else if (
+          apiError.code === "ECONNABORTED" ||
+          apiError.message?.includes("timeout")
+        ) {
+          console.error("Request timeout");
+          return getFallbackResponse(
+            "The request took too long to complete. Please try again or simplify your question.",
+          );
+        } else {
+          throw apiError; // Re-throw for the outer catch
+        }
+      }
+    } catch (error) {
+      console.error("General error in AI response generation:", error);
+      return getFallbackResponse(
+        "I'm having trouble connecting to my knowledge base right now. Please try again later.",
+      );
+    }
+  };
+
+  // Helper function for fallback responses
+  const getFallbackResponse = (message: string): Message => ({
+    id: Date.now().toString(),
+    text: message,
+    isUser: false,
+    timestamp: new Date(),
+    role: "assistant",
+  });
 
   // Render individual message bubbles
   const renderMessage = (message: Message) => {
@@ -176,30 +508,49 @@ export default function ChatScreen() {
       <View
         style={[
           styles.messageBubble,
-          isUserMessage 
-            ? [styles.userBubble, { backgroundColor: theme.primary }] 
+          isUserMessage
+            ? [styles.userBubble, { backgroundColor: theme.primary }]
             : [styles.aiBubble, { backgroundColor: theme.card }],
         ]}
       >
-        <Text 
-          style={[
-            styles.messageText, 
-            { color: isUserMessage ? "#FFFFFF" : theme.text }
-          ]}
-        >
-          {message.text}
-        </Text>
-        <Text 
-          style={[
-            styles.timestampText, 
-            { color: isUserMessage ? "rgba(255,255,255,0.7)" : theme.textSecondary }
-          ]}
-        >
-          {message.timestamp.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
+        {message.isLoading ? (
+          <ActivityIndicator size="small" color={theme.primary} />
+        ) : (
+          <>
+            {message.imageUri && (
+              <View style={styles.imageContainer}>
+                <Image
+                  source={{ uri: message.imageUri }}
+                  style={styles.messageImage}
+                  resizeMode="cover"
+                />
+              </View>
+            )}
+            <Text
+              style={[
+                styles.messageText,
+                { color: isUserMessage ? "#FFFFFF" : theme.text },
+              ]}
+            >
+              {message.text}
+            </Text>
+            <Text
+              style={[
+                styles.timestampText,
+                {
+                  color: isUserMessage
+                    ? "rgba(255,255,255,0.7)"
+                    : theme.textSecondary,
+                },
+              ]}
+            >
+              {message.timestamp.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          </>
+        )}
       </View>
     );
   };
@@ -213,30 +564,45 @@ export default function ChatScreen() {
     <TouchableOpacity
       style={[
         styles.topicButton,
-        { 
-          backgroundColor: colorScheme === 'dark' ? 'rgba(74, 144, 226, 0.2)' : '#F0F7FF',
-          borderColor: colorScheme === 'dark' ? 'rgba(74, 144, 226, 0.4)' : '#E0E9F7' 
-        }
+        {
+          backgroundColor:
+            colorScheme === "dark" ? "rgba(74, 144, 226, 0.2)" : "#F0F7FF",
+          borderColor:
+            colorScheme === "dark" ? "rgba(74, 144, 226, 0.4)" : "#E0E9F7",
+        },
       ]}
       onPress={() => handleTopicSelect(item.title)}
     >
       <Ionicons name={item.icon as any} size={18} color={theme.primary} />
-      <Text style={[styles.topicText, { color: theme.primary }]}>{item.title}</Text>
+      <Text style={[styles.topicText, { color: theme.primary }]}>
+        {item.title}
+      </Text>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
 
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.primary }]}>
-        <Text style={[styles.headerTitle, { color: "#FFFFFF" }]}>AI Legal Assistant</Text>
+        <Text style={[styles.headerTitle, { color: "#FFFFFF" }]}>
+          AI Legal Assistant
+        </Text>
       </View>
 
       {/* Predefined Topics */}
-      <View style={[styles.topicsContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <Text style={[styles.topicsTitle, { color: theme.textSecondary }]}>Common Topics</Text>
+      <View
+        style={[
+          styles.topicsContainer,
+          { backgroundColor: theme.card, borderBottomColor: theme.border },
+        ]}
+      >
+        <Text style={[styles.topicsTitle, { color: theme.textSecondary }]}>
+          Common Topics
+        </Text>
         <FlatList
           data={PREDEFINED_TOPICS}
           renderItem={renderTopicItem}
@@ -260,20 +626,32 @@ export default function ChatScreen() {
         ))}
 
         {isTyping && (
-          <View style={[styles.messageBubble, styles.aiBubble, { backgroundColor: theme.card }]}>
-            <Text style={[styles.typingIndicator, { color: theme.textSecondary }]}>AI is typing...</Text>
+          <View
+            style={[
+              styles.messageBubble,
+              styles.aiBubble,
+              { backgroundColor: theme.card },
+            ]}
+          >
+            <Text
+              style={[styles.typingIndicator, { color: theme.textSecondary }]}
+            >
+              AI is typing...
+            </Text>
           </View>
         )}
       </ScrollView>
 
       {/* Legal Notice */}
-      <View style={[
-        styles.noticeContainer, 
-        { 
-          backgroundColor: theme.noticeBackground, 
-          borderTopColor: theme.noticeBorder 
-        }
-      ]}>
+      <View
+        style={[
+          styles.noticeContainer,
+          {
+            backgroundColor: theme.noticeBackground,
+            borderTopColor: theme.noticeBorder,
+          },
+        ]}
+      >
         <Text style={[styles.noticeText, { color: theme.noticeText }]}>
           This AI assistant is not a substitute for professional legal advice.
         </Text>
@@ -283,14 +661,38 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={100}
-        style={[styles.inputContainer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
+        style={[
+          styles.inputContainer,
+          { backgroundColor: theme.card, borderTopColor: theme.border },
+        ]}
+      >
+        {selectedImage && (
+          <View style={styles.selectedImageContainer}>
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.selectedImagePreview}
+            />
+            <TouchableOpacity
+              style={styles.removeImageButton}
+              onPress={() => setSelectedImage(null)}
+            >
+              <Ionicons name="close-circle" size={22} color="#FF3B30" />
+            </TouchableOpacity>
+          </View>
+        )}
+        <TouchableOpacity
+          style={styles.attachButton}
+          onPress={handleSelectImage}
+        >
+          <Ionicons name="image-outline" size={24} color={theme.primary} />
+        </TouchableOpacity>
         <TextInput
           style={[
-            styles.input, 
-            { 
-              backgroundColor: theme.inputBackground, 
-              color: theme.text 
-            }
+            styles.input,
+            {
+              backgroundColor: theme.inputBackground,
+              color: theme.text,
+            },
           ]}
           value={inputText}
           onChangeText={setInputText}
@@ -303,15 +705,24 @@ export default function ChatScreen() {
         <TouchableOpacity
           style={[
             styles.sendButton,
-            { backgroundColor: inputText.trim() ? theme.primary : theme.border }
+            {
+              backgroundColor:
+                inputText.trim() || selectedImage
+                  ? theme.primary
+                  : theme.border,
+            },
           ]}
           onPress={handleSendMessage}
-          disabled={!inputText.trim()}
+          disabled={!inputText.trim() && !selectedImage}
         >
           <Ionicons
             name="send"
             size={24}
-            color={!inputText.trim() ? theme.textSecondary : "white"}
+            color={
+              !inputText.trim() && !selectedImage
+                ? theme.textSecondary
+                : "white"
+            }
           />
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -461,5 +872,34 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     backgroundColor: "#E0E0E0",
+  },
+  imageContainer: {
+    marginBottom: 8,
+  },
+  messageImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 10,
+  },
+  selectedImageContainer: {
+    position: "relative",
+    marginBottom: 8,
+    marginRight: 10,
+  },
+  selectedImagePreview: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    backgroundColor: "white",
+    borderRadius: 11,
+  },
+  attachButton: {
+    marginRight: 10,
+    padding: 5,
   },
 });

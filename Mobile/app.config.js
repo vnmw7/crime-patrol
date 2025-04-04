@@ -70,6 +70,7 @@ export default ({ config }) => ({
       APPWRITE_DATABASE_ID: process.env.APPWRITE_DATABASE_ID,
       APPWRITE_COLLECTION_ID: process.env.APPWRITE_COLLECTION_ID,
       GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY,
+      HUGGINGFACE_API_KEY: process.env.HUGGINGFACE_API_KEY,
       // Add other environment variables you need here
     },
   },
