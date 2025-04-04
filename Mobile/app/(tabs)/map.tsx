@@ -12,18 +12,21 @@ import {
   ActivityIndicator,
   Alert,
   useColorScheme,
+  Linking,
 } from "react-native";
-import MapView, {
-  Marker,
-  Polygon,
-  Callout,
-  PROVIDER_GOOGLE,
-} from "react-native-maps";
+import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
+
+// Import police station data from the constants file
+import {
+  policeStations,
+  emergencyRespondents,
+  barangays as barangayNames,
+} from "../constants/policeStationsData";
 
 // App theme colors
 const themeColors = {
@@ -114,40 +117,6 @@ const initialRegion: LocationType = {
   latitudeDelta: 0.0922,
   longitudeDelta: 0.0421,
 };
-
-// Mock data for police stations in Bacolod City
-const policeStations: PoliceStationType[] = [
-  {
-    id: "1",
-    name: "Police Station 1",
-    location: {
-      latitude: 10.6749,
-      longitude: 122.9529,
-    },
-    address: "San Juan St, Bacolod City",
-    phone: "+63 34 433 2549",
-  },
-  {
-    id: "2",
-    name: "Police Station 2",
-    location: {
-      latitude: 10.6633,
-      longitude: 122.9452,
-    },
-    address: "Luzuriaga St, Bacolod City",
-    phone: "+63 34 434 8701",
-  },
-  {
-    id: "3",
-    name: "Police Station 3",
-    location: {
-      latitude: 10.6804,
-      longitude: 122.9577,
-    },
-    address: "Burgos St, Bacolod City",
-    phone: "+63 34 433 8827",
-  },
-];
 
 // Mock data for incidents (recent reports)
 const recentIncidents: IncidentType[] = [
@@ -261,7 +230,7 @@ export default function MapScreen() {
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
 
   // Reference to the map
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<WebView>(null);
 
   // Function to get user's location
   const getUserLocation = useCallback(async () => {
@@ -293,15 +262,9 @@ export default function MapScreen() {
       });
 
       // Animate to user's location
-      mapRef.current?.animateToRegion(
-        {
-          latitude: userLoc.latitude,
-          longitude: userLoc.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        },
-        1000,
-      );
+      mapRef.current?.injectJavaScript(`
+        map.setView([${userLoc.latitude}, ${userLoc.longitude}], 15);
+      `);
     } catch (error) {
       console.error("Error getting location:", error);
       Alert.alert("Error", "Failed to get your location.");
@@ -384,82 +347,257 @@ export default function MapScreen() {
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
 
       {/* The Map Component */}
-      <MapView
+      <WebView
         ref={mapRef}
         style={styles.map}
-        initialRegion={region}
-        showsUserLocation={true}
-        showsMyLocationButton={false}
-        showsCompass={true}
-        showsScale={true}
-        onLongPress={handleReportLocation}
-        provider={PROVIDER_GOOGLE}
-      >
-        {/* Render Barangay Polygons */}
-        {barangays.map((barangay) => (
-          <Polygon
-            key={barangay.id}
-            coordinates={barangay.coordinates}
-            fillColor={barangay.color}
-            strokeColor="rgba(0,0,0,0.5)"
-            strokeWidth={2}
-          />
-        ))}
+        source={{
+          html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <style>
+              #map { height: 100%; width: 100%; }
+              html, body { height: 100%; margin: 0; padding: 0; }
+              .leaflet-popup-content-wrapper {
+                border-radius: 8px;
+                padding: 0;
+              }
+              .popup-content {
+                padding: 10px;
+              }
+              .popup-title {
+                font-weight: bold;
+                margin-bottom: 5px;
+              }
+              .popup-address, .popup-phone {
+                margin-bottom: 3px;
+                font-size: 0.9em;
+              }
+              .incident-popup {
+                padding: 10px;
+              }
+              .incident-title {
+                font-weight: bold;
+                margin-bottom: 5px;
+              }
+              .incident-desc {
+                margin-bottom: 5px;
+                font-size: 0.9em;
+              }
+              .incident-date {
+                font-size: 0.8em;
+                color: #666;
+              }
+            </style>
+            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+          </head>
+          <body>
+            <div id="map"></div>
+            <script>
+              // Initialize map (Bacolod City)
+              var map = L.map('map').setView([10.6713, 122.9511], 13);
+              
+              // Add OpenStreetMap tiles
+              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+              }).addTo(map);
+              
+              // Police station icon
+              var policeIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+              });
+              
+              // Emergency icon
+              var emergencyIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+              });
+              
+              // Theft incident icon
+              var theftIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+              });
+              
+              // Suspicious incident icon
+              var suspiciousIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+              });
+              
+              // Add police stations markers
+              const policeStations = ${JSON.stringify(policeStations)};
+              policeStations.forEach(station => {
+                let marker = L.marker([station.location.latitude, station.location.longitude], {icon: policeIcon})
+                  .addTo(map);
+                  
+                marker.bindPopup(\`
+                  <div class="popup-content">
+                    <div class="popup-title">\${station.name}</div>
+                    <div class="popup-address">\${station.address}</div>
+                    <div class="popup-phone">\${station.contactNumbers[0]}</div>
+                  </div>
+                \`);
+                
+                marker.on('click', function() {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'station_selected',
+                    id: station.id
+                  }));
+                });
+              });
+              
+              // Add emergency respondents
+              const emergencyRespondents = ${JSON.stringify(emergencyRespondents)};
+              emergencyRespondents.forEach(respondent => {
+                let marker = L.marker([respondent.location.latitude, respondent.location.longitude], {icon: emergencyIcon})
+                  .addTo(map);
+                  
+                marker.bindPopup(\`
+                  <div class="popup-content">
+                    <div class="popup-title">\${respondent.name}</div>
+                    <div class="popup-address">\${respondent.address}</div>
+                    <div class="popup-phone">\${respondent.contactNumbers[0]}</div>
+                  </div>
+                \`);
+                
+                marker.on('click', function() {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'emergency_selected',
+                    id: respondent.id
+                  }));
+                });
+              });
+              
+              // Add incident markers
+              const incidents = ${JSON.stringify(recentIncidents) || "[]"};
+              incidents.forEach(incident => {
+                let icon = incident.type === 'theft' ? theftIcon : suspiciousIcon;
+                let marker = L.marker([incident.location.latitude, incident.location.longitude], {icon: icon})
+                  .addTo(map);
+                  
+                marker.bindPopup(\`
+                  <div class="incident-popup">
+                    <div class="incident-title">\${incident.title}</div>
+                    <div class="incident-desc">\${incident.description}</div>
+                    <div class="incident-date">\${new Date(incident.date).toLocaleString()}</div>
+                  </div>
+                \`);
+                
+                marker.on('click', function() {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'incident_selected',
+                    id: incident.id
+                  }));
+                });
+              });
+              
+              // Handle long press for reporting
+              let pressTimer;
+              let pressStart;
+              
+              map.on('mousedown touchstart', function(e) {
+                pressStart = e.latlng;
+                pressTimer = setTimeout(function() {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'long_press',
+                    latLng: {
+                      latitude: e.latlng.lat,
+                      longitude: e.latlng.lng
+                    }
+                  }));
+                }, 1000);
+              });
+              
+              map.on('mouseup mouseleave touchend touchcancel', function() {
+                clearTimeout(pressTimer);
+              });
+              
+              // Handle messages from React Native
+              window.addEventListener('message', function(event) {
+                const message = JSON.parse(event.data);
+                
+                if (message.type === 'set_location') {
+                  map.setView([message.latLng.latitude, message.latLng.longitude], 15);
+                  
+                  // Add user location marker
+                  if (window.userLocationMarker) {
+                    map.removeLayer(window.userLocationMarker);
+                  }
+                  
+                  window.userLocationMarker = L.circleMarker(
+                    [message.latLng.latitude, message.latLng.longitude],
+                    {
+                      radius: 8,
+                      fillColor: '#4285F4',
+                      color: '#ffffff',
+                      weight: 2,
+                      opacity: 1,
+                      fillOpacity: 0.8
+                    }
+                  ).addTo(map);
+                }
+              });
+            </script>
+          </body>
+          </html>
+        `,
+        }}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        onMessage={(event) => {
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
 
-        {/* Render Police Station Markers */}
-        {policeStations.map((station) => (
-          <Marker
-            key={station.id}
-            coordinate={station.location}
-            title={station.name}
-            description={station.address}
-            pinColor="blue"
-            onPress={() => showStationDetails(station)}
-          >
-            <Callout tooltip>
-              <View style={styles.calloutContainer}>
-                <Text style={styles.calloutTitle}>{station.name}</Text>
-                <Text style={styles.calloutDescription}>{station.address}</Text>
-                <Text style={styles.calloutPhone}>{station.phone}</Text>
-              </View>
-            </Callout>
-          </Marker>
-        ))}
-
-        {/* Render Recent Incident Markers */}
-        {recentIncidents.map((incident) => (
-          <Marker
-            key={incident.id}
-            coordinate={incident.location}
-            title={incident.title}
-            description={incident.description}
-            pinColor={getIncidentMarkerColor(incident.type)}
-            onPress={() => showIncidentDetails(incident)}
-          >
-            <Callout tooltip>
-              <View style={styles.calloutContainer}>
-                <Text style={styles.calloutTitle}>{incident.title}</Text>
-                <Text style={styles.calloutDescription}>
-                  {incident.description}
-                </Text>
-                <Text style={styles.calloutDate}>
-                  {new Date(incident.date).toLocaleString()}
-                </Text>
-              </View>
-            </Callout>
-          </Marker>
-        ))}
-
-        {/* Render Report Location Marker */}
-        {reportLocation && (
-          <Marker
-            coordinate={reportLocation}
-            pinColor="green"
-            title="Report Location"
-            description="Tap to report an incident at this location"
-          />
-        )}
-      </MapView>
+            if (data.type === "station_selected") {
+              const station = policeStations.find((s) => s.id === data.id);
+              if (station) {
+                showStationDetails(station);
+              }
+            } else if (data.type === "emergency_selected") {
+              const emergency = emergencyRespondents.find(
+                (e) => e.id === data.id,
+              );
+              if (emergency) {
+                showEmergencyDetails(emergency);
+              }
+            } else if (data.type === "incident_selected") {
+              const incident = recentIncidents.find((i) => i.id === data.id);
+              if (incident) {
+                showIncidentDetails(incident);
+              }
+            } else if (data.type === "long_press") {
+              handleReportLocation({
+                nativeEvent: {
+                  coordinate: data.latLng,
+                },
+              });
+            }
+          } catch (e) {
+            console.error("Error parsing WebView message:", e);
+          }
+        }}
+      />
 
       {/* Map Controls */}
       <View style={styles.mapControls}>
