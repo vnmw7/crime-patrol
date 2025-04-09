@@ -37,7 +37,6 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
   const [showTypeSelectorModal, setShowTypeSelectorModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-
   // Toggle incident type selector with animation
   const toggleTypeSelector = () => {
     triggerHaptic();
@@ -62,7 +61,7 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
   // Select incident type
   const selectIncidentType = (type: string) => {
     triggerHaptic();
-    updateFormData("incidentType", type);
+    updateFormData("Incident_Type", type);
     setShowTypeSelectorModal(false);
   };
 
@@ -91,12 +90,12 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
           >
             <Text
               style={[
-                formData.incidentType
+                formData.Incident_Type
                   ? { color: theme.text }
                   : { color: theme.textSecondary },
               ]}
             >
-              {formData.incidentType || "Select incident type"}
+              {formData.Incident_Type || "Select incident type"}
             </Text>
             <Ionicons
               name="chevron-down"
@@ -140,7 +139,7 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
                   <Text style={[styles.typeOptionText, { color: theme.text }]}>
                     {type}
                   </Text>
-                  {formData.incidentType === type && (
+                  {formData.Incident_Type === type && (
                     <Ionicons
                       name="checkmark"
                       size={20}
@@ -173,7 +172,7 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
           >
             <Ionicons name="calendar" size={20} color={theme.primary} />
             <Text style={{ color: theme.text, marginLeft: 8 }}>
-              {formData.incidentDate.toLocaleDateString()}
+              {formData.Incident_Date.toLocaleDateString()}
             </Text>
           </TouchableOpacity>
 
@@ -190,7 +189,7 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
           >
             <Ionicons name="time" size={20} color={theme.primary} />
             <Text style={{ color: theme.text, marginLeft: 8 }}>
-              {formData.incidentTime.toLocaleTimeString([], {
+              {formData.Incident_Time.toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
@@ -201,13 +200,13 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
         {/* Date Picker */}
         {showDatePicker && (
           <DateTimePicker
-            value={formData.incidentDate}
+            value={formData.Incident_Date}
             mode="date"
             display="default"
             onChange={(event, selectedDate) => {
               setShowDatePicker(false);
               if (selectedDate) {
-                updateFormData("incidentDate", selectedDate);
+                updateFormData("Incident_Date", selectedDate);
               }
             }}
           />
@@ -216,13 +215,13 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
         {/* Time Picker */}
         {showTimePicker && (
           <DateTimePicker
-            value={formData.incidentTime}
+            value={formData.Incident_Time}
             mode="time"
             display="default"
             onChange={(event, selectedTime) => {
               setShowTimePicker(false);
               if (selectedTime) {
-                updateFormData("incidentTime", selectedTime);
+                updateFormData("Incident_Time", selectedTime);
               }
             }}
           />
@@ -237,9 +236,9 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
         <View style={styles.toggleContainer}>
           <Text style={[{ color: theme.text }]}>No</Text>
           <Switch
-            value={formData.isInProgress}
+            value={formData.Is_In_Progress}
             onValueChange={(value) => {
-              updateFormData("isInProgress", value);
+              updateFormData("Is_In_Progress", value);
               if (value) {
                 // Show emergency alert when toggled on
                 Alert.alert(
@@ -265,49 +264,6 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
         </View>
       </View>
 
-      {/* Weapons Involved */}
-      <View style={styles.formField}>
-        <Text style={[styles.fieldLabel, { color: theme.text }]}>
-          Were weapons involved?
-        </Text>
-        <View style={styles.toggleContainer}>
-          <Text style={[{ color: theme.text }]}>No</Text>
-          <Switch
-            value={formData.weaponsInvolved}
-            onValueChange={(value) => updateFormData("weaponsInvolved", value)}
-            trackColor={{
-              false: theme.progressBackground,
-              true: theme.primary,
-            }}
-            thumbColor="#FFFFFF"
-          />
-          <Text style={[{ color: theme.text }]}>Yes</Text>
-        </View>
-      </View>
-
-      {/* Conditional Weapons Description */}
-      {formData.weaponsInvolved && (
-        <View style={[styles.formField, { marginTop: -5 }]}>
-          <Text style={[styles.fieldLabel, { color: theme.text }]}>
-            Weapon Description
-          </Text>
-          <TextInput
-            style={[
-              styles.textInput,
-              {
-                borderColor: theme.border,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
-            value={formData.weaponsDescription}
-            onChangeText={(text) => updateFormData("weaponsDescription", text)}
-            placeholder="Describe the weapon(s) used..."
-            placeholderTextColor={theme.textSecondary}
-          />
-        </View>
-      )}
-
       {/* Description Field */}
       <View style={styles.formField}>
         <Text style={[styles.fieldLabel, { color: theme.text }]}>
@@ -326,8 +282,8 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
           placeholderTextColor={theme.textSecondary}
           multiline
           textAlignVertical="top"
-          value={formData.description}
-          onChangeText={(text) => updateFormData("description", text)}
+          value={formData.Description}
+          onChangeText={(text) => updateFormData("Description", text)}
         />
       </View>
     </View>

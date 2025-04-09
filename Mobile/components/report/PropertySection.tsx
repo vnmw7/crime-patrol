@@ -7,7 +7,6 @@ import {
   Switch,
   TouchableOpacity,
   Animated,
-  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { FormData } from "../../types/reportTypes";
@@ -34,8 +33,7 @@ const PropertySection: React.FC<PropertySectionProps> = ({
       <Text style={[styles.sectionTitle, { color: theme.text }]}>
         Property and Evidence
       </Text>
-
-      {/* Property Stolen/Damaged */}
+      {/* Property Stolen/Damaged */}{" "}
       <View style={styles.formField}>
         <Text style={[styles.fieldLabel, { color: theme.text }]}>
           Was property stolen or damaged?
@@ -43,8 +41,10 @@ const PropertySection: React.FC<PropertySectionProps> = ({
         <View style={styles.toggleContainer}>
           <Text style={[{ color: theme.text }]}>No</Text>
           <Switch
-            value={formData.propertyInvolved}
-            onValueChange={(value) => updateFormData("propertyInvolved", value)}
+            value={formData.Property_Involved}
+            onValueChange={(value) =>
+              updateFormData("Property_Involved", value)
+            }
             trackColor={{
               false: theme.progressBackground,
               true: theme.primary,
@@ -54,9 +54,8 @@ const PropertySection: React.FC<PropertySectionProps> = ({
           <Text style={[{ color: theme.text }]}>Yes</Text>
         </View>
       </View>
-
       {/* Conditional Property Fields */}
-      {formData.propertyInvolved && (
+      {formData.Property_Involved && (
         <>
           {/* Property Description */}
           <View style={styles.formField}>
@@ -76,9 +75,9 @@ const PropertySection: React.FC<PropertySectionProps> = ({
               placeholderTextColor={theme.textSecondary}
               multiline
               textAlignVertical="top"
-              value={formData.propertyDescription}
+              value={formData.Property_Description}
               onChangeText={(text) =>
-                updateFormData("propertyDescription", text)
+                updateFormData("Property_Description", text)
               }
             />
           </View>
@@ -100,8 +99,8 @@ const PropertySection: React.FC<PropertySectionProps> = ({
               placeholder="Approximate value in dollars"
               placeholderTextColor={theme.textSecondary}
               keyboardType="numeric"
-              value={formData.propertyValue}
-              onChangeText={(text) => updateFormData("propertyValue", text)}
+              value={formData.Property_Value}
+              onChangeText={(text) => updateFormData("Property_Value", text)}
             />
           </View>
 
@@ -121,13 +120,12 @@ const PropertySection: React.FC<PropertySectionProps> = ({
               ]}
               placeholder="Serial numbers of stolen/damaged items"
               placeholderTextColor={theme.textSecondary}
-              value={formData.serialNumbers}
-              onChangeText={(text) => updateFormData("serialNumbers", text)}
+              value={formData.Serial_Numbers}
+              onChangeText={(text) => updateFormData("Serial_Numbers", text)}
             />
           </View>
         </>
       )}
-
       {/* Evidence Information */}
       <View style={styles.formField}>
         <Text style={[styles.fieldLabel, { color: theme.text }]}>
@@ -146,11 +144,10 @@ const PropertySection: React.FC<PropertySectionProps> = ({
           placeholderTextColor={theme.textSecondary}
           multiline
           textAlignVertical="top"
-          value={formData.evidenceInfo}
-          onChangeText={(text) => updateFormData("evidenceInfo", text)}
+          value={formData.Evidence_Info}
+          onChangeText={(text) => updateFormData("Evidence_Info", text)}
         />
       </View>
-
       {/* Media Attachments */}
       <View style={styles.formField}>
         <Text style={[styles.fieldLabel, { color: theme.text }]}>
@@ -212,7 +209,7 @@ const PropertySection: React.FC<PropertySectionProps> = ({
         </Animated.View>
 
         {/* Media Preview */}
-        {formData.mediaAttached && (
+        {formData.Media_Attached && (
           <View style={styles.mediaPreviewContainer}>
             {/* This would render the actual image or file in a real app */}
             <View
@@ -233,7 +230,7 @@ const PropertySection: React.FC<PropertySectionProps> = ({
               style={styles.removeMediaButton}
               onPress={() => {
                 triggerHaptic();
-                updateFormData("mediaAttached", false);
+                updateFormData("Media_Attached", false);
               }}
             >
               <Ionicons

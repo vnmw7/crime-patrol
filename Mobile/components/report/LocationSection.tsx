@@ -223,11 +223,10 @@ const LocationSection: React.FC<LocationSectionProps> = ({
 
     setShowLocationTypeSelectorModal(true);
   };
-
   // Select location type
   const selectLocationType = (type: string) => {
     triggerHaptic();
-    updateFormData("locationType", type);
+    updateFormData("Location_Type", type);
     setShowLocationTypeSelectorModal(false);
   };
 
@@ -238,14 +237,14 @@ const LocationSection: React.FC<LocationSectionProps> = ({
       </Text>
 
       <AddressField
-        location={formData.location}
-        updateLocation={(text) => updateFormData("location", text)}
+        location={formData.Location}
+        updateLocation={(text) => updateFormData("Location", text)}
         theme={theme}
         triggerHaptic={triggerHaptic}
       />
 
       <LocationTypeSelector
-        locationType={formData.locationType}
+        locationType={formData.Location_Type}
         theme={theme}
         colorScheme={colorScheme}
         selectorScale={selectorScale}
@@ -255,8 +254,8 @@ const LocationSection: React.FC<LocationSectionProps> = ({
       />
 
       <LocationDetailsField
-        locationDetails={formData.locationDetails}
-        updateDetails={(text) => updateFormData("locationDetails", text)}
+        locationDetails={formData.Location_Details}
+        updateDetails={(text) => updateFormData("Location_Details", text)}
         theme={theme}
       />
     </View>

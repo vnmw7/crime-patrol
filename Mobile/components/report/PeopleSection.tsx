@@ -48,8 +48,8 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
             ]}
             placeholder="Enter your full name"
             placeholderTextColor={theme.textSecondary}
-            value={formData.reporterName}
-            onChangeText={(text) => updateFormData("reporterName", text)}
+            value={formData.Reporter_Name}
+            onChangeText={(text) => updateFormData("Reporter_Name", text)}
           />
         </View>
 
@@ -70,8 +70,8 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
             placeholder="For follow-up contact"
             placeholderTextColor={theme.textSecondary}
             keyboardType="phone-pad"
-            value={formData.reporterPhone}
-            onChangeText={(text) => updateFormData("reporterPhone", text)}
+            value={formData.Reporter_Phone}
+            onChangeText={(text) => updateFormData("Reporter_Phone", text)}
           />
         </View>
 
@@ -93,8 +93,8 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
             placeholderTextColor={theme.textSecondary}
             keyboardType="email-address"
             autoCapitalize="none"
-            value={formData.reporterEmail}
-            onChangeText={(text) => updateFormData("reporterEmail", text)}
+            value={formData.Reporter_Email}
+            onChangeText={(text) => updateFormData("Reporter_Email", text)}
           />
         </View>
 
@@ -106,9 +106,9 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
           <View style={styles.toggleContainer}>
             <Text style={[{ color: theme.text }]}>No</Text>
             <Switch
-              value={formData.isVictimReporter}
+              value={formData.Is_Victim_Reporter}
               onValueChange={(value) =>
-                updateFormData("isVictimReporter", value)
+                updateFormData("Is_Victim_Reporter", value)
               }
               trackColor={{
                 false: theme.progressBackground,
@@ -122,7 +122,7 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
       </View>
 
       {/* Victim Information - conditional */}
-      {!formData.isVictimReporter && (
+      {!formData.Is_Victim_Reporter && (
         <View style={[styles.subSection, { borderColor: theme.border }]}>
           <Text style={[styles.subSectionTitle, { color: theme.text }]}>
             Victim Information
@@ -144,8 +144,8 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
               ]}
               placeholder="Enter victim's name if known"
               placeholderTextColor={theme.textSecondary}
-              value={formData.victimName}
-              onChangeText={(text) => updateFormData("victimName", text)}
+              value={formData.Victim_Name}
+              onChangeText={(text) => updateFormData("Victim_Name", text)}
             />
           </View>
 
@@ -165,8 +165,8 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
               ]}
               placeholder="Phone number or email if known"
               placeholderTextColor={theme.textSecondary}
-              value={formData.victimContact}
-              onChangeText={(text) => updateFormData("victimContact", text)}
+              value={formData.Victim_Contact}
+              onChangeText={(text) => updateFormData("Victim_Contact", text)}
             />
           </View>
         </View>
@@ -196,8 +196,8 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
             placeholderTextColor={theme.textSecondary}
             multiline
             textAlignVertical="top"
-            value={formData.suspectDescription}
-            onChangeText={(text) => updateFormData("suspectDescription", text)}
+            value={formData.Suspect_Description}
+            onChangeText={(text) => updateFormData("Suspect_Description", text)}
           />
         </View>
 
@@ -217,8 +217,8 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
             ]}
             placeholder="Make, model, color, license plate if known"
             placeholderTextColor={theme.textSecondary}
-            value={formData.suspectVehicle}
-            onChangeText={(text) => updateFormData("suspectVehicle", text)}
+            value={formData.Suspect_Vehicle}
+            onChangeText={(text) => updateFormData("Suspect_Vehicle", text)}
           />
         </View>
       </View>
@@ -241,8 +241,8 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
           placeholderTextColor={theme.textSecondary}
           multiline
           textAlignVertical="top"
-          value={formData.witnessInfo}
-          onChangeText={(text) => updateFormData("witnessInfo", text)}
+          value={formData.Witness_Info}
+          onChangeText={(text) => updateFormData("Witness_Info", text)}
         />
       </View>
     </View>

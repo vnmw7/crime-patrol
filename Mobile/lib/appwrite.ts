@@ -159,7 +159,7 @@ export const submitReport = async (payload: any) => {
         APPWRITE_DATABASE_ID,
         APPWRITE_COLLECTION_ID,
         ID.unique(),
-        { incidentType: payload },
+        { Incident_Type: payload },
         [Permission.write(Role.any())],
       );
     }

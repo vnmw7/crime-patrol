@@ -24,14 +24,14 @@ import { submitReport } from "../../lib/appwrite";
 import { themeColors } from "../theme/colors";
 
 // Import components
-import IncidentSection from "../components/report/IncidentSection";
-import LocationSection from "../components/report/LocationSection";
-import PeopleSection from "../components/report/PeopleSection";
-import PropertySection from "../components/report/PropertySection";
-import ReviewSection from "../components/report/ReviewSection";
+import IncidentSection from "../../components/report/IncidentSection";
+import LocationSection from "../../components/report/LocationSection";
+import PeopleSection from "../../components/report/PeopleSection";
+import PropertySection from "../../components/report/PropertySection";
+import ReviewSection from "../../components/report/ReviewSection";
 
 // Import types and constants
-import { FormData } from "../types/reportTypes";
+import { FormData } from "../../types/reportTypes";
 import { SECTION_TITLES, MOCK_LOCATION } from "../constants/reportConstants";
 
 const ReportScreen = () => {
@@ -42,42 +42,39 @@ const ReportScreen = () => {
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
 
   // Section navigation state
-  const [currentSection, setCurrentSection] = useState(0);
+  const [currentSection, setCurrentSection] = useState(0); // State for report form data - comprehensive crime report fields  const [formData, setFormData] = useState<FormData>({
 
-  // State for report form data - comprehensive crime report fields
   const [formData, setFormData] = useState<FormData>({
     // Incident Information
-    incidentType: "",
-    incidentDate: new Date(),
-    incidentTime: new Date(),
-    isInProgress: false,
-    weaponsInvolved: false,
-    weaponsDescription: "",
-    description: "",
+    Incident_Type: "",
+    Incident_Date: new Date(),
+    Incident_Time: new Date(),
+    Is_In_Progress: false,
+    Description: "",
 
     // Location Information
-    location: MOCK_LOCATION,
-    locationType: "",
-    locationDetails: "",
+    Location: MOCK_LOCATION,
+    Location_Type: "",
+    Location_Details: "",
 
     // People Involved
-    reporterName: "",
-    reporterPhone: "",
-    reporterEmail: "",
-    isVictimReporter: true,
-    victimName: "",
-    victimContact: "",
-    suspectDescription: "",
-    suspectVehicle: "",
-    witnessInfo: "",
+    Reporter_Name: "",
+    Reporter_Phone: "",
+    Reporter_Email: "",
+    Is_Victim_Reporter: true,
+    Victim_Name: "",
+    Victim_Contact: "",
+    Suspect_Description: "",
+    Suspect_Vehicle: "",
+    Witness_Info: "",
 
     // Property and Evidence
-    propertyInvolved: false,
-    propertyDescription: "",
-    propertyValue: "",
-    serialNumbers: "",
-    evidenceInfo: "",
-    mediaAttached: false,
+    Property_Involved: false,
+    Property_Description: "",
+    Property_Value: "",
+    Serial_Numbers: "",
+    Evidence_Info: "",
+    Media_Attached: false,
   });
 
   // UI state
@@ -185,7 +182,7 @@ const ReportScreen = () => {
 
   const validateIncidentSection = () =>
     validateSection([
-      { field: "incidentType", message: "Please select an incident type" },
+      { field: "Incident_Type", message: "Please select an incident type" },
       {
         field: "description",
         message: "Please provide a description of what happened",
@@ -284,8 +281,8 @@ const ReportScreen = () => {
 
     setIsSubmitting(true);
 
-    // Test with incidentType only
-    await submitReport({ incidentType: formData.incidentType })
+    console.log("Submitting report:", formData);
+    await submitReport({ Incident_Type: formData.Incident_Type })
       .then(() => {
         setIsSubmitting(false);
         Alert.alert(
@@ -297,16 +294,8 @@ const ReportScreen = () => {
       .catch((error) => {
         console.error("Error submitting report:", error);
         Alert.alert("Error", "There was an error submitting your report.");
+        setIsSubmitting(false);
       });
-    // Comment out the simulation as we're now using the real API call
-    // setTimeout(() => {
-    //   setIsSubmitting(false);
-    //   Alert.alert(
-    //     "Submission Failed",
-    //     "Your crime report could not be submitted. Please try again later.",
-    //     [{ text: "OK" }],
-    //   );
-    // }, 5000);
   };
 
   // Calculate progress based on current section

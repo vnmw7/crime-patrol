@@ -33,7 +33,6 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
           <Text style={[styles.reviewValue, { color: theme.text }]}>
             {formData.incidentType}
           </Text>
-
           <Text style={[styles.reviewLabel, { color: theme.textSecondary }]}>
             Date & Time:
           </Text>
@@ -44,26 +43,12 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
               minute: "2-digit",
             })}
           </Text>
-
           <Text style={[styles.reviewLabel, { color: theme.textSecondary }]}>
             Description:
-          </Text>
+          </Text>{" "}
           <Text style={[styles.reviewValue, { color: theme.text }]}>
             {formData.description}
           </Text>
-
-          {formData.weaponsInvolved && (
-            <>
-              <Text
-                style={[styles.reviewLabel, { color: theme.textSecondary }]}
-              >
-                Weapons:
-              </Text>
-              <Text style={[styles.reviewValue, { color: theme.text }]}>
-                {formData.weaponsDescription || "Yes (no details provided)"}
-              </Text>
-            </>
-          )}
         </View>
 
         <View style={styles.reviewSection}>
