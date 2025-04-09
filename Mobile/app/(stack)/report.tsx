@@ -113,7 +113,7 @@ const ReportScreen = () => {
       ]).start();
 
       // If this is the emergency section and incident is in progress
-      if (currentSection === 0 && formData.isInProgress) {
+      if (currentSection === 0 && formData.Is_In_Progress) {
         Alert.alert(
           "Emergency Alert",
           "If this incident is happening now and requires immediate attention, please call emergency services.",
@@ -184,22 +184,22 @@ const ReportScreen = () => {
     validateSection([
       { field: "Incident_Type", message: "Please select an incident type" },
       {
-        field: "description",
+        field: "Description",
         message: "Please provide a description of what happened",
       },
     ]);
 
   const validateLocationSection = () =>
     validateSection([
-      { field: "location", message: "Please enter a location" },
-      { field: "locationType", message: "Please select a location type" },
+      { field: "Location", message: "Please enter a location" },
+      { field: "Location_Type", message: "Please select a location type" },
     ]);
 
   const validatePeopleSection = () =>
     validateSection([
-      { field: "reporterName", message: "Please enter your name" },
+      { field: "Reporter_Name", message: "Please enter your name" },
       {
-        field: "reporterPhone",
+        field: "Reporter_Phone",
         message: "Please enter your phone number for follow-up",
       },
     ]);
@@ -258,7 +258,7 @@ const ReportScreen = () => {
 
     console.log(`Attaching ${type}`);
     // In a real app, this would trigger camera/gallery/recording
-    updateFormData("mediaAttached", true);
+    updateFormData("Media_Attached", true);
   };
 
   // Submit the report with animation
