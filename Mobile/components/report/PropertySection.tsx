@@ -3,8 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
-  Switch,
   TouchableOpacity,
   Animated,
 } from "react-native";
@@ -30,124 +28,7 @@ const PropertySection: React.FC<PropertySectionProps> = ({
 }) => {
   return (
     <View style={styles.formSection}>
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>
-        Property and Evidence
-      </Text>
-      {/* Property Stolen/Damaged */}{" "}
-      <View style={styles.formField}>
-        <Text style={[styles.fieldLabel, { color: theme.text }]}>
-          Was property stolen or damaged?
-        </Text>
-        <View style={styles.toggleContainer}>
-          <Text style={[{ color: theme.text }]}>No</Text>
-          <Switch
-            value={formData.Property_Involved}
-            onValueChange={(value) =>
-              updateFormData("Property_Involved", value)
-            }
-            trackColor={{
-              false: theme.progressBackground,
-              true: theme.primary,
-            }}
-            thumbColor="#FFFFFF"
-          />
-          <Text style={[{ color: theme.text }]}>Yes</Text>
-        </View>
-      </View>
-      {/* Conditional Property Fields */}
-      {formData.Property_Involved && (
-        <>
-          {/* Property Description */}
-          <View style={styles.formField}>
-            <Text style={[styles.fieldLabel, { color: theme.text }]}>
-              Property Description
-            </Text>
-            <TextInput
-              style={[
-                styles.descriptionInput,
-                {
-                  borderColor: theme.border,
-                  backgroundColor: theme.inputBackground,
-                  color: theme.text,
-                },
-              ]}
-              placeholder="Detailed description of items (make, model, color, etc.)"
-              placeholderTextColor={theme.textSecondary}
-              multiline
-              textAlignVertical="top"
-              value={formData.Property_Description}
-              onChangeText={(text) =>
-                updateFormData("Property_Description", text)
-              }
-            />
-          </View>
-
-          {/* Estimated Value */}
-          <View style={styles.formField}>
-            <Text style={[styles.fieldLabel, { color: theme.text }]}>
-              Estimated Value
-            </Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  borderColor: theme.border,
-                  backgroundColor: theme.inputBackground,
-                  color: theme.text,
-                },
-              ]}
-              placeholder="Approximate value in dollars"
-              placeholderTextColor={theme.textSecondary}
-              keyboardType="numeric"
-              value={formData.Property_Value}
-              onChangeText={(text) => updateFormData("Property_Value", text)}
-            />
-          </View>
-
-          {/* Serial Numbers */}
-          <View style={styles.formField}>
-            <Text style={[styles.fieldLabel, { color: theme.text }]}>
-              Serial Numbers
-            </Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  borderColor: theme.border,
-                  backgroundColor: theme.inputBackground,
-                  color: theme.text,
-                },
-              ]}
-              placeholder="Serial numbers of stolen/damaged items"
-              placeholderTextColor={theme.textSecondary}
-              value={formData.Serial_Numbers}
-              onChangeText={(text) => updateFormData("Serial_Numbers", text)}
-            />
-          </View>
-        </>
-      )}
-      {/* Evidence Information */}
-      <View style={styles.formField}>
-        <Text style={[styles.fieldLabel, { color: theme.text }]}>
-          Additional Evidence
-        </Text>
-        <TextInput
-          style={[
-            styles.descriptionInput,
-            {
-              borderColor: theme.border,
-              backgroundColor: theme.inputBackground,
-              color: theme.text,
-            },
-          ]}
-          placeholder="Any physical evidence noticed (footprints, damage, dropped items, etc.)"
-          placeholderTextColor={theme.textSecondary}
-          multiline
-          textAlignVertical="top"
-          value={formData.Evidence_Info}
-          onChangeText={(text) => updateFormData("Evidence_Info", text)}
-        />
-      </View>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>Evidence</Text>
       {/* Media Attachments */}
       <View style={styles.formField}>
         <Text style={[styles.fieldLabel, { color: theme.text }]}>

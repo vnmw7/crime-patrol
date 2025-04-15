@@ -153,17 +153,6 @@ export const updateUserPhone = async (phone: string, password: string) => {
 
 export const submitReport = async (payload: any) => {
   return handleAppwriteOperation("Submit report", () => {
-    // Handle if payload is just a string (e.g., incidentType)
-    if (typeof payload === "string") {
-      return databases.createDocument(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_COLLECTION_ID,
-        ID.unique(),
-        { Incident_Type: payload },
-        [Permission.write(Role.any())],
-      );
-    }
-
     // If payload is an object, create a serializable copy of the payload
     const serializedPayload = JSON.parse(
       JSON.stringify(
@@ -179,11 +168,12 @@ export const submitReport = async (payload: any) => {
       ),
     );
 
+    // Spread the serialized payload into individual attributes
     return databases.createDocument(
       APPWRITE_DATABASE_ID,
       APPWRITE_COLLECTION_ID,
       ID.unique(), // Use ID.unique() for the document ID
-      serializedPayload, // Pass the serialized data object here
+      { ...serializedPayload }, // Spread the serialized data object here
       [Permission.write(Role.any())],
     );
   });

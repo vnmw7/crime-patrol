@@ -67,14 +67,6 @@ const ReportScreen = () => {
     Suspect_Description: "",
     Suspect_Vehicle: "",
     Witness_Info: "",
-
-    // Property and Evidence
-    Property_Involved: false,
-    Property_Description: "",
-    Property_Value: "",
-    Serial_Numbers: "",
-    Evidence_Info: "",
-    Media_Attached: false,
   });
 
   // UI state
@@ -257,8 +249,6 @@ const ReportScreen = () => {
     ]).start();
 
     console.log(`Attaching ${type}`);
-    // In a real app, this would trigger camera/gallery/recording
-    updateFormData("Media_Attached", true);
   };
 
   // Submit the report with animation
@@ -282,7 +272,7 @@ const ReportScreen = () => {
     setIsSubmitting(true);
 
     console.log("Submitting report:", formData);
-    await submitReport({ Incident_Type: formData.Incident_Type })
+    await submitReport(formData) // Pass formData directly
       .then(() => {
         setIsSubmitting(false);
         Alert.alert(

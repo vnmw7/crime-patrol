@@ -24,12 +24,4 @@ export interface FormData {
   Suspect_Description: string;
   Suspect_Vehicle: string;
   Witness_Info: string;
-
-  // Property and Evidence
-  Property_Involved: boolean;
-  Property_Description: string;
-  Property_Value: string;
-  Serial_Numbers: string;
-  Evidence_Info: string;
-  Media_Attached: boolean;
 }

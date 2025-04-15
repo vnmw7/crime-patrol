@@ -31,14 +31,14 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
             Type:
           </Text>
           <Text style={[styles.reviewValue, { color: theme.text }]}>
-            {formData.incidentType}
+            {formData.Incident_Type}
           </Text>
           <Text style={[styles.reviewLabel, { color: theme.textSecondary }]}>
             Date & Time:
           </Text>
           <Text style={[styles.reviewValue, { color: theme.text }]}>
-            {formData.incidentDate.toLocaleDateString()} at{" "}
-            {formData.incidentTime.toLocaleTimeString([], {
+            {formData.Incident_Date.toLocaleDateString()} at{" "}
+            {formData.Incident_Time.toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             })}
@@ -47,7 +47,7 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
             Description:
           </Text>{" "}
           <Text style={[styles.reviewValue, { color: theme.text }]}>
-            {formData.description}
+            {formData.Description}
           </Text>
         </View>
 
@@ -59,10 +59,10 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
             Address:
           </Text>
           <Text style={[styles.reviewValue, { color: theme.text }]}>
-            {formData.location}
+            {formData.Location}
           </Text>
 
-          {formData.locationType && (
+          {formData.Location_Type && (
             <>
               <Text
                 style={[styles.reviewLabel, { color: theme.textSecondary }]}
@@ -70,12 +70,12 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
                 Type:
               </Text>
               <Text style={[styles.reviewValue, { color: theme.text }]}>
-                {formData.locationType}
+                {formData.Location_Type}
               </Text>
             </>
           )}
 
-          {formData.locationDetails && (
+          {formData.Location_Details && (
             <>
               <Text
                 style={[styles.reviewLabel, { color: theme.textSecondary }]}
@@ -83,7 +83,7 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
                 Details:
               </Text>
               <Text style={[styles.reviewValue, { color: theme.text }]}>
-                {formData.locationDetails}
+                {formData.Location_Details}
               </Text>
             </>
           )}
@@ -97,11 +97,11 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
             Reporter:
           </Text>
           <Text style={[styles.reviewValue, { color: theme.text }]}>
-            {formData.reporterName} | {formData.reporterPhone}
-            {formData.reporterEmail ? ` | ${formData.reporterEmail}` : ""}
+            {formData.Reporter_Name} | {formData.Reporter_Name}
+            {formData.Reporter_Phone ? ` | ${formData.Reporter_Phone}` : ""}
           </Text>
 
-          {!formData.isVictimReporter && formData.victimName && (
+          {!formData.Is_Victim_Reporter && formData.Is_Victim_Reporter && (
             <>
               <Text
                 style={[styles.reviewLabel, { color: theme.textSecondary }]}
@@ -109,13 +109,13 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
                 Victim:
               </Text>
               <Text style={[styles.reviewValue, { color: theme.text }]}>
-                {formData.victimName}
-                {formData.victimContact ? ` | ${formData.victimContact}` : ""}
+                {formData.Victim_Name}
+                {formData.Victim_Contact ? ` | ${formData.Victim_Contact}` : ""}
               </Text>
             </>
           )}
 
-          {formData.suspectDescription && (
+          {formData.Suspect_Description && (
             <>
               <Text
                 style={[styles.reviewLabel, { color: theme.textSecondary }]}
@@ -123,12 +123,12 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
                 Suspect:
               </Text>
               <Text style={[styles.reviewValue, { color: theme.text }]}>
-                {formData.suspectDescription}
+                {formData.Suspect_Description}
               </Text>
             </>
           )}
 
-          {formData.suspectVehicle && (
+          {formData.Suspect_Vehicle && (
             <>
               <Text
                 style={[styles.reviewLabel, { color: theme.textSecondary }]}
@@ -136,12 +136,12 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
                 Suspect Vehicle:
               </Text>
               <Text style={[styles.reviewValue, { color: theme.text }]}>
-                {formData.suspectVehicle}
+                {formData.Suspect_Vehicle}
               </Text>
             </>
           )}
 
-          {formData.witnessInfo && (
+          {formData.Witness_Info && (
             <>
               <Text
                 style={[styles.reviewLabel, { color: theme.textSecondary }]}
@@ -149,59 +149,13 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
                 Witnesses:
               </Text>
               <Text style={[styles.reviewValue, { color: theme.text }]}>
-                {formData.witnessInfo}
+                {formData.Witness_Info}
               </Text>
             </>
           )}
         </View>
 
-        {formData.propertyInvolved && (
-          <View style={styles.reviewSection}>
-            <Text style={[styles.reviewSectionTitle, { color: theme.primary }]}>
-              Property Information
-            </Text>
-            {formData.propertyDescription && (
-              <>
-                <Text
-                  style={[styles.reviewLabel, { color: theme.textSecondary }]}
-                >
-                  Description:
-                </Text>
-                <Text style={[styles.reviewValue, { color: theme.text }]}>
-                  {formData.propertyDescription}
-                </Text>
-              </>
-            )}
-
-            {formData.propertyValue && (
-              <>
-                <Text
-                  style={[styles.reviewLabel, { color: theme.textSecondary }]}
-                >
-                  Value:
-                </Text>
-                <Text style={[styles.reviewValue, { color: theme.text }]}>
-                  ${formData.propertyValue}
-                </Text>
-              </>
-            )}
-
-            {formData.serialNumbers && (
-              <>
-                <Text
-                  style={[styles.reviewLabel, { color: theme.textSecondary }]}
-                >
-                  Serial Numbers:
-                </Text>
-                <Text style={[styles.reviewValue, { color: theme.text }]}>
-                  {formData.serialNumbers}
-                </Text>
-              </>
-            )}
-          </View>
-        )}
-
-        {formData.mediaAttached && (
+        {formData.Media_Attached && (
           <View style={styles.reviewSection}>
             <Text style={[styles.reviewSectionTitle, { color: theme.primary }]}>
               Evidence and Media
