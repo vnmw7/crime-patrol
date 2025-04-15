@@ -488,67 +488,6 @@ const HomeScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-      {/* Instagram-style Bottom Navigation */}
-      <View
-        style={[
-          styles.instagramFooter,
-          {
-            borderTopColor: theme.border,
-            backgroundColor: theme.card,
-            paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.footerTab}
-          accessibilityLabel="Home"
-          accessibilityRole="tab"
-          accessibilityState={{ selected: true }}
-        >
-          <Ionicons name="home" size={26} color={theme.text} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.footerTab}
-          accessibilityLabel="Search"
-          accessibilityRole="tab"
-          accessibilityState={{ selected: false }}
-        >
-          <Ionicons name="search" size={26} color={theme.inactiveTab} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.footerTab}
-          onPress={navigateToReport}
-          accessibilityLabel="Report Incident"
-          accessibilityRole="tab"
-          accessibilityState={{ selected: false }}
-        >
-          <MaterialCommunityIcons
-            name="clipboard-plus-outline"
-            size={26}
-            color={theme.inactiveTab}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.footerTab}
-          accessibilityLabel="Map"
-          accessibilityRole="tab"
-          accessibilityState={{ selected: false }}
-        >
-          <Ionicons name="map-outline" size={26} color={theme.inactiveTab} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.footerTab}
-          accessibilityLabel="Profile"
-          accessibilityRole="tab"
-          accessibilityState={{ selected: false }}
-        >
-          <Ionicons
-            name="person-circle-outline"
-            size={26}
-            color={theme.inactiveTab}
-          />
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
@@ -750,19 +689,6 @@ const styles = StyleSheet.create({
   infoButtonText: {
     fontSize: 15,
     fontWeight: "500",
-  },
-  instagramFooter: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    borderTopWidth: 0.5,
-    paddingVertical: 12,
-  },
-  footerTab: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
   },
 });
 
