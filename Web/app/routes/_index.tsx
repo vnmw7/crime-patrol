@@ -208,7 +208,7 @@ export default function Index() {
                   </svg>
                 </div>
                 <h3 className="mt-6 text-xl font-bold text-gray-900 dark:text-white">
-                  AI Legal Assistant
+                  AI Assistant
                 </h3>
                 <p className="mt-4 text-gray-500 dark:text-gray-300">
                   Get guidance on legal questions, reporting procedures, and

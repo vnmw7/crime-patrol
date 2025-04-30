@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Form, Link, useActionData } from "@remix-run/react";
 import type { ActionFunction, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
+import { createAccount, signIn } from "../lib/appwrite"; // Import Appwrite functions
 
 export const meta: MetaFunction = () => {
   return [
@@ -16,10 +17,10 @@ export const meta: MetaFunction = () => {
 
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
-  const email = formData.get("email");
-  const password = formData.get("password");
-  const confirmPassword = formData.get("confirmPassword");
-  const name = formData.get("name");
+  const email = formData.get("email")?.toString();
+  const password = formData.get("password")?.toString();
+  const confirmPassword = formData.get("confirmPassword")?.toString();
+  const name = formData.get("name")?.toString();
 
   // Basic validation
   const errors: {
@@ -27,29 +28,54 @@ export const action: ActionFunction = async ({ request }) => {
     password?: string;
     confirmPassword?: string;
     name?: string;
+    form?: string; // Add form error type
   } = {};
 
   if (!name) errors.name = "Name is required";
   if (!email) errors.email = "Email is required";
+  // Add email format validation if desired
+  // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // if (email && !emailRegex.test(email)) errors.email = "Invalid email format";
+
   if (!password) errors.password = "Password is required";
-  if (password && password.toString().length < 8)
+  if (password && password.length < 8)
     errors.password = "Password must be at least 8 characters";
   if (password !== confirmPassword)
     errors.confirmPassword = "Passwords do not match";
 
   if (Object.keys(errors).length > 0) {
-    return json({ errors });
+    return json({ errors }, { status: 400 }); // Return 400 for validation errors
   }
 
   try {
-    // Here you would add actual account creation logic
-    // For now, we're just redirecting to the login page with a success message
+    // Attempt to create the account using Appwrite
+    await createAccount(email!, password!, name!); // Use non-null assertions after validation
 
-    // In a real app, you would create a user in your backend/Appwrite
+    // Immediately attempt to sign in the new user
+    // Note: Appwrite might require email verification first depending on project settings.
+    // If verification is needed, you might redirect to login or a verification pending page.
+    await signIn(email!, password!);
 
-    return redirect("/login?signup=success");
-  } catch (error) {
-    return json({ errors: { form: "An error occurred during signup" } });
+    // On successful signup and sign-in, redirect to the dashboard
+    return redirect("/dashboard");
+  } catch (error: unknown) {
+    console.error("Signup error:", error);
+    if (error instanceof Error) {
+      // Check for specific Appwrite errors if needed, otherwise use the message
+      if (error.message.includes("already exists")) {
+        errors.email = "An account with this email already exists.";
+      } else {
+        errors.form = error.message;
+      }
+    } else {
+      errors.form = "An unexpected error occurred during signup.";
+    }
+    // Determine appropriate status code (e.g., 409 Conflict for existing user, 500 for others)
+    const status =
+      error instanceof Error && error.message.includes("already exists")
+        ? 409
+        : 500;
+    return json({ errors }, { status });
   }
 };
 

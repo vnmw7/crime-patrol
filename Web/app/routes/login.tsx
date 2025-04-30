@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Form, Link, useActionData } from "@remix-run/react";
 import type { ActionFunction, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
+import { signIn } from "../lib/appwrite"; // Import Appwrite sign-in function
 
 export const meta: MetaFunction = () => {
   return [
@@ -16,32 +17,36 @@ export const meta: MetaFunction = () => {
 
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
-  const email = formData.get("email");
-  const password = formData.get("password");
+  const email = formData.get("email")?.toString();
+  const password = formData.get("password")?.toString();
 
   // Basic validation
-  const errors: { email?: string; password?: string } = {};
+  const errors: { email?: string; password?: string; form?: string } = {}; // Add form error type
 
   if (!email) errors.email = "Email is required";
   if (!password) errors.password = "Password is required";
 
   if (Object.keys(errors).length > 0) {
-    return json({ errors });
+    return json({ errors }, { status: 400 }); // Return 400 for validation errors
   }
 
   try {
-    // Here you would add actual authentication logic
-    // For now, we're just redirecting to the dashboard
+    // Attempt to sign in using Appwrite
+    await signIn(email!, password!); // Use non-null assertion after validation
 
-    // Simulate authentication
-    // In a real app, you would verify credentials against your backend/Appwrite
-    if (email && password) {
-      return redirect("/dashboard");
+    // On successful sign-in, redirect to the dashboard
+    // Note: You might want to handle session management here (e.g., setting cookies)
+    // depending on how you protect the /dashboard route.
+    return redirect("/dashboard");
+  } catch (error: unknown) {
+    console.error("Login error:", error);
+    // Handle specific errors from Appwrite or generic errors
+    if (error instanceof Error) {
+      errors.form = error.message; // Use the error message from Appwrite lib
+    } else {
+      errors.form = "An unexpected error occurred during login.";
     }
-
-    return json({ errors: { form: "Invalid email or password" } });
-  } catch (error) {
-    return json({ errors: { form: "An error occurred during login" } });
+    return json({ errors }, { status: 401 }); // Return 401 for authentication failure
   }
 };
 
