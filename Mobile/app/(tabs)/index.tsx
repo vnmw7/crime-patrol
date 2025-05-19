@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import * as Haptics from "expo-haptics";
 import {
   Ionicons,
@@ -19,7 +19,8 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Button } from "react-native";
+import { getCurrentUser, getCurrentSession } from "../../lib/appwrite";
+import { usePostHog } from "posthog-react-native";
 
 // Mock user state - in a real app, this would come from authentication
 const mockUser = {
@@ -60,6 +61,11 @@ const HomeScreen = () => {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    posthog.capture("Home Screen Viewed");
+  }, [posthog]);
 
   // Animated values for button feedback
   const panicButtonScale = useRef(new Animated.Value(1)).current;
@@ -118,9 +124,34 @@ const HomeScreen = () => {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      router.push("/report");
+      router.push({ pathname: "/report" });
     });
   };
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const session = await getCurrentSession();
+        if (session) {
+          const userData = await getCurrentUser();
+          if (userData) {
+            setUser({
+              isLoggedIn: true,
+              name: userData.name || "User",
+              avatar: userData.prefs?.avatar || null,
+            });
+          }
+        } else {
+          router.replace("/(stack)/auth");
+        }
+      } catch (error) {
+        console.log("No active session found:", error);
+        router.replace("/(stack)/auth");
+      }
+    };
+
+    checkSession();
+  }, [router]);
 
   return (
     <View
@@ -133,12 +164,6 @@ const HomeScreen = () => {
       ]}
       testID="mainIndex"
     >
-      <Button
-        title="Press me"
-        onPress={() => {
-          throw new Error("Hello, again, Sentry!");
-        }}
-      />
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
       {/* Instagram-style Header */}
       <View
@@ -463,67 +488,6 @@ const HomeScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-      {/* Instagram-style Bottom Navigation */}
-      <View
-        style={[
-          styles.instagramFooter,
-          {
-            borderTopColor: theme.border,
-            backgroundColor: theme.card,
-            paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.footerTab}
-          accessibilityLabel="Home"
-          accessibilityRole="tab"
-          accessibilityState={{ selected: true }}
-        >
-          <Ionicons name="home" size={26} color={theme.text} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.footerTab}
-          accessibilityLabel="Search"
-          accessibilityRole="tab"
-          accessibilityState={{ selected: false }}
-        >
-          <Ionicons name="search" size={26} color={theme.inactiveTab} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.footerTab}
-          onPress={navigateToReport}
-          accessibilityLabel="Report Incident"
-          accessibilityRole="tab"
-          accessibilityState={{ selected: false }}
-        >
-          <MaterialCommunityIcons
-            name="clipboard-plus-outline"
-            size={26}
-            color={theme.inactiveTab}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.footerTab}
-          accessibilityLabel="Map"
-          accessibilityRole="tab"
-          accessibilityState={{ selected: false }}
-        >
-          <Ionicons name="map-outline" size={26} color={theme.inactiveTab} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.footerTab}
-          accessibilityLabel="Profile"
-          accessibilityRole="tab"
-          accessibilityState={{ selected: false }}
-        >
-          <Ionicons
-            name="person-circle-outline"
-            size={26}
-            color={theme.inactiveTab}
-          />
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
@@ -725,19 +689,6 @@ const styles = StyleSheet.create({
   infoButtonText: {
     fontSize: 15,
     fontWeight: "500",
-  },
-  instagramFooter: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    borderTopWidth: 0.5,
-    paddingVertical: 12,
-  },
-  footerTab: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
   },
 });
 

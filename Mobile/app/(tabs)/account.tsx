@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
+import { getCurrentUser, signOut } from "../../lib/appwrite";
 
+// Initialize Appwrite client
 const themeColors = {
   light: {
     primary: "#0095F6",
@@ -47,6 +50,7 @@ const AccountScreen = () => {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
+  const router = useRouter();
 
   // Profile information
   const [name, setName] = useState("Sample User");
@@ -90,11 +94,23 @@ const AccountScreen = () => {
     );
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     triggerHaptic();
     Alert.alert("Log Out", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Log Out", onPress: () => console.log("User logged out") },
+      {
+        text: "Log Out",
+        onPress: async () => {
+          try {
+            await signOut();
+            console.log("User logged out successfully");
+            router.replace("/(stack)/auth"); // Navigate to auth screen after logout
+          } catch (error) {
+            console.error("Logout error:", error);
+            Alert.alert("Error", "Failed to log out. Please try again.");
+          }
+        },
+      },
     ]);
   };
 
@@ -294,9 +310,7 @@ const AccountScreen = () => {
               <Text
                 style={[
                   styles.statusValue,
-                  {
-                    color: isIdentityVerified ? theme.success : theme.warning,
-                  },
+                  { color: isIdentityVerified ? theme.success : theme.warning },
                 ]}
               >
                 {isIdentityVerified ? "Verified" : "Not Verified"}
