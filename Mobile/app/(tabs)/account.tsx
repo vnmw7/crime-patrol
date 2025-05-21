@@ -83,12 +83,12 @@ const AccountScreen = () => {
     triggerHaptic();
     Alert.alert(
       "Identity Verification",
-      "You'll be guided through our secure identity verification process. This helps ensure all reports are legitimate.",
+      "You\\'ll be guided through our secure identity verification process. This helps ensure all reports are legitimate.",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Proceed",
-          onPress: () => console.log("Starting identity verification flow"),
+          onPress: () => router.push("/(stack)/(verification)/screen1"),
         },
       ],
     );
@@ -104,7 +104,7 @@ const AccountScreen = () => {
           try {
             await signOut();
             console.log("User logged out successfully");
-            router.replace("/(stack)/auth"); // Navigate to auth screen after logout
+            router.replace("/auth"); // Navigate to auth screen after logout
           } catch (error) {
             console.error("Logout error:", error);
             Alert.alert("Error", "Failed to log out. Please try again.");

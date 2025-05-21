@@ -9,6 +9,7 @@ const _layout = () => {
       />
       <Stack.Screen name="auth" options={{ headerShown: false }} />
       <Stack.Screen name="report" options={{ title: "Report" }} />
+      <Stack.Screen name="(verification)" options={{ title: "Verification" }} />
     </Stack>
   );
 };
