@@ -76,6 +76,11 @@ const HomeScreen = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
+  const navigateToMenu = () => {
+    triggerHaptic();
+    router.push("/menu" as any); // Corrected path with type assertion
+  };
+
   // Function to handle the panic button press with animation
   const handlePanic = () => {
     triggerHaptic();
@@ -124,7 +129,7 @@ const HomeScreen = () => {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      router.push({ pathname: "/report" });
+      router.push({ pathname: "/report-incident" });
     });
   };
 
@@ -175,6 +180,14 @@ const HomeScreen = () => {
           },
         ]}
       >
+        <TouchableOpacity
+          onPress={navigateToMenu}
+          accessibilityLabel="Open menu"
+          accessibilityRole="button"
+          style={styles.menuButton} // Added style for menu button
+        >
+          <Ionicons name="menu" size={30} color={theme.text} />
+        </TouchableOpacity>
         <Text style={[styles.instagramLogo, { color: theme.text }]}>
           Crime Patrol
         </Text>
@@ -496,9 +509,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  menuButton: {
+    // Style for the menu button
+    paddingRight: 10, // Added padding for easier touch and spacing
+  },
   instagramHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "space-between", // Adjusted for menu button
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 10,

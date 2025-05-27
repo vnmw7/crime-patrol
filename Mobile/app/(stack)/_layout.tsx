@@ -8,8 +8,13 @@ const _layout = () => {
         options={{ title: "Police Stations" }}
       />
       <Stack.Screen name="auth" options={{ headerShown: false }} />
-      <Stack.Screen name="report" options={{ title: "Report" }} />
+      <Stack.Screen
+        name="report-incident"
+        options={{ title: "Report Incident" }}
+      />
       <Stack.Screen name="(verification)" options={{ title: "Verification" }} />
+      <Stack.Screen name="menu" options={{ title: "Menu" }} />
+      <Stack.Screen name="my-reports" options={{ title: "My Reports" }} />
     </Stack>
   );
 };

@@ -10,8 +10,8 @@ import {
   Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { LOCATION_TYPES } from "../../constants/reportConstants";
-import { FormData } from "../../types/reportTypes";
+import { LOCATION_TYPES } from "../../../constants/reportConstants";
+import { FormData } from "../../../types/reportTypes";
 
 interface LocationSectionProps {
   formData: FormData;

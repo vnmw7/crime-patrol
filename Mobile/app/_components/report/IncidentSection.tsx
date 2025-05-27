@@ -14,8 +14,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { INCIDENT_TYPES } from "../../constants/reportConstants";
-import { FormData } from "../../types/reportTypes";
+import { INCIDENT_TYPES } from "../../../constants/reportConstants";
+import { FormData } from "../../../types/reportTypes";
 
 interface IncidentSectionProps {
   formData: FormData;

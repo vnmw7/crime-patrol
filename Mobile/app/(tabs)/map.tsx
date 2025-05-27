@@ -19,6 +19,8 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Import police station data from the constants file
 import {
@@ -233,10 +235,11 @@ const MapScreen = () => {
     longitude: number;
   } | null>(null);
   const [selectedTab, setSelectedTab] = useState<"form" | "media">("form");
-
   // Get theme colors based on color scheme
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   // Reference to the map
   const mapRef = useRef<WebView>(null);
@@ -324,12 +327,17 @@ const MapScreen = () => {
       setIsLoading(false); // Ensure loading is always stopped
     }
   }, [mapRef, setRegion, setUserLocation]); // Keep dependencies minimal
-
   // Initialize on component mount
   useEffect(() => {
     getUserLocation();
     // getUserLocation dependency is correct now with its refined dependencies
   }, [getUserLocation]);
+
+  // Navigation function
+  const navigateToMenu = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push("/menu" as any);
+  };
 
   // Handle opening the report form
   const handleReportLocation = (event: any) => {
@@ -389,10 +397,34 @@ const MapScreen = () => {
     ...station,
     phone: station.contactNumbers[0] || "N/A",
   }));
-
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+
+      {/* Header */}
+      <View
+        style={[
+          styles.header,
+          {
+            borderBottomColor: theme.border,
+            backgroundColor: theme.card,
+            paddingTop: insets.top,
+          },
+        ]}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            onPress={navigateToMenu}
+            accessibilityLabel="Open menu"
+            accessibilityRole="button"
+            style={styles.menuButton}
+          >
+            <Ionicons name="menu" size={30} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Map</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+      </View>
 
       {/* Extracted Map Component */}
       <MapComponent
@@ -451,6 +483,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  menuButton: {
+    paddingRight: 10,
+  },
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  headerSpacer: {
+    width: 40, // Same width as menu button to center the title
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 0.5,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    paddingVertical: 12,
   },
   map: {
     width: "100%",

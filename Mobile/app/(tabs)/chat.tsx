@@ -11,6 +11,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import Constants from "expo-constants";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 
 // Create OpenAI client with OpenRouter base URL
 const OPENROUTER_API_KEY =
@@ -34,6 +37,17 @@ export default function ChatScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
+  const router = useRouter();
+
+  // Function to trigger haptic feedback
+  const triggerHaptic = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const navigateToMenu = () => {
+    triggerHaptic();
+    router.push("/menu" as any);
+  };
 
   // Scroll to bottom of chat when messages change
   useEffect(() => {
@@ -148,6 +162,9 @@ export default function ChatScreen() {
     >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Crime Patrol Assistant</Text>
+        <TouchableOpacity style={styles.menuButton} onPress={navigateToMenu}>
+          <Ionicons name="menu" size={24} color="white" />
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -203,11 +220,17 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     alignItems: "center",
     justifyContent: "center",
+    flexDirection: "row",
   },
   headerTitle: {
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
+    flex: 1,
+    textAlign: "center",
+  },
+  menuButton: {
+    padding: 10,
   },
   chatList: {
     flex: 1,

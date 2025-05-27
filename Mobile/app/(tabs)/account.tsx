@@ -74,6 +74,11 @@ const AccountScreen = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
+  const navigateToMenu = () => {
+    triggerHaptic();
+    router.push("/menu" as any);
+  };
+
   const handleUpdateProfile = () => {
     triggerHaptic();
     Alert.alert("Success", "Profile information updated successfully!");
@@ -116,8 +121,7 @@ const AccountScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />{" "}
       {/* Header */}
       <View
         style={[
@@ -129,9 +133,21 @@ const AccountScreen = () => {
           },
         ]}
       >
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Account</Text>
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            onPress={navigateToMenu}
+            accessibilityLabel="Open menu"
+            accessibilityRole="button"
+            style={styles.menuButton}
+          >
+            <Ionicons name="menu" size={30} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>
+            Account
+          </Text>
+          <View style={styles.headerSpacer} />
+        </View>
       </View>
-
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -517,6 +533,17 @@ const AccountScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  menuButton: {
+    paddingRight: 10,
+  },
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  headerSpacer: {
+    width: 40, // Same width as menu button to center the title
   },
   header: {
     paddingHorizontal: 16,

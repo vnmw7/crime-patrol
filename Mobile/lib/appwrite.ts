@@ -3,15 +3,15 @@ import Constants from "expo-constants";
 
 // Initialize Appwrite client
 // Prioritize environment variable (for CI/testing), then Expo's extra config
-const APPWRITE_PROJECT_ID =
+export const APPWRITE_PROJECT_ID =
   process.env.APPWRITE_PROJECT_ID ||
   Constants.expoConfig?.extra?.APPWRITE_PROJECT_ID ||
   "";
-const APPWRITE_DATABASE_ID =
+export const APPWRITE_DATABASE_ID =
   process.env.APPWRITE_DATABASE_ID ||
   Constants.expoConfig?.extra?.APPWRITE_DATABASE_ID ||
   "";
-const APPWRITE_COLLECTION_ID =
+export const APPWRITE_COLLECTION_ID =
   process.env.APPWRITE_COLLECTION_ID ||
   Constants.expoConfig?.extra?.APPWRITE_COLLECTION_ID ||
   "";

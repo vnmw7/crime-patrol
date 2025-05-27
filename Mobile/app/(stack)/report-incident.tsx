@@ -24,11 +24,11 @@ import { submitReport } from "../../lib/appwrite";
 import { themeColors } from "../theme/colors";
 
 // Import components
-import IncidentSection from "../../components/report/IncidentSection";
-import LocationSection from "../../components/report/LocationSection";
-import PeopleSection from "../../components/report/PeopleSection";
-import PropertySection from "../../components/report/PropertySection";
-import ReviewSection from "../../components/report/ReviewSection";
+import IncidentSection from "../_components/report/IncidentSection";
+import LocationSection from "../_components/report/LocationSection";
+import PeopleSection from "../_components/report/PeopleSection";
+import PropertySection from "../_components/report/PropertySection";
+import ReviewSection from "../_components/report/ReviewSection";
 
 // Import types and constants
 import { FormData } from "../../types/reportTypes";

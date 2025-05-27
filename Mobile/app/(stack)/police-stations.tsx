@@ -1,28 +1,24 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   View,
   Text,
   FlatList,
   Linking,
-  Platform,
   useColorScheme,
   ActivityIndicator,
   Alert,
+  Switch,
 } from "react-native";
-import MapView from "react-native-maps";
-import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 
 // App components
-import SearchHeader from "../components/police-stations/SearchHeader";
-import ViewToggleControls from "../components/police-stations/ViewToggleControls";
-import BarangayFilters from "../components/police-stations/BarangayFilters";
-import StationCard from "../components/police-stations/StationCard";
-import MapViewComponent from "../components/police-stations/MapViewComponent";
-import StationDetailsModal from "../components/police-stations/StationDetailsModal";
+import SearchHeader from "../_components/police-stations/SearchHeader";
+import BarangayFilters from "../_components/police-stations/BarangayFilters";
+import StationCard from "../_components/police-stations/StationCard";
+import StationDetailsModal from "../_components/police-stations/StationDetailsModal";
 
 // App theme colors
 const themeColors = {
@@ -65,23 +61,18 @@ const themeColors = {
 };
 
 // Types for our data
-type LocationType = {
-  latitude: number;
-  longitude: number;
-  latitudeDelta: number;
-  longitudeDelta: number;
-};
-
 type PoliceStationType = {
   id: string;
   name: string;
   address: string;
   contactNumbers: string[];
   location: {
+    // Kept for data structure, not for map
     latitude: number;
     longitude: number;
   };
   barangay: string;
+  type?: string; // Optional: to differentiate if needed
 };
 
 type EmergencyRespondentType = {
@@ -94,14 +85,6 @@ type EmergencyRespondentType = {
     longitude: number;
   };
   type: string;
-};
-
-// Initial region (Bacolod City)
-const initialRegion: LocationType = {
-  latitude: 10.6713,
-  longitude: 122.9511,
-  latitudeDelta: 0.0922,
-  longitudeDelta: 0.0421,
 };
 
 // Police station data from Bacolod City
@@ -272,78 +255,22 @@ const PoliceStationsScreen = () => {
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
 
   // State declarations
-  const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearchActive, setIsSearchActive] = useState<boolean>(false);
   const [selectedBarangays, setSelectedBarangays] = useState<string[]>([]);
-  const [selectedStation, setSelectedStation] =
-    useState<PoliceStationType | null>(null);
+  const [selectedStation, setSelectedStation] = useState<
+    PoliceStationType | EmergencyRespondentType | null
+  >(null);
   const [detailModalVisible, setDetailModalVisible] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [region, setRegion] = useState<LocationType>(initialRegion);
-  const [userLocation, setUserLocation] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
   const [showEmergencyRespondents, setShowEmergencyRespondents] =
     useState<boolean>(false);
 
-  // Reference to the map
-  const mapRef = useRef<MapView>(null);
-
-  // Function to get user's location
-  const getUserLocation = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Denied",
-          "Please grant location permission to use all features.",
-          [{ text: "OK" }],
-        );
-        setIsLoading(false);
-        return;
-      }
-
-      const location = await Location.getCurrentPositionAsync({});
-      const userLoc = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
-
-      setUserLocation(userLoc);
-      setRegion({
-        ...region,
-        latitude: userLoc.latitude,
-        longitude: userLoc.longitude,
-      });
-
-      // Animate to user's location if in map view
-      if (viewMode === "map" && mapRef.current) {
-        mapRef.current.animateToRegion(
-          {
-            latitude: userLoc.latitude,
-            longitude: userLoc.longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          },
-          1000,
-        );
-      }
-    } catch (error) {
-      console.error("Error getting location:", error);
-      Alert.alert("Error", "Failed to get your location.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [region, viewMode]);
-
   // Initialize on component mount
   useEffect(() => {
-    getUserLocation();
-  }, [getUserLocation]);
+    // Simulate data loading
+    setIsLoading(false);
+  }, []);
 
   // Function to toggle barangay filter
   const toggleBarangayFilter = (barangay: string) => {
@@ -360,12 +287,12 @@ const PoliceStationsScreen = () => {
 
   // Function to filter stations based on search and barangay filters
   const getFilteredStations = useCallback(() => {
-    let filtered = policeStations;
+    let filteredPoliceStations = policeStations;
 
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
+      filteredPoliceStations = filteredPoliceStations.filter(
         (station) =>
           station.name.toLowerCase().includes(query) ||
           station.address.toLowerCase().includes(query) ||
@@ -375,39 +302,38 @@ const PoliceStationsScreen = () => {
 
     // Filter by selected barangays
     if (selectedBarangays.length > 0) {
-      filtered = filtered.filter((station) =>
+      filteredPoliceStations = filteredPoliceStations.filter((station) =>
         selectedBarangays.includes(station.barangay),
       );
     }
 
-    // Add emergency respondents if needed
-    return showEmergencyRespondents
-      ? [...filtered, ...emergencyRespondents]
-      : filtered;
+    let itemsToShow: (PoliceStationType | EmergencyRespondentType)[] = [
+      ...filteredPoliceStations,
+    ];
+
+    if (showEmergencyRespondents) {
+      // If search query is active, filter emergency respondents as well
+      let filteredEmergencyRespondents = emergencyRespondents;
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        filteredEmergencyRespondents = emergencyRespondents.filter(
+          (resp) =>
+            resp.name.toLowerCase().includes(query) ||
+            resp.address.toLowerCase().includes(query),
+        );
+      }
+      itemsToShow = [...itemsToShow, ...filteredEmergencyRespondents];
+    }
+    return itemsToShow;
   }, [searchQuery, selectedBarangays, showEmergencyRespondents]);
 
   // Function to select a station and show details
-  const selectStation = (station: PoliceStationType) => {
+  const selectStation = (
+    station: PoliceStationType | EmergencyRespondentType,
+  ) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedStation(station);
     setDetailModalVisible(true);
-  };
-
-  // Function to get directions to a station
-  const getDirections = (station: PoliceStationType) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    const { latitude, longitude } = station.location;
-    const label = encodeURIComponent(station.name);
-
-    const url = Platform.select({
-      ios: `maps:0,0?q=${label}@${latitude},${longitude}`,
-      android: `geo:0,0?q=${latitude},${longitude}(${label})`,
-    });
-
-    if (url) {
-      Linking.openURL(url);
-    }
   };
 
   // Function to call a station
@@ -437,117 +363,19 @@ const PoliceStationsScreen = () => {
       });
   };
 
-  // Function to check if coordinates are valid
-  const areCoordinatesValid = (lat: number, lon: number): boolean => {
-    return (
-      lat !== undefined && lat !== null && lon !== undefined && lon !== null
-    );
-  };
-
-  // Function to calculate distance between two coordinates in kilometers
-  const calculateDistance = (
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number,
-  ) => {
-    // Check if all coordinates are valid
-    if (!areCoordinatesValid(lat1, lon1) || !areCoordinatesValid(lat2, lon2)) {
-      return null;
-    }
-
-    const toRad = (value: number) => (value * Math.PI) / 180;
-    const R = 6371; // Earth radius in km
-
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) *
-        Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-
-    return distance;
-  };
-
-  // Function to center the map on all visible stations
-  const fitMapToStations = () => {
-    if (!mapRef.current) return;
-
-    const filteredStations = getFilteredStations();
-    if (filteredStations.length === 0) return;
-
-    mapRef.current.fitToCoordinates(
-      filteredStations.map((station) => station.location),
-      {
-        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-        animated: true,
-      },
-    );
-  };
-
-  // Determine if a station is an emergency respondent
-  const isEmergencyRespondent = (
-    item: PoliceStationType | EmergencyRespondentType,
-  ): boolean => {
-    return "type" in item;
-  };
-
-  // Function to render a police station or emergency respondent card
-  const renderStationCard = ({
-    item,
-  }: {
-    item: PoliceStationType | EmergencyRespondentType;
-  }) => {
-    // Calculate distance to the station if user location is available
-    let distance = null;
-    if (userLocation) {
-      distance = calculateDistance(
-        userLocation.latitude,
-        userLocation.longitude,
-        item.location.latitude,
-        item.location.longitude,
-      );
-    }
-
-    const isEmergency = isEmergencyRespondent(item);
-
-    return (
-      <StationCard
-        item={item}
-        theme={theme}
-        distance={distance}
-        isEmergency={isEmergency}
-        onCardPress={() =>
-          !isEmergency && selectStation(item as PoliceStationType)
-        }
-        onCallPress={callStation}
-        onDirectionsPress={() => getDirections(item as PoliceStationType)}
-      />
-    );
-  };
-
-  // Get filtered stations for rendering
-  const filteredStations = getFilteredStations();
-
+  // Render UI
   return (
     <View
       style={[
         styles.container,
-        {
-          backgroundColor: theme.background,
-          paddingTop: insets.top,
-        },
+        { backgroundColor: theme.background, paddingTop: insets.top },
       ]}
     >
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+      <StatusBar
+        style={colorScheme === "dark" ? "light" : "dark"}
+        backgroundColor={theme.background}
+      />
 
-      {/* Header */}
       <SearchHeader
         theme={theme}
         isSearchActive={isSearchActive}
@@ -556,143 +384,117 @@ const PoliceStationsScreen = () => {
         setIsSearchActive={setIsSearchActive}
       />
 
-      {/* View toggle and filter controls */}
-      <ViewToggleControls
-        theme={theme}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-        showEmergencyRespondents={showEmergencyRespondents}
-        setShowEmergencyRespondents={setShowEmergencyRespondents}
-        fitMapToStations={fitMapToStations}
-      />
+      {!isSearchActive && (
+        <View style={styles.controlsContainer}>
+          <BarangayFilters
+            barangays={barangays}
+            selectedBarangays={selectedBarangays}
+            toggleBarangayFilter={toggleBarangayFilter}
+            theme={theme}
+          />
+          <View style={styles.switchContainer}>
+            <Text style={[styles.switchLabel, { color: theme.text }]}>
+              Show Emergency Respondents
+            </Text>
+            <Switch
+              value={showEmergencyRespondents}
+              onValueChange={setShowEmergencyRespondents}
+              trackColor={{ false: theme.inactiveTab, true: theme.primary }}
+              thumbColor={theme.card} // Simplified thumb color
+            />
+          </View>
+        </View>
+      )}
 
-      {/* Barangay filters */}
-      <BarangayFilters
-        theme={theme}
-        barangays={barangays}
-        selectedBarangays={selectedBarangays}
-        toggleBarangayFilter={toggleBarangayFilter}
-      />
-
-      {/* Results counter */}
-      <View style={styles.resultsContainer}>
-        <Text style={[styles.resultsText, { color: theme.textSecondary }]}>
-          {filteredStations.length}{" "}
-          {filteredStations.length === 1 ? "result" : "results"} found
-        </Text>
-      </View>
-
-      {/* List View */}
-      {viewMode === "list" && (
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      ) : (
         <FlatList
-          data={filteredStations}
-          renderItem={renderStationCard}
+          data={getFilteredStations()}
+          renderItem={({ item }) => (
+            <StationCard
+              item={item} // Pass the whole item
+              theme={theme}
+              distance={null} // No distance calculation
+              isEmergency={item.type === "emergency"} // Check item type
+              onCardPress={() => selectStation(item)}
+              onCallPress={callStation}
+              onDirectionsPress={() => {
+                /* Directions removed */
+              }}
+            />
+          )}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.stationList}
-          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: theme.text }]}>
-                No police stations found
-              </Text>
+            <View style={styles.emptyListContainer}>
               <Text
-                style={[styles.emptySubtext, { color: theme.textSecondary }]}
+                style={[styles.emptyListText, { color: theme.textSecondary }]}
               >
-                Try adjusting your filters or search query
+                No stations or respondents found.
               </Text>
             </View>
           }
         />
       )}
 
-      {/* Map View */}
-      {viewMode === "map" && (
-        <MapViewComponent
-          mapRef={mapRef}
+      {selectedStation && (
+        <StationDetailsModal
+          visible={detailModalVisible}
+          station={selectedStation} // Pass the whole item
           theme={theme}
-          region={region}
-          stations={filteredStations}
-          isEmergencyRespondent={isEmergencyRespondent}
-          onMarkerPress={selectStation}
-          getUserLocation={getUserLocation}
-          fitMapToStations={fitMapToStations}
+          colorScheme={colorScheme || "light"} // Pass color scheme
+          userLocation={null} // No user location
+          onClose={() => setDetailModalVisible(false)}
+          onCall={callStation}
+          onDirections={() => {
+            /* Directions removed */
+          }}
+          calculateDistance={() => null} // No distance calculation
         />
       )}
-
-      {/* Loading Indicator */}
-      {isLoading && (
-        <View
-          style={[styles.loadingContainer, { backgroundColor: theme.overlay }]}
-        >
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={[styles.loadingText, { color: theme.text }]}>
-            Loading...
-          </Text>
-        </View>
-      )}
-
-      {/* Station Details Modal */}
-      <StationDetailsModal
-        visible={detailModalVisible}
-        station={selectedStation}
-        theme={theme}
-        colorScheme={colorScheme || "light"}
-        userLocation={userLocation}
-        onClose={() => setDetailModalVisible(false)}
-        onCall={callStation}
-        onDirections={getDirections}
-        calculateDistance={calculateDistance}
-      />
     </View>
   );
 };
 
-// Styles for the component
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  resultsContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  resultsText: {
-    fontSize: 12,
-  },
-  stationList: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
   loadingContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-  },
-  emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+  },
+  controlsContainer: {
+    paddingBottom: 10,
+  },
+  switchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: themeColors.light.border, // Default to light, or use theme.border
+  },
+  switchLabel: {
+    fontSize: 16,
+  },
+  listContent: {
+    paddingHorizontal: 15,
+    paddingBottom: 20,
+  },
+  emptyListContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 50,
   },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginTop: 10,
-    textAlign: "center",
-  },
-  emptySubtext: {
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 6,
+  emptyListText: {
+    fontSize: 16,
   },
 });
 
