@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -19,6 +19,16 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { submitReport } from "../../lib/appwrite";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import { Audio } from "expo-av";
+import { Asset } from "expo-asset";
+import { Storage, ID } from "appwrite"; // Changed: Removed InputFile
+import {
+  client as appwriteClient,
+  APPWRITE_BUCKET_ID,
+  createInputFileFromUrl, // Corrected import
+} from "../../lib/appwrite"; // Import appwrite client and bucket ID
 
 // Import theme
 import { themeColors } from "../theme/colors";
@@ -27,7 +37,7 @@ import { themeColors } from "../theme/colors";
 import IncidentSection from "../_components/report/IncidentSection";
 import LocationSection from "../_components/report/LocationSection";
 import PeopleSection from "../_components/report/PeopleSection";
-import PropertySection from "../_components/report/PropertySection";
+import MediaSection from "../_components/report/MediaSection";
 import ReviewSection from "../_components/report/ReviewSection";
 
 // Import types and constants
@@ -67,10 +77,14 @@ const ReportScreen = () => {
     Suspect_Description: "",
     Suspect_Vehicle: "",
     Witness_Info: "",
+    Media_Attachments: [],
   });
 
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // const [audio, setAudio] = useState<string | null>(null); // Removed, using formData.Media_Attachments
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  // const [sound, setSound] = useState<Audio.Sound | null>(null); // Commented out as loadAndPlaySound is not currently used
 
   // Animation values for interaction feedback
   const selectorScale = useRef(new Animated.Value(1)).current;
@@ -83,6 +97,273 @@ const ReportScreen = () => {
       ...prev,
       [field]: value,
     }));
+  };
+
+  useEffect(() => {
+    (async () => {
+      const cameraRollStatus =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
+      const audioRecordingStatus = await Audio.requestPermissionsAsync();
+
+      if (cameraRollStatus.status !== "granted") {
+        Alert.alert(
+          "Permissions Denied",
+          "Sorry, we need camera roll permissions to make this work!",
+        );
+      }
+      if (cameraStatus.status !== "granted") {
+        Alert.alert(
+          "Permissions Denied",
+          "Sorry, we need camera permissions to make this work!",
+        );
+      }
+      if (audioRecordingStatus.status !== "granted") {
+        Alert.alert(
+          "Permissions Denied",
+          "Sorry, we need microphone permissions for audio recording!",
+        );
+      }
+    })();
+  }, []);
+
+  const pickImageFromGallery = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images" as MediaType], // Use string literal cast to MediaType
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets) {
+      await uploadMedia(
+        result.assets[0].uri,
+        result.assets[0].mimeType || "image/jpeg",
+      );
+    }
+  };
+
+  const takePhotoWithCamera = async () => {
+    let result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images" as MediaType], // Use string literal cast to MediaType
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets) {
+      await uploadMedia(
+        result.assets[0].uri,
+        result.assets[0].mimeType || "image/jpeg",
+      );
+    }
+  };
+
+  const pickVideoFromGallery = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["videos" as MediaType], // Use string literal cast to MediaType
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets) {
+      await uploadMedia(
+        result.assets[0].uri,
+        result.assets[0].mimeType || "video/mp4",
+      );
+    }
+  };
+
+  const recordVideoWithCamera = async () => {
+    let result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["videos" as MediaType], // Use string literal cast to MediaType
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets) {
+      uploadMedia(result.assets[0].uri, result.assets[0].mimeType);
+    }
+  };
+
+  const pickAudioFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "audio/*",
+        copyToCacheDirectory: true,
+      });
+
+      if (
+        result.canceled === false &&
+        result.assets &&
+        result.assets.length > 0
+      ) {
+        await uploadMedia(
+          result.assets[0].uri,
+          result.assets[0].mimeType || "audio/mpeg",
+        );
+      }
+    } catch (err: any) {
+      Alert.alert(
+        "Error",
+        "Failed to pick audio: " + (err.message || "User cancelled"),
+      );
+    }
+  };
+
+  async function startRecording() {
+    try {
+      await Audio.requestPermissionsAsync(); // Ensure permissions are still granted
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      );
+      setRecording(newRecording);
+    } catch (err: any) {
+      Alert.alert(
+        "Error",
+        "Failed to start recording: " + (err.message || "Unknown error"),
+      );
+    }
+  }
+
+  async function stopRecording() {
+    if (!recording) {
+      return;
+    }
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setRecording(null);
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+      });
+      if (uri) {
+        // setAudio(uri); // Removed
+        // setImage(null); // Removed
+        // setVideo(null); // Removed
+        // await loadAndPlaySound(uri); // Playback can be optional
+        await uploadMedia(uri, "audio/m4a"); // Adjust mime type if needed
+      }
+    } catch (err: any) {
+      Alert.alert(
+        "Error",
+        "Failed to stop recording: " + (err.message || "Unknown error"),
+      );
+    }
+  }
+
+  // async function loadAndPlaySound(uri: string) { // Commented out as not currently used
+  //   if (sound) {
+  //     await sound.unloadAsync();
+  //     setSound(null);
+  //   }
+  //   try {
+  //     const { sound: newSound } = await Audio.Sound.createAsync(
+  //       { uri },
+  //       { shouldPlay: true },
+  //     );
+  //     setSound(newSound);
+  //   } catch (error: any) {
+  //     Alert.alert(
+  //       "Playback Error",
+  //       "Could not play the audio file: " + (error.message || "Unknown error"),
+  //     );
+  //   }
+  // }
+
+  // useEffect(() => { // Commented out as sound state is not currently used
+  //   return sound
+  //     ? () => {
+  //         sound.unloadAsync();
+  //       }
+  //     : undefined;
+  // }, [sound]);
+
+  const uploadMedia = async (fileUri: string, fileType?: string) => {
+    if (!fileUri) {
+      Alert.alert("Error", "No file URI provided for upload.");
+      return;
+    }
+    setIsSubmitting(true); // Indicate loading state
+    try {
+      const asset = Asset.fromURI(fileUri);
+      await asset.downloadAsync();
+
+      if (!asset.localUri) {
+        Alert.alert("Error", "Failed to get local URI for upload.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const actualFileType =
+        fileType || asset.type || "application/octet-stream";
+      const fileName =
+        asset.name || `upload.${asset.localUri.split(".").pop()}`;
+
+      // Appwrite upload logic
+      if (!APPWRITE_BUCKET_ID) {
+        Alert.alert(
+          "Error",
+          "Appwrite Bucket ID is not configured. Cannot upload file.",
+        );
+        console.error(
+          "Appwrite Bucket ID is missing in appwrite.ts or environment variables.",
+        );
+        setIsSubmitting(false);
+        return;
+      }
+      const storage = new Storage(appwriteClient);
+
+      Alert.alert("Uploading...", `Uploading ${fileName}...`);
+
+      // console.log("Verifying InputFile import:", InputFile); // Commented out or removed
+
+      const fileToUpload = await createInputFileFromUrl(
+        asset.localUri,
+        fileName,
+        actualFileType,
+      ); // Corrected function call
+
+      const response = await storage.createFile(
+        APPWRITE_BUCKET_ID,
+        ID.unique(),
+        fileToUpload,
+      );
+
+      console.log("Appwrite upload response:", response);
+      Alert.alert(
+        "Upload Successful",
+        `${fileName} has been uploaded successfully! File ID: ${response.$id}`,
+      );
+
+      const newAttachment = {
+        url: asset.localUri, // Changed from uri to url
+        type: actualFileType,
+        name: fileName,
+        appwrite_file_id: response.$id,
+        appwrite_bucket_id: APPWRITE_BUCKET_ID,
+      };
+
+      updateFormData("Media_Attachments", [
+        ...(formData.Media_Attachments || []),
+        newAttachment,
+      ]);
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      Alert.alert(
+        "Error",
+        "Upload failed: " + (error.message || "Unknown error"),
+      );
+    } finally {
+      setIsSubmitting(false); // Reset loading state
+    }
   };
 
   // Navigation between sections
@@ -152,7 +433,6 @@ const ReportScreen = () => {
     scrollToTop();
   };
 
-  // Scroll to top of form
   const scrollToTop = () => {
     if (scrollViewRef.current) {
       scrollViewRef.current.scrollTo({ y: 0, animated: true });
@@ -230,14 +510,12 @@ const ReportScreen = () => {
     });
   };
 
-  // Add media attachment with animation
-  const handleAttachMedia = (type: string) => {
+  // Function to handle media attachment based on type
+  const handleAttachMedia = async (type: string) => {
     triggerHaptic();
-
-    // Add animation for feedback
     Animated.sequence([
       Animated.timing(mediaButtonsScale, {
-        toValue: 0.95,
+        toValue: 0.9,
         duration: 100,
         useNativeDriver: true,
       }),
@@ -248,7 +526,23 @@ const ReportScreen = () => {
       }),
     ]).start();
 
-    console.log(`Attaching ${type}`);
+    if (type === "photo_gallery") {
+      await pickImageFromGallery();
+    } else if (type === "photo_camera") {
+      await takePhotoWithCamera();
+    } else if (type === "video_gallery") {
+      await pickVideoFromGallery();
+    } else if (type === "video_camera") {
+      await recordVideoWithCamera();
+    } else if (type === "audio_file") {
+      await pickAudioFile();
+    } else if (type === "audio_record") {
+      if (recording) {
+        await stopRecording();
+      } else {
+        await startRecording();
+      }
+    }
   };
 
   // Submit the report with animation
@@ -383,11 +677,14 @@ const ReportScreen = () => {
         return <PeopleSection {...commonProps} />;
       case 3:
         return (
-          <PropertySection
-            {...commonProps}
+          <MediaSection
+            formData={formData}
+            updateFormData={updateFormData}
+            theme={theme}
             triggerHaptic={triggerHaptic}
             mediaButtonsScale={mediaButtonsScale}
             handleAttachMedia={handleAttachMedia}
+            recording={!!recording} // Pass recording state (as boolean)
           />
         );
       case 4:
