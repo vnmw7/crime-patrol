@@ -1,0 +1,60 @@
+/* src/register/Register.css */
+
+.auth-form {
+  max-width: 400px;
+  margin: 80px auto;
+  padding: 30px 40px;
+  background: #f9f9f9;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  text-align: center;
+}
+
+.auth-form h2 {
+  margin-bottom: 20px;
+  color: #222;
+  font-weight: 600;
+}
+
+.auth-form form {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-form input {
+  padding: 12px 15px;
+  margin-bottom: 15px;
+  border: 1.8px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+}
+
+.auth-form input:focus {
+  outline: none;
+  border-color: #0052A5;
+  box-shadow: 0 0 5px rgba(0,82,165, 0.5);
+}
+
+.auth-form button {
+  padding: 12px 15px;
+  background-color: #0052A5;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 1.1rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.auth-form button:hover {
+  background-color: #003d7a;
+}
+
+.error {
+  color: #d93025;
+  margin-top: 10px;
+  font-weight: 600;
+}
