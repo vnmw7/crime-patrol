@@ -1,6 +1,6 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
-// Import route pages
+// Import layout and pages
 import Dashboard from "./routes/Dashboard.jsx";
 import DashboardOverview from "./routes/dashboard.overview.jsx";
 import DashboardReports from "./routes/dashboard.reports.jsx";
@@ -10,18 +10,34 @@ import DashboardIncidents from "./routes/dashboard.incidents.jsx";
 import DashboardStations from "./routes/dashboard.stations.jsx";
 import Index from "./routes/index.jsx";
 
+// New: Blank placeholder page for dashboard root
+const DashboardBlank = () => (
+  <div className="text-gray-400 text-center mt-10 text-lg">
+    Welcome to the Crime Patrol Dashboard.<br />
+    Select a menu option from the left to get started.
+  </div>
+);
+
 function App() {
   return (
     <Router>
       <Routes>
+        {/* Public landing page */}
         <Route path="/" element={<Index />} />
-        <Route path="/Dashboard" element={<Dashboard />} />
-        <Route path="/dashboard/overview" element={<DashboardOverview />} />
-        <Route path="/dashboard/reports" element={<DashboardReports />} />
-        <Route path="/dashboard/settings" element={<DashboardSettings />} />
-        <Route path="/dashboard/chat" element={<DashboardChat />} />
-        <Route path="/dashboard/incidents" element={<DashboardIncidents />} />
-        <Route path="/dashboard/stations" element={<DashboardStations />} />
+
+        {/* Dashboard layout with nested routes */}
+        <Route path="/dashboard" element={<Dashboard />}>
+          <Route index element={<DashboardBlank />} /> {/* Default: blank screen */}
+          <Route path="overview" element={<DashboardOverview />} />
+          <Route path="reports" element={<DashboardReports />} />
+          <Route path="settings" element={<DashboardSettings />} />
+          <Route path="chat" element={<DashboardChat />} />
+          <Route path="incidents" element={<DashboardIncidents />} />
+          <Route path="stations" element={<DashboardStations />} />
+        </Route>
+
+        {/* Fallback for unknown routes */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
   );

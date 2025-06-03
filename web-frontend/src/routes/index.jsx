@@ -28,11 +28,8 @@ export default function Index() {
             Report incidents, track activity, and stay connected with authorities through our community-driven platform.
           </p>
           <div className="flex justify-center gap-4 flex-wrap">
-            <Link to="/signup" className="bg-blue-600 text-white px-6 py-3 rounded-md text-lg hover:bg-blue-700">
-              Get Started
-            </Link>
             <Link to="/dashboard" className="bg-white text-gray-800 px-6 py-3 rounded-md text-lg hover:bg-gray-100">
-              View Demo
+              Download App
             </Link>
           </div>
         </div>
