@@ -15,6 +15,10 @@ export const APPWRITE_COLLECTION_ID =
   process.env.APPWRITE_COLLECTION_ID ||
   Constants.expoConfig?.extra?.APPWRITE_COLLECTION_ID ||
   "";
+export const APPWRITE_BUCKET_ID =
+  process.env.APPWRITE_BUCKET_ID || // Corrected this line
+  Constants.expoConfig?.extra?.APPWRITE_BUCKET_ID || // Corrected this line
+  "";
 
 // Check if project ID is missing and log a clear error message
 if (!APPWRITE_PROJECT_ID) {
@@ -34,6 +38,12 @@ if (!APPWRITE_COLLECTION_ID) {
     "ERROR: Appwrite Collection ID is not configured! Operations will fail.",
   );
   console.error("Please set the APPWRITE_COLLECTION_ID environment variable.");
+}
+if (!APPWRITE_BUCKET_ID) {
+  console.error(
+    "ERROR: Appwrite Bucket ID is not configured! File operations will fail.",
+  );
+  console.error("Please set the APPWRITE_BUCKET_ID environment variable.");
 }
 
 const client = new Client()
@@ -105,32 +115,26 @@ export const getCurrentUser = async () => {
 
 export const getCurrentSession = async () => {
   try {
-    // Attempt to get the session using the helper.
-    // IMPORTANT: Do NOT provide a defaultReturn value here in handleAppwriteOperation
-    // We want the error to be thrown to this catch block if it occurs.
     return await handleAppwriteOperation("Get current session", () =>
       account.getSession("current"),
     );
   } catch (error: any) {
-    // Check specifically for the guest scope error type or message
     const isGuestScopeError =
       error?.type === "user_missing_scope" ||
       error?.message?.includes("User (role: guests) missing scope") ||
       error?.toString?.().includes("User (role: guests) missing scope");
 
     if (isGuestScopeError) {
-      // If it's the specific guest scope error, log it and return null
       console.log(
         "getCurrentSession: Caught guest scope error. No active session found, returning null.",
       );
       return null;
     } else {
-      // For any other error, log it and re-throw it
       console.error(
         "getCurrentSession encountered an unexpected error:",
         error,
       );
-      throw error; // Re-throw unexpected errors
+      throw error;
     }
   }
 };
@@ -151,32 +155,71 @@ export const updateUserPhone = async (phone: string, password: string) => {
   );
 };
 
-export const submitReport = async (payload: any) => {
-  return handleAppwriteOperation("Submit report", () => {
-    // If payload is an object, create a serializable copy of the payload
-    const serializedPayload = JSON.parse(
-      JSON.stringify(
-        Object.fromEntries(
-          Object.entries(payload).map(([key, value]) => {
-            // Convert Date objects to ISO strings
-            if (value instanceof Date) {
-              return [key, value.toISOString()];
-            }
-            return [key, value];
-          }),
-        ),
-      ),
+// Submit report function
+export const submitReport = async (formData: any) => {
+  // Ensure all required IDs are present
+  if (!APPWRITE_DATABASE_ID || !APPWRITE_COLLECTION_ID) {
+    console.error(
+      "Database ID or Collection ID is not configured. Cannot submit report.",
     );
+    throw new Error(
+      "Database or Collection ID not configured for report submission.",
+    );
+  }
 
-    // Spread the serialized payload into individual attributes
-    return databases.createDocument(
+  // Get the current user to add as reported_by
+  let currentUser = null;
+  try {
+    currentUser = await getCurrentUser();
+  } catch (error) {
+    console.error("Could not get current user for report submission:", error);
+    // Continue without user info, as the report is still valuable
+  }
+
+  // Prepare the data for Appwrite
+  // If Media_Attachments contains Appwrite file IDs, you might want to store those directly
+  // or store the full objects if they contain other useful metadata for your app.
+  const reportDataToSave = {
+    ...formData,
+    // If you only want to store file IDs:
+    // Media_Attachments: formData.Media_Attachments
+    //   ? formData.Media_Attachments.map((media: any) => media.appwrite_file_id)
+    //   : [],
+    // If you want to store the full media attachment objects (as currently structured):
+    Media_Attachments: formData.Media_Attachments || [],
+    // Add the user ID who reported the incident
+    reported_by: currentUser?.$id || null,
+  };
+
+  return handleAppwriteOperation("Submit report", () =>
+    databases.createDocument(
       APPWRITE_DATABASE_ID,
       APPWRITE_COLLECTION_ID,
-      ID.unique(), // Use ID.unique() for the document ID
-      { ...serializedPayload }, // Spread the serialized data object here
-      [Permission.write(Role.any())],
+      ID.unique(),
+      reportDataToSave,
+      [
+        Permission.read(Role.any()), // Example: Allow any user to read (adjust as needed)
+        Permission.update(Role.users()), // Example: Allow authenticated users to update
+        Permission.delete(Role.users()), // Example: Allow authenticated users to delete
+      ],
+    ),
+  );
+};
+
+// Helper function to create a File object from a URI for Appwrite
+export const createInputFileFromUrl = async (
+  url: string,
+  name: string,
+  type: string,
+): Promise<File> => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch file from URI: ${response.status} ${response.statusText}`,
     );
-  });
+  }
+  const blob = await response.blob();
+  return new File([blob], name, { type });
 };
 
 // Export the client and account for direct access if needed

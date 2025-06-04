@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.1.8",
+    "tailwindcss": "^4.1.8",
     "appwrite": "^18.1.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.511.0",
