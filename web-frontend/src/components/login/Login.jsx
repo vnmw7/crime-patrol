@@ -14,7 +14,6 @@ const Login = () => {
     setErrorMsg('');
 
     try {
-      // Optional cleanup if session already exists
       try {
         await account.deleteSession('current');
       } catch {}

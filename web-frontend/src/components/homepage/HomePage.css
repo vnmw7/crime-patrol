@@ -1,10 +1,9 @@
-/* Container holds sidebar and main content side by side */
+
 .container {
   display: flex;
   min-height: 100vh;
 }
 
-/* Sidebar styles */
 .sidebar {
   width: 220px;
   background-color: #0052A5;
@@ -15,12 +14,10 @@
   justify-content: space-between;
 }
 
-/* App name in sidebar */
 .app-name {
   margin: 0 0 1rem 0;
 }
 
-/* Navigation links list */
 .nav-links {
   list-style: none;
   padding: 0;
@@ -31,7 +28,6 @@
   margin: 1rem 0;
 }
 
-/* Logout button */
 .logout-btn {
   background-color: #ff4d4f;
   border: none;
@@ -48,7 +44,6 @@
   background-color: #d9363e;
 }
 
-/* Main content styles */
 .main-content {
   flex: 1;
   padding: 2rem;

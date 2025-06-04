@@ -1,6 +1,6 @@
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
-import SidebarNav from '../Sidebar/Sidebar'; // Adjust path as needed
+import SidebarNav from '../Sidebar/Sidebar';
 import './MapPage.css';
 
 const MapPage = () => {
@@ -10,7 +10,6 @@ const MapPage = () => {
     <div className="container">
       <SidebarNav />
       <main className="main-content">
-        <h1>Map Page - Bacolod City</h1>
         <MapContainer
           center={bacolodCoords}
           zoom={13}

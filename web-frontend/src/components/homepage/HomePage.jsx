@@ -18,7 +18,7 @@ const HomePage = () => {
 
   return (
     <div className="container">
-      {/* Render the reusable Sidebar component, pass logout handler as prop */}
+      {}
       <SidebarNav onLogout={handleLogout} />
 
       <main className="main-content">

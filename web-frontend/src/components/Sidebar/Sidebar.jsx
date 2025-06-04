@@ -1,4 +1,3 @@
-// src/components/SidebarNav/SidebarNav.jsx
 import { NavLink, useNavigate } from 'react-router-dom';
 import { account } from '../../lib/appwrite';
 import './SidebarNav.css';
@@ -26,13 +25,19 @@ const SidebarNav = () => {
           </li>
           <li>
             <NavLink to="/map" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Map
+              Map
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/section" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Section
             </NavLink>
           </li>
         </ul>
       </div>
 
       <div className="logout-container">
+        <div className="app-name">Crime Patrol</div>
         <button onClick={handleLogout} className="logout-btn">
           Logout
         </button>

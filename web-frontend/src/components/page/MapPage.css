@@ -1,32 +1,27 @@
-/* Container holds sidebar and main content side by side */
+
 .container {
   display: flex;
   min-height: 100vh;
-  /* optionally add this so main-content uses remaining width */
   width: 100vw;
 }
 
-/* Main content area */
 .main-content {
   flex: 1;
   padding: 2rem;
   display: flex;
   flex-direction: column;
-  align-items: center;  /* center horizontally */
-  justify-content: flex-start; /* top alignment */
-  /* Make sure main content area uses full available width */
+  align-items: center;
+  justify-content: flex-start;
   max-width: 100%;
 }
 
-/* Heading */
 h1 {
   margin-bottom: 1rem;
 }
 
-/* Map size and styling */
 .leaflet-container {
-  width: 900px !important;
-  height: 600px !important;
+  width: 2200px !important;
+  height: 880px !important;
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }

@@ -1,9 +1,10 @@
-// src/App.jsx
+
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import HomePage from './components/homepage/HomePage';
 import Login from './components/login/login';
 import MapPage from './components/page/MapPage';
 import Register from './components/register/register';
+import SectionPage from './components/section/Section';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/map" element={<MapPage />} />
+        <Route path="/section" element={<SectionPage />} />
       </Routes>
     </Router>
   );
