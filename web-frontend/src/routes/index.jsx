@@ -12,7 +12,7 @@ export default function Index() {
           </a>
           <a href="#about" className="text-white hover:text-blue-400">
             About
-          </a>
+          </a>{" "}
           <a href="#download" className="text-white hover:text-blue-400">
             Download
           </a>

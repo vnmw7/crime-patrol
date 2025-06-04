@@ -1,0 +1,97 @@
+.section-page {
+  padding: 2rem;
+}
+
+.section-page .reports-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #c7c7c7;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  color: black;
+}
+
+.section-page p {
+  color: #ffffff;
+}
+
+.section-page .reports-table th,
+.section-page .reports-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #383838;
+}
+
+.section-page .icon {
+  cursor: pointer;
+  margin-right: 0.5rem;
+}
+
+.section-page .icon.view {
+  color: #007bff;
+}
+
+.section-page .icon.delete {
+  color: #dc3545;
+}
+
+.section-page .status {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.section-page .status.pending {
+  color: #ffc107;
+}
+
+.section-page .status.resolved {
+  color: #28a745;
+}
+
+/* Modal Styles */
+.section-page .modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.section-page .modal {
+  background: white;
+  color: black;
+  padding: 2rem;
+  border-radius: 10px;
+  max-width: 500px;
+  width: 90%;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.section-page .modal h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.section-page .modal p {
+  margin: 0.5rem 0;
+  color: #000;
+}
+
+.section-page .close-btn {
+  background-color: #0052a5;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  font-weight: bold;
+  border-radius: 4px;
+  margin-top: 1rem;
+  cursor: pointer;
+}

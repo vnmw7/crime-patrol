@@ -8,15 +8,16 @@ import {
 // Import layout and pages
 import Dashboard from "./routes/Dashboard.jsx";
 import DashboardOverview from "./routes/dashboard.overview.jsx";
-import DashboardReports from "./routes/dashboard.reports.jsx";
 import DashboardSettings from "./routes/dashboard.settings.jsx";
 import DashboardChat from "./routes/dashboard.chats.jsx";
-import DashboardIncidents from "./routes/dashboard.incidents.jsx";
 import DashboardStations from "./routes/dashboard.stations.jsx";
 import Index from "./routes/index.jsx";
-import Login from "./components/login/login";
+import Login from "./components/login/Login.jsx";
+import Signup from "./components/register/Register.jsx";
 import MapPage from "./components/page/MapPage";
-import Register from "./components/register/register";
+import DashboardLogin from "./components/login/Login.jsx";
+import DashboardRegister from "./components/register/Register.jsx";
+import Reports from "./components/reports/reports.jsx";
 
 // New: Blank placeholder page for dashboard root
 const DashboardBlank = () => (
@@ -34,20 +35,22 @@ function App() {
         {/* Public landing page */}
         <Route path="/" element={<Index />} />
 
+        {/* Standalone auth pages */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+
         {/* Dashboard layout with nested routes */}
         <Route path="/dashboard" element={<Dashboard />}>
           <Route index element={<DashboardBlank />} />{" "}
           {/* Default: blank screen */}
           <Route path="overview" element={<DashboardOverview />} />
-          <Route path="reports" element={<DashboardReports />} />
+          <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<DashboardSettings />} />
           <Route path="chat" element={<DashboardChat />} />
-          <Route path="incidents" element={<DashboardIncidents />} />
           <Route path="stations" element={<DashboardStations />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/section" element={<SectionPage />} />
-          <Route path="/map" element={<MapPage />} />
+          <Route path="login" element={<DashboardLogin />} />
+          <Route path="register" element={<DashboardRegister />} />
+          <Route path="map" element={<MapPage />} />
         </Route>
 
         {/* Fallback for unknown routes */}

@@ -15,6 +15,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+p {
+  color: #d1d5db;
+}
+
 a {
   font-weight: 500;
   color: #646cff;
@@ -71,6 +75,6 @@ button:focus-visible {
   }
 }
 
-.main-content{
+.main-content {
   background-color: #00022e;
 }
