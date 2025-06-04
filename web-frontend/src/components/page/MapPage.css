@@ -1,0 +1,22 @@
+/* MapPage.css - Updated for responsive design */
+
+/* Override default leaflet styles if needed */
+.leaflet-container {
+  font-family: inherit;
+}
+
+/* Ensure the map controls are visible against dark backgrounds */
+.leaflet-control-container .leaflet-control {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Style the attribution text */
+.leaflet-container .leaflet-control-attribution {
+  background: rgba(0, 0, 0, 0.7);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: rgba(255, 255, 255, 0.9);
+}

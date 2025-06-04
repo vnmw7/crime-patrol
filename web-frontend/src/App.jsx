@@ -1,35 +1,63 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+
+// Import layout and pages
+import Dashboard from "./routes/Dashboard.jsx";
+import DashboardOverview from "./routes/dashboard.overview.jsx";
+import DashboardSettings from "./routes/dashboard.settings.jsx";
+import DashboardChat from "./routes/dashboard.chats.jsx";
+import DashboardStations from "./routes/dashboard.stations.jsx";
+import Index from "./routes/index.jsx";
+import Login from "./components/login/Login.jsx";
+import Signup from "./components/register/Register.jsx";
+import MapPage from "./components/page/MapPage";
+import DashboardLogin from "./components/login/Login.jsx";
+import DashboardRegister from "./components/register/Register.jsx";
+import Reports from "./components/reports/reports.jsx";
+
+// New: Blank placeholder page for dashboard root
+const DashboardBlank = () => (
+  <div className="text-gray-400 text-center mt-10 text-lg">
+    Welcome to the Crime Patrol Dashboard.
+    <br />
+    Select a menu option from the left to get started.
+  </div>
+);
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <Router>
+      <Routes>
+        {/* Public landing page */}
+        <Route path="/" element={<Index />} />
+
+        {/* Standalone auth pages */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+
+        {/* Dashboard layout with nested routes */}
+        <Route path="/dashboard" element={<Dashboard />}>
+          <Route index element={<DashboardBlank />} />{" "}
+          {/* Default: blank screen */}
+          <Route path="overview" element={<DashboardOverview />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="settings" element={<DashboardSettings />} />
+          <Route path="chat" element={<DashboardChat />} />
+          <Route path="stations" element={<DashboardStations />} />
+          <Route path="login" element={<DashboardLogin />} />
+          <Route path="register" element={<DashboardRegister />} />
+          <Route path="map" element={<MapPage />} />
+        </Route>
+
+        {/* Fallback for unknown routes */}
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;
