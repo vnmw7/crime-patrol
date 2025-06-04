@@ -1,0 +1,27 @@
+
+.container {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  max-width: 100%;
+}
+
+h1 {
+  margin-bottom: 1rem;
+}
+
+.leaflet-container {
+  width: 2200px !important;
+  height: 880px !important;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
