@@ -1,0 +1,53 @@
+{
+  "incident_type": "Theft",
+  "incident_date": "2025-06-04T14:30:00.000Z",
+  "incident_time": "2025-06-04T14:30:00.000Z",
+  "is_in_progress": false,
+  "description": "Someone broke into my car and stole my laptop and phone. The incident happened around 3 PM when I was shopping at the mall.",
+  "reported_by": "user123",
+  "status": "pending",
+  "is_victim_reporter": true,
+  "location": {
+    "address": "123 Main Street, Downtown Mall Parking Lot",
+    "type": "Parking Lot",
+    "details": "Level 2, Section B, near the food court entrance",
+    "latitude": 40.7128,
+    "longitude": -74.006
+  },
+  "reporter_info": {
+    "name": "John Doe",
+    "phone": "+1234567890",
+    "email": "john.doe@example.com"
+  },
+  "victims": [
+    {
+      "name": "John Doe",
+      "contact": "john.doe@example.com"
+    }
+  ],
+  "suspects": [
+    {
+      "description": "Male, approximately 5'8 inches, wearing dark hoodie and jeans, around 25-30 years old",
+      "vehicle": "White sedan, could not see license plate clearly"
+    }
+  ],
+  "witnesses": [
+    {
+      "info": "Mall security guard saw someone suspicious near the parking area around 3:15 PM. Security office has contact details."
+    }
+  ],
+  "media": [
+    {
+      "file_id": "photo001",
+      "media_type": "photo",
+      "file_name_original": "car_damage.jpg",
+      "display_order": 1
+    },
+    {
+      "file_id": "photo002",
+      "media_type": "photo",
+      "file_name_original": "parking_lot_view.jpg",
+      "display_order": 2
+    }
+  ]
+}
