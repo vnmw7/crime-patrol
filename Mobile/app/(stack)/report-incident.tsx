@@ -19,7 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import * as Location from "expo-location";
-import { submitNormalizedReport } from "../../lib/appwrite";
+import { submitNormalizedReport, getCurrentUser } from "../../lib/appwrite";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
@@ -140,6 +140,28 @@ const ReportScreen = () => {
       }
     })();
   }, []);
+
+  // Fetch current user's email and populate it in the form
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (currentUser && currentUser.email) {
+          updateFormData("reporter_info", {
+            name: "",
+            phone: "",
+            email: currentUser.email,
+          });
+        }
+      } catch (error) {
+        console.log("Could not fetch user email:", error);
+        // Don't show an alert, just continue without email
+      }
+    };
+
+    fetchUserEmail();
+  }, []);
+
   const fetchAndSetCurrentLocation = async () => {
     triggerHaptic();
     let { status } = await Location.requestForegroundPermissionsAsync(); // Re-check/request if needed

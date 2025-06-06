@@ -103,30 +103,7 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
             keyboardType="phone-pad"
             value={formData.reporter_info?.phone || ""}
             onChangeText={(text) => updateReporterInfo("phone", text)}
-          />
-        </View>
-
-        {/* Reporter Email */}
-        <View style={styles.formField}>
-          <Text style={[styles.fieldLabel, { color: theme.text }]}>
-            Email Address
-          </Text>
-          <TextInput
-            style={[
-              styles.textInput,
-              {
-                borderColor: theme.border,
-                backgroundColor: theme.inputBackground,
-                color: theme.text,
-              },
-            ]}
-            placeholder="Optional email address"
-            placeholderTextColor={theme.textSecondary}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={formData.reporter_info?.email || ""}
-            onChangeText={(text) => updateReporterInfo("email", text)}
-          />
+          />{" "}
         </View>
 
         {/* Is Reporter the Victim */}
