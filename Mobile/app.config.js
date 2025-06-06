@@ -92,14 +92,31 @@ export default ({ config }) => ({
     ],
     experiments: {
       typedRoutes: true,
-    },
-    // Add the extra field to expose environment variables
+    }, // Add the extra field to expose environment variables
     extra: {
       ...config.expo?.extra, // Spread any existing extra config
       APPWRITE_PROJECT_ID: process.env.APPWRITE_PROJECT_ID,
       APPWRITE_DATABASE_ID: process.env.APPWRITE_DATABASE_ID,
-      APPWRITE_COLLECTION_ID: process.env.APPWRITE_COLLECTION_ID,
+      APPWRITE_ENDPOINT: process.env.APPWRITE_ENDPOINT,
       APPWRITE_BUCKET_ID: process.env.APPWRITE_BUCKET_ID,
+      // Collection IDs for normalized database structure
+      APPWRITE_REPORTS_COLLECTION_ID:
+        process.env.APPWRITE_REPORTS_COLLECTION_ID,
+      APPWRITE_REPORT_METADATA_COLLECTION_ID:
+        process.env.APPWRITE_REPORT_METADATA_COLLECTION_ID,
+      APPWRITE_REPORT_LOCATIONS_COLLECTION_ID:
+        process.env.APPWRITE_REPORT_LOCATIONS_COLLECTION_ID,
+      APPWRITE_REPORT_REPORTER_INFO_COLLECTION_ID:
+        process.env.APPWRITE_REPORT_REPORTER_INFO_COLLECTION_ID,
+      APPWRITE_REPORT_VICTIMS_COLLECTION_ID:
+        process.env.APPWRITE_REPORT_VICTIMS_COLLECTION_ID,
+      APPWRITE_REPORT_SUSPECTS_COLLECTION_ID:
+        process.env.APPWRITE_REPORT_SUSPECTS_COLLECTION_ID,
+      APPWRITE_REPORT_WITNESSES_COLLECTION_ID:
+        process.env.APPWRITE_REPORT_WITNESSES_COLLECTION_ID,
+      APPWRITE_REPORT_MEDIA_COLLECTION_ID:
+        process.env.APPWRITE_REPORT_MEDIA_COLLECTION_ID,
+      // Other API keys
       GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY,
       HUGGINGFACE_API_KEY: process.env.HUGGINGFACE_API_KEY,
       OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,

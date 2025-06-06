@@ -20,6 +20,7 @@ interface LocationSectionProps {
   colorScheme: string;
   triggerHaptic: () => void;
   selectorScale: Animated.Value;
+  onGetGPS: () => void; // Added prop for GPS functionality
 }
 
 // Address field component
@@ -28,7 +29,8 @@ const AddressField: React.FC<{
   updateLocation: (text: string) => void;
   theme: any;
   triggerHaptic: () => void;
-}> = ({ location, updateLocation, theme, triggerHaptic }) => (
+  onGetGPS: () => void; // Added prop for GPS functionality
+}> = ({ location, updateLocation, theme, triggerHaptic, onGetGPS }) => (
   <View style={styles.formField}>
     <Text style={[styles.fieldLabel, { color: theme.text }]}>
       Specific Address <Text style={styles.requiredStar}>*</Text>
@@ -59,8 +61,7 @@ const AddressField: React.FC<{
         style={styles.gpsButton}
         onPress={() => {
           triggerHaptic();
-          // In a real app, this would get current GPS coordinates
-          console.log("Getting GPS location");
+          onGetGPS();
         }}
       >
         <Ionicons name="locate" size={20} color={theme.primary} />
@@ -199,6 +200,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   colorScheme,
   triggerHaptic,
   selectorScale,
+  onGetGPS, // Destructure the new prop
 }) => {
   const [showLocationTypeSelectorModal, setShowLocationTypeSelectorModal] =
     useState(false);
@@ -222,12 +224,30 @@ const LocationSection: React.FC<LocationSectionProps> = ({
     ]).start();
 
     setShowLocationTypeSelectorModal(true);
-  };
-  // Select location type
+  }; // Select location type
   const selectLocationType = (type: string) => {
     triggerHaptic();
-    updateFormData("Location_Type", type);
+    updateFormData("location", {
+      ...formData.location,
+      type: type,
+    });
     setShowLocationTypeSelectorModal(false);
+  };
+
+  // Update location address
+  const updateLocationAddress = (text: string) => {
+    updateFormData("location", {
+      ...formData.location,
+      address: text,
+    });
+  };
+
+  // Update location details
+  const updateLocationDetails = (text: string) => {
+    updateFormData("location", {
+      ...formData.location,
+      details: text,
+    });
   };
 
   return (
@@ -235,16 +255,16 @@ const LocationSection: React.FC<LocationSectionProps> = ({
       <Text style={[styles.sectionTitle, { color: theme.text }]}>
         Location Information
       </Text>
-
+      <Text> </Text>
       <AddressField
-        location={formData.Location}
-        updateLocation={(text) => updateFormData("Location", text)}
+        location={formData.location?.address || ""}
+        updateLocation={updateLocationAddress}
         theme={theme}
         triggerHaptic={triggerHaptic}
+        onGetGPS={onGetGPS} // Pass down the prop
       />
-
       <LocationTypeSelector
-        locationType={formData.Location_Type}
+        locationType={formData.location?.type || ""}
         theme={theme}
         colorScheme={colorScheme}
         selectorScale={selectorScale}
@@ -252,10 +272,9 @@ const LocationSection: React.FC<LocationSectionProps> = ({
         showSelector={showLocationTypeSelectorModal}
         selectLocationType={selectLocationType}
       />
-
       <LocationDetailsField
-        locationDetails={formData.Location_Details}
-        updateDetails={(text) => updateFormData("Location_Details", text)}
+        locationDetails={formData.location?.details || ""}
+        updateDetails={updateLocationDetails}
         theme={theme}
       />
     </View>

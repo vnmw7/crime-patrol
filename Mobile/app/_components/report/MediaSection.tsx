@@ -30,12 +30,9 @@ const MediaSection: React.FC<PropertySectionProps> = ({
 }) => {
   const removeMedia = (index: number) => {
     triggerHaptic();
-    const updatedMedia = [...(formData.Media_Attachments || [])];
+    const updatedMedia = [...(formData.media || [])];
     updatedMedia.splice(index, 1);
-    updateFormData("Media_Attachments", updatedMedia);
-    if (updatedMedia.length === 0) {
-      updateFormData("Media_Attached", false); // Also update the old flag if needed or remove it
-    }
+    updateFormData("media", updatedMedia);
   };
 
   return (
@@ -166,59 +163,59 @@ const MediaSection: React.FC<PropertySectionProps> = ({
             </Text>
           </TouchableOpacity>
         </Animated.View>
-
+        <Text> </Text>
         {/* Media Preview */}
-        {formData.Media_Attachments &&
-          formData.Media_Attachments.length > 0 && (
-            <View style={styles.mediaPreviewSectionContainer}>
-              <Text style={[styles.previewTitle, { color: theme.text }]}>
-                Attached Media:
-              </Text>
-              {formData.Media_Attachments.map((media, index) => (
-                <View key={index} style={styles.mediaPreviewContainer}>
-                  <View
-                    style={[
-                      styles.mediaPreview,
-                      {
-                        backgroundColor: theme.progressBackground,
-                        borderColor: theme.border,
-                      },
-                    ]}
+        {formData.media && formData.media.length > 0 && (
+          <View style={styles.mediaPreviewSectionContainer}>
+            <Text style={[styles.previewTitle, { color: theme.text }]}>
+              Attached Media:
+            </Text>
+            {formData.media.map((media, index) => (
+              <View key={index} style={styles.mediaPreviewContainer}>
+                <View
+                  style={[
+                    styles.mediaPreview,
+                    {
+                      backgroundColor: theme.progressBackground,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
+                  <Text> </Text>
+                  <Ionicons
+                    name={
+                      media.media_type === "photo"
+                        ? "image"
+                        : media.media_type === "video"
+                          ? "videocam"
+                          : "musical-notes"
+                    }
+                    size={40}
+                    color={theme.textSecondary}
+                  />
+                  <Text
+                    style={[styles.mediaPreviewText, { color: theme.text }]}
+                    numberOfLines={1}
+                    ellipsizeMode="middle"
                   >
-                    <Ionicons
-                      name={
-                        media.type.startsWith("image")
-                          ? "image"
-                          : media.type.startsWith("video")
-                            ? "videocam"
-                            : "musical-notes"
-                      }
-                      size={40}
-                      color={theme.textSecondary}
-                    />
-                    <Text
-                      style={[styles.mediaPreviewText, { color: theme.text }]}
-                      numberOfLines={1}
-                      ellipsizeMode="middle"
-                    >
-                      {media.name} ({media.type})
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.removeMediaButton}
-                    onPress={() => removeMedia(index)}
-                  >
-                    <Ionicons
-                      name="close-circle"
-                      size={24}
-                      color={theme.secondary}
-                      style={{ backgroundColor: theme.card, borderRadius: 12 }}
-                    />
-                  </TouchableOpacity>
+                    {media.file_name_original} ({media.media_type})
+                  </Text>
                 </View>
-              ))}
-            </View>
-          )}
+                <TouchableOpacity
+                  style={styles.removeMediaButton}
+                  onPress={() => removeMedia(index)}
+                >
+                  <Ionicons
+                    name="close-circle"
+                    size={24}
+                    color={theme.secondary}
+                    style={{ backgroundColor: theme.card, borderRadius: 12 }}
+                  />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
     </View>
   );

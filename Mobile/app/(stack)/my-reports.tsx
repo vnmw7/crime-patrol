@@ -13,22 +13,21 @@ import { Databases, Models } from "appwrite"; // Import Models, remove Query
 import {
   client,
   APPWRITE_DATABASE_ID,
-  APPWRITE_COLLECTION_ID,
-} from "../../lib/appwrite"; // Assuming these are exported from your appwrite config
+  REPORTS_MAIN_COLLECTION_ID,
+} from "../../lib/appwrite"; // Use the main reports collection
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native"; // Or your custom theme hook
 import { Ionicons } from "@expo/vector-icons";
 
-// Define an interface for the report data structure from Appwrite
+// Define an interface for the report data structure from Appwrite (reports_main collection)
 // Ensure this matches your Appwrite collection attributes
 interface Report extends Models.Document {
   // Extend Models.Document
-  Incident_Type: string;
-  Incident_Date: string; // Assuming date is stored as ISO string
-  Description: string;
-  Location: string;
+  incident_type: string;
+  incident_date: string; // Assuming date is stored as ISO string
+  reported_by: string;
   status?: string; // Optional status field
-  // Add other fields as necessary from your FormData in report-incident.tsx
+  // Add other fields as necessary from your normalized database structure
   [key: string]: any; // Allow other properties
 }
 
@@ -39,9 +38,8 @@ const MyReportsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-
   const fetchReports = useCallback(async () => {
-    if (!APPWRITE_DATABASE_ID || !APPWRITE_COLLECTION_ID) {
+    if (!APPWRITE_DATABASE_ID || !REPORTS_MAIN_COLLECTION_ID) {
       setError("Appwrite database or collection ID is not configured.");
       setLoading(false);
       setRefreshing(false);
@@ -55,9 +53,9 @@ const MyReportsScreen = () => {
       const databases = new Databases(client);
       const response = await databases.listDocuments<Report>(
         APPWRITE_DATABASE_ID,
-        APPWRITE_COLLECTION_ID,
+        REPORTS_MAIN_COLLECTION_ID,
         // Add queries if needed, e.g., to filter by user or sort by date
-        // [Query.orderDesc('Incident_Date')] // Example: order by most recent
+        // [Query.orderDesc('incident_date')] // Example: order by most recent
       );
       setReports(response.documents);
     } catch (e: any) {
@@ -93,13 +91,14 @@ const MyReportsScreen = () => {
         { backgroundColor: colors.card, borderColor: colors.border },
       ]}
     >
+      {" "}
       <View style={styles.reportHeader}>
         <Text style={[styles.reportTitle, { color: colors.text }]}>
-          {item.Incident_Type || "N/A"}
+          {item.incident_type || "N/A"}
         </Text>
         <Text style={[styles.reportDate, { color: colors.text }]}>
-          {item.Incident_Date
-            ? new Date(item.Incident_Date).toLocaleDateString()
+          {item.incident_date
+            ? new Date(item.incident_date).toLocaleDateString()
             : "N/A"}
         </Text>
       </View>
@@ -107,10 +106,12 @@ const MyReportsScreen = () => {
         style={[styles.reportDescription, { color: colors.text }]}
         numberOfLines={2}
       >
-        {item.Description || "No description provided."}
+        {/* Note: Description is now in report_metadata collection, not available in main reports */}
+        Report details available in full view
       </Text>
       <Text style={[styles.reportLocation, { color: colors.primary }]}>
-        {item.Location || "Location not specified"}
+        {/* Note: Location is now in report_locations collection, not available in main reports */}
+        Location details in full view
       </Text>
       {item.status && (
         <Text

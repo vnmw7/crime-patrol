@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Switch,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, TextInput, Switch } from "react-native";
 import { FormData } from "../../../types/reportTypes";
 
 interface PeopleSectionProps {
@@ -20,12 +13,50 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
   updateFormData,
   theme,
 }) => {
+  // Helper functions to update nested objects and arrays
+  const updateReporterInfo = (field: string, value: string) => {
+    updateFormData("reporter_info", {
+      ...formData.reporter_info,
+      [field]: value,
+    });
+  };
+
+  const addVictim = () => {
+    const newVictim = { name: "", contact: "" };
+    updateFormData("victims", [...(formData.victims || []), newVictim]);
+  };
+  const updateVictim = (index: number, field: string, value: string) => {
+    const updatedVictims = [...(formData.victims || [])];
+    updatedVictims[index] = { ...updatedVictims[index], [field]: value };
+    updateFormData("victims", updatedVictims);
+  };
+
+  const addSuspect = () => {
+    const newSuspect = { description: "", vehicle: "" };
+    updateFormData("suspects", [...(formData.suspects || []), newSuspect]);
+  };
+
+  const updateSuspect = (index: number, field: string, value: string) => {
+    const updatedSuspects = [...(formData.suspects || [])];
+    updatedSuspects[index] = { ...updatedSuspects[index], [field]: value };
+    updateFormData("suspects", updatedSuspects);
+  };
+
+  const addWitness = () => {
+    const newWitness = { info: "" };
+    updateFormData("witnesses", [...(formData.witnesses || []), newWitness]);
+  };
+
+  const updateWitness = (index: number, value: string) => {
+    const updatedWitnesses = [...(formData.witnesses || [])];
+    updatedWitnesses[index] = { info: value };
+    updateFormData("witnesses", updatedWitnesses);
+  };
   return (
     <View style={styles.formSection}>
       <Text style={[styles.sectionTitle, { color: theme.text }]}>
         People Involved
       </Text>
-
       {/* Reporter Information */}
       <View style={[styles.subSection, { borderColor: theme.border }]}>
         <Text style={[styles.subSectionTitle, { color: theme.text }]}>
@@ -48,8 +79,8 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
             ]}
             placeholder="Enter your full name"
             placeholderTextColor={theme.textSecondary}
-            value={formData.Reporter_Name}
-            onChangeText={(text) => updateFormData("Reporter_Name", text)}
+            value={formData.reporter_info?.name || ""}
+            onChangeText={(text) => updateReporterInfo("name", text)}
           />
         </View>
 
@@ -70,8 +101,8 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
             placeholder="For follow-up contact"
             placeholderTextColor={theme.textSecondary}
             keyboardType="phone-pad"
-            value={formData.Reporter_Phone}
-            onChangeText={(text) => updateFormData("Reporter_Phone", text)}
+            value={formData.reporter_info?.phone || ""}
+            onChangeText={(text) => updateReporterInfo("phone", text)}
           />
         </View>
 
@@ -93,8 +124,8 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
             placeholderTextColor={theme.textSecondary}
             keyboardType="email-address"
             autoCapitalize="none"
-            value={formData.Reporter_Email}
-            onChangeText={(text) => updateFormData("Reporter_Email", text)}
+            value={formData.reporter_info?.email || ""}
+            onChangeText={(text) => updateReporterInfo("email", text)}
           />
         </View>
 
@@ -106,9 +137,9 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
           <View style={styles.toggleContainer}>
             <Text style={[{ color: theme.text }]}>No</Text>
             <Switch
-              value={formData.Is_Victim_Reporter}
+              value={formData.is_victim_reporter}
               onValueChange={(value) =>
-                updateFormData("Is_Victim_Reporter", value)
+                updateFormData("is_victim_reporter", value)
               }
               trackColor={{
                 false: theme.progressBackground,
@@ -120,9 +151,9 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
           </View>
         </View>
       </View>
-
+      <Text> </Text>
       {/* Victim Information - conditional */}
-      {!formData.Is_Victim_Reporter && (
+      {!formData.is_victim_reporter && (
         <View style={[styles.subSection, { borderColor: theme.border }]}>
           <Text style={[styles.subSectionTitle, { color: theme.text }]}>
             Victim Information
@@ -144,8 +175,13 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
               ]}
               placeholder="Enter victim's name if known"
               placeholderTextColor={theme.textSecondary}
-              value={formData.Victim_Name}
-              onChangeText={(text) => updateFormData("Victim_Name", text)}
+              value={formData.victims?.[0]?.name || ""}
+              onChangeText={(text) => {
+                if (!formData.victims?.length) {
+                  addVictim();
+                }
+                updateVictim(0, "name", text);
+              }}
             />
           </View>
 
@@ -165,13 +201,17 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
               ]}
               placeholder="Phone number or email if known"
               placeholderTextColor={theme.textSecondary}
-              value={formData.Victim_Contact}
-              onChangeText={(text) => updateFormData("Victim_Contact", text)}
+              value={formData.victims?.[0]?.contact || ""}
+              onChangeText={(text) => {
+                if (!formData.victims?.length) {
+                  addVictim();
+                }
+                updateVictim(0, "contact", text);
+              }}
             />
           </View>
         </View>
       )}
-
       {/* Suspect Information */}
       <View style={[styles.subSection, { borderColor: theme.border }]}>
         <Text style={[styles.subSectionTitle, { color: theme.text }]}>
@@ -196,8 +236,13 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
             placeholderTextColor={theme.textSecondary}
             multiline
             textAlignVertical="top"
-            value={formData.Suspect_Description}
-            onChangeText={(text) => updateFormData("Suspect_Description", text)}
+            value={formData.suspects?.[0]?.description || ""}
+            onChangeText={(text) => {
+              if (!formData.suspects?.length) {
+                addSuspect();
+              }
+              updateSuspect(0, "description", text);
+            }}
           />
         </View>
 
@@ -217,12 +262,16 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
             ]}
             placeholder="Make, model, color, license plate if known"
             placeholderTextColor={theme.textSecondary}
-            value={formData.Suspect_Vehicle}
-            onChangeText={(text) => updateFormData("Suspect_Vehicle", text)}
+            value={formData.suspects?.[0]?.vehicle || ""}
+            onChangeText={(text) => {
+              if (!formData.suspects?.length) {
+                addSuspect();
+              }
+              updateSuspect(0, "vehicle", text);
+            }}
           />
         </View>
       </View>
-
       {/* Witness Information */}
       <View style={styles.formField}>
         <Text style={[styles.fieldLabel, { color: theme.text }]}>
@@ -241,8 +290,13 @@ const PeopleSection: React.FC<PeopleSectionProps> = ({
           placeholderTextColor={theme.textSecondary}
           multiline
           textAlignVertical="top"
-          value={formData.Witness_Info}
-          onChangeText={(text) => updateFormData("Witness_Info", text)}
+          value={formData.witnesses?.[0]?.info || ""}
+          onChangeText={(text) => {
+            if (!formData.witnesses?.length) {
+              addWitness();
+            }
+            updateWitness(0, text);
+          }}
         />
       </View>
     </View>

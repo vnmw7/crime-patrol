@@ -1,4 +1,4 @@
-import { Account, Client, ID, Databases, Permission, Role } from "appwrite";
+import { Account, Client, ID, Databases } from "appwrite";
 import Constants from "expo-constants";
 
 // Initialize Appwrite client
@@ -11,14 +11,51 @@ export const APPWRITE_DATABASE_ID =
   process.env.APPWRITE_DATABASE_ID ||
   Constants.expoConfig?.extra?.APPWRITE_DATABASE_ID ||
   "";
-export const APPWRITE_COLLECTION_ID =
-  process.env.APPWRITE_COLLECTION_ID ||
-  Constants.expoConfig?.extra?.APPWRITE_COLLECTION_ID ||
-  "";
+export const APPWRITE_ENDPOINT =
+  process.env.APPWRITE_ENDPOINT ||
+  Constants.expoConfig?.extra?.APPWRITE_ENDPOINT ||
+  "https://cloud.appwrite.io/v1";
 export const APPWRITE_BUCKET_ID =
-  process.env.APPWRITE_BUCKET_ID || // Corrected this line
-  Constants.expoConfig?.extra?.APPWRITE_BUCKET_ID || // Corrected this line
+  process.env.APPWRITE_BUCKET_ID ||
+  Constants.expoConfig?.extra?.APPWRITE_BUCKET_ID ||
   "";
+
+// Define collection IDs for normalized database structure using environment variables
+export const REPORTS_MAIN_COLLECTION_ID =
+  process.env.APPWRITE_REPORTS_COLLECTION_ID ||
+  Constants.expoConfig?.extra?.APPWRITE_REPORTS_COLLECTION_ID ||
+  "reports_main";
+export const REPORT_LOCATIONS_COLLECTION_ID =
+  process.env.APPWRITE_REPORT_LOCATIONS_COLLECTION_ID ||
+  Constants.expoConfig?.extra?.APPWRITE_REPORT_LOCATIONS_COLLECTION_ID ||
+  "report_locations";
+export const REPORT_METADATA_COLLECTION_ID =
+  process.env.APPWRITE_REPORT_METADATA_COLLECTION_ID ||
+  Constants.expoConfig?.extra?.APPWRITE_REPORT_METADATA_COLLECTION_ID ||
+  "report_metadata";
+export const REPORT_REPORTER_INFO_COLLECTION_ID =
+  process.env.APPWRITE_REPORT_REPORTER_INFO_COLLECTION_ID ||
+  Constants.expoConfig?.extra?.APPWRITE_REPORT_REPORTER_INFO_COLLECTION_ID ||
+  "report_reporter_info";
+export const REPORT_SUSPECTS_COLLECTION_ID =
+  process.env.APPWRITE_REPORT_SUSPECTS_COLLECTION_ID ||
+  Constants.expoConfig?.extra?.APPWRITE_REPORT_SUSPECTS_COLLECTION_ID ||
+  "report_suspects";
+export const REPORT_VICTIMS_COLLECTION_ID =
+  process.env.APPWRITE_REPORT_VICTIMS_COLLECTION_ID ||
+  Constants.expoConfig?.extra?.APPWRITE_REPORT_VICTIMS_COLLECTION_ID ||
+  "report_victims";
+export const REPORT_WITNESSES_COLLECTION_ID =
+  process.env.APPWRITE_REPORT_WITNESSES_COLLECTION_ID ||
+  Constants.expoConfig?.extra?.APPWRITE_REPORT_WITNESSES_COLLECTION_ID ||
+  "report_witnesses";
+export const REPORT_MEDIA_COLLECTION_ID =
+  process.env.APPWRITE_REPORT_MEDIA_COLLECTION_ID ||
+  Constants.expoConfig?.extra?.APPWRITE_REPORT_MEDIA_COLLECTION_ID ||
+  "report_media";
+
+// Legacy collection ID for backward compatibility (main reports collection)
+export const REPORTS_COLLECTION_ID = REPORTS_MAIN_COLLECTION_ID;
 
 // Check if project ID is missing and log a clear error message
 if (!APPWRITE_PROJECT_ID) {
@@ -33,11 +70,13 @@ if (!APPWRITE_DATABASE_ID) {
   );
   console.error("Please set the APPWRITE_DATABASE_ID environment variable.");
 }
-if (!APPWRITE_COLLECTION_ID) {
+if (!REPORTS_MAIN_COLLECTION_ID) {
   console.error(
-    "ERROR: Appwrite Collection ID is not configured! Operations will fail.",
+    "ERROR: Appwrite Main Reports Collection ID is not configured! Operations will fail.",
   );
-  console.error("Please set the APPWRITE_COLLECTION_ID environment variable.");
+  console.error(
+    "Please set the APPWRITE_REPORTS_COLLECTION_ID environment variable.",
+  );
 }
 if (!APPWRITE_BUCKET_ID) {
   console.error(
@@ -47,7 +86,7 @@ if (!APPWRITE_BUCKET_ID) {
 }
 
 const client = new Client()
-  .setEndpoint("https://cloud.appwrite.io/v1")
+  .setEndpoint(APPWRITE_ENDPOINT)
   .setProject(APPWRITE_PROJECT_ID); // Use the environment variable
 
 const account = new Account(client);
@@ -155,55 +194,182 @@ export const updateUserPhone = async (phone: string, password: string) => {
   );
 };
 
-// Submit report function
-export const submitReport = async (formData: any) => {
+// Submit normalized report function (updated for normalized database structure)
+export const submitNormalizedReport = async (formData: any) => {
   // Ensure all required IDs are present
-  if (!APPWRITE_DATABASE_ID || !APPWRITE_COLLECTION_ID) {
-    console.error(
-      "Database ID or Collection ID is not configured. Cannot submit report.",
-    );
-    throw new Error(
-      "Database or Collection ID not configured for report submission.",
-    );
+  if (!APPWRITE_DATABASE_ID) {
+    console.error("Database ID is not configured. Cannot submit report.");
+    throw new Error("Database ID not configured for report submission.");
   }
 
-  // Get the current user to add as reported_by
   let currentUser = null;
   try {
     currentUser = await getCurrentUser();
   } catch (error) {
     console.error("Could not get current user for report submission:", error);
-    // Continue without user info, as the report is still valuable
   }
 
-  // Prepare the data for Appwrite
-  // If Media_Attachments contains Appwrite file IDs, you might want to store those directly
-  // or store the full objects if they contain other useful metadata for your app.
-  const reportDataToSave = {
-    ...formData,
-    // If you only want to store file IDs:
-    // Media_Attachments: formData.Media_Attachments
-    //   ? formData.Media_Attachments.map((media: any) => media.appwrite_file_id)
-    //   : [],
-    // If you want to store the full media attachment objects (as currently structured):
-    Media_Attachments: formData.Media_Attachments || [],
-    // Add the user ID who reported the incident
-    reported_by: currentUser?.$id || null,
-  };
+  try {
+    // Generate unique report ID that will link all documents
+    const reportId = ID.unique();
+    const currentTime = new Date();
 
-  return handleAppwriteOperation("Submit report", () =>
-    databases.createDocument(
+    // 1. Create main report document in reports_main collection
+    const mainReportData = {
+      incident_type: formData.incident_type || "",
+      incident_date:
+        formData.incident_date?.toISOString() || currentTime.toISOString(),
+      reported_by: currentUser?.$id || "anonymous",
+      status: formData.status || "pending",
+    };
+
+    const mainReportResponse = await databases.createDocument(
       APPWRITE_DATABASE_ID,
-      APPWRITE_COLLECTION_ID,
+      REPORTS_MAIN_COLLECTION_ID,
+      reportId,
+      mainReportData,
+    );
+
+    console.log("Main report created:", mainReportResponse);
+
+    // 2. Create location document if location data exists
+    if (formData.location) {
+      const locationData = {
+        report_id: reportId,
+        location_address: formData.location.address || "",
+        location_type: formData.location.type || "",
+        location_details: formData.location.details || "",
+        latitude: formData.location.latitude || 0.0,
+        longitude: formData.location.longitude || 0.0,
+      };
+
+      await databases.createDocument(
+        APPWRITE_DATABASE_ID,
+        REPORT_LOCATIONS_COLLECTION_ID,
+        ID.unique(),
+        locationData,
+      );
+    }
+
+    // 3. Create metadata document
+    const metadataData = {
+      report_id: reportId,
+      incident_time:
+        formData.incident_time?.toISOString() || currentTime.toISOString(),
+      is_in_progress: formData.is_in_progress || false,
+      description: formData.description || "",
+      is_victim_reporter: formData.is_victim_reporter || false,
+      created_at: currentTime.toISOString(),
+      updated_at: currentTime.toISOString(),
+      priority_level: formData.priority_level || "medium",
+    };
+
+    await databases.createDocument(
+      APPWRITE_DATABASE_ID,
+      REPORT_METADATA_COLLECTION_ID,
       ID.unique(),
-      reportDataToSave,
-      [
-        Permission.read(Role.any()), // Example: Allow any user to read (adjust as needed)
-        Permission.update(Role.users()), // Example: Allow authenticated users to update
-        Permission.delete(Role.users()), // Example: Allow authenticated users to delete
-      ],
-    ),
-  );
+      metadataData,
+    );
+
+    // 4. Create reporter info document if reporter data exists
+    if (formData.reporter_info) {
+      const reporterData = {
+        report_id: reportId,
+        reporter_name: formData.reporter_info.name || "",
+        reporter_phone: formData.reporter_info.phone || "",
+        reporter_email: formData.reporter_info.email || "",
+      };
+
+      await databases.createDocument(
+        APPWRITE_DATABASE_ID,
+        REPORT_REPORTER_INFO_COLLECTION_ID,
+        ID.unique(),
+        reporterData,
+      );
+    }
+
+    // 5. Create victim documents
+    if (formData.victims && formData.victims.length > 0) {
+      for (const victim of formData.victims) {
+        const victimData = {
+          report_id: reportId,
+          victim_name: victim.name || "",
+          victim_contact: victim.contact || "",
+        };
+
+        await databases.createDocument(
+          APPWRITE_DATABASE_ID,
+          REPORT_VICTIMS_COLLECTION_ID,
+          ID.unique(),
+          victimData,
+        );
+      }
+    }
+
+    // 6. Create suspect documents
+    if (formData.suspects && formData.suspects.length > 0) {
+      for (const suspect of formData.suspects) {
+        const suspectData = {
+          report_id: reportId,
+          suspect_description: suspect.description || "",
+          suspect_vehicle: suspect.vehicle || "",
+        };
+
+        await databases.createDocument(
+          APPWRITE_DATABASE_ID,
+          REPORT_SUSPECTS_COLLECTION_ID,
+          ID.unique(),
+          suspectData,
+        );
+      }
+    }
+
+    // 7. Create witness documents
+    if (formData.witnesses && formData.witnesses.length > 0) {
+      for (const witness of formData.witnesses) {
+        const witnessData = {
+          report_id: reportId,
+          witness_info: witness.info || "",
+        };
+
+        await databases.createDocument(
+          APPWRITE_DATABASE_ID,
+          REPORT_WITNESSES_COLLECTION_ID,
+          ID.unique(),
+          witnessData,
+        );
+      }
+    }
+
+    // 8. Create media documents
+    if (formData.media && formData.media.length > 0) {
+      for (const mediaItem of formData.media) {
+        const mediaData = {
+          report_id: reportId,
+          file_id: mediaItem.file_id || "",
+          media_type: mediaItem.media_type || "",
+          file_name_original: mediaItem.file_name_original || "",
+          display_order: mediaItem.display_order || 0,
+        };
+
+        await databases.createDocument(
+          APPWRITE_DATABASE_ID,
+          REPORT_MEDIA_COLLECTION_ID,
+          ID.unique(),
+          mediaData,
+        );
+      }
+    }
+
+    console.log("Normalized report submitted successfully with ID:", reportId);
+    return {
+      ...mainReportResponse,
+      report_id: reportId,
+    };
+  } catch (error) {
+    console.error("Error submitting report directly to Appwrite:", error);
+    throw error;
+  }
 };
 
 // Helper function to create a File object from a URI for Appwrite

@@ -5,9 +5,6 @@ import {
   Text,
   TouchableOpacity,
   Dimensions,
-  Modal,
-  ScrollView,
-  TextInput,
   Platform,
   ActivityIndicator,
   Alert,
@@ -16,8 +13,7 @@ import {
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,7 +22,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   policeStations as policeStationsData,
   emergencyRespondents,
-  barangays as barangayNames,
 } from "../constants/policeStationsData";
 
 const themeColors = {
@@ -101,21 +96,6 @@ type IncidentType = {
   reportedBy: string;
 };
 
-type BarangayType = {
-  id: string;
-  name: string;
-  coordinates: { latitude: number; longitude: number }[];
-  color: string;
-};
-
-// Initial region (Bacolod City)
-const initialRegion: LocationType = {
-  latitude: 10.6713,
-  longitude: 122.9511,
-  latitudeDelta: 0.0922,
-  longitudeDelta: 0.0421,
-};
-
 // Mock data for incidents (recent reports)
 const recentIncidents: IncidentType[] = [
   {
@@ -141,43 +121,6 @@ const recentIncidents: IncidentType[] = [
     date: "2025-03-24T23:15:00",
     type: "suspicious",
     reportedBy: "Community Watch",
-  },
-];
-
-// Mock data for 3 barangays in Bacolod
-const barangays: BarangayType[] = [
-  {
-    id: "1",
-    name: "Villamonte",
-    coordinates: [
-      { latitude: 10.668, longitude: 122.944 },
-      { latitude: 10.672, longitude: 122.944 },
-      { latitude: 10.672, longitude: 122.948 },
-      { latitude: 10.668, longitude: 122.948 },
-    ],
-    color: "rgba(255, 0, 0, 0.2)",
-  },
-  {
-    id: "2",
-    name: "Mandalagan",
-    coordinates: [
-      { latitude: 10.68, longitude: 122.952 },
-      { latitude: 10.684, longitude: 122.952 },
-      { latitude: 10.684, longitude: 122.956 },
-      { latitude: 10.68, longitude: 122.956 },
-    ],
-    color: "rgba(0, 255, 0, 0.2)",
-  },
-  {
-    id: "3",
-    name: "Alijis",
-    coordinates: [
-      { latitude: 10.658, longitude: 122.962 },
-      { latitude: 10.662, longitude: 122.962 },
-      { latitude: 10.662, longitude: 122.966 },
-      { latitude: 10.658, longitude: 122.966 },
-    ],
-    color: "rgba(0, 0, 255, 0.2)",
   },
 ];
 
@@ -209,8 +152,17 @@ const showEmergencyDetails = (emergency: {
 // Main Map component
 const MapScreen = () => {
   // State declarations
-  const [region, setRegion] = useState<LocationType>(initialRegion);
   const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [region, setRegion] = useState<LocationType>({
+    latitude: 10.6713,
+    longitude: 122.9511,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
+  const [reportLocation, setReportLocation] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
@@ -230,10 +182,6 @@ const MapScreen = () => {
     location: null,
     media: [],
   });
-  const [reportLocation, setReportLocation] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
   const [selectedTab, setSelectedTab] = useState<"form" | "media">("form");
   // Get theme colors based on color scheme
   const colorScheme = useColorScheme();
@@ -326,7 +274,7 @@ const MapScreen = () => {
     } finally {
       setIsLoading(false); // Ensure loading is always stopped
     }
-  }, [mapRef, setRegion, setUserLocation]); // Keep dependencies minimal
+  }, [mapRef, setUserLocation]); // Keep dependencies minimal
   // Initialize on component mount
   useEffect(() => {
     getUserLocation();

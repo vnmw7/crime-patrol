@@ -18,17 +18,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { submitReport } from "../../lib/appwrite";
+import * as Location from "expo-location";
+import { submitNormalizedReport } from "../../lib/appwrite";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
 import { Asset } from "expo-asset";
-import { Storage, ID } from "appwrite"; // Changed: Removed InputFile
+import { Storage, ID } from "appwrite";
 import {
   client as appwriteClient,
   APPWRITE_BUCKET_ID,
-  createInputFileFromUrl, // Corrected import
-} from "../../lib/appwrite"; // Import appwrite client and bucket ID
+  createInputFileFromUrl,
+} from "../../lib/appwrite";
 
 // Import theme
 import { themeColors } from "../theme/colors";
@@ -53,31 +54,36 @@ const ReportScreen = () => {
 
   // Section navigation state
   const [currentSection, setCurrentSection] = useState(0); // State for report form data - comprehensive crime report fields  const [formData, setFormData] = useState<FormData>({
-
   const [formData, setFormData] = useState<FormData>({
     // Incident Information
-    Incident_Type: "",
-    Incident_Date: new Date(),
-    Incident_Time: new Date(),
-    Is_In_Progress: false,
-    Description: "",
+    incident_type: "",
+    incident_date: new Date(),
+    incident_time: new Date(),
+    is_in_progress: false,
+    description: "",
 
-    // Location Information
-    Location: MOCK_LOCATION,
-    Location_Type: "",
-    Location_Details: "",
+    location: {
+      address: MOCK_LOCATION,
+      type: "",
+      details: "",
+      latitude: undefined,
+      longitude: undefined,
+    },
 
-    // People Involved
-    Reporter_Name: "",
-    Reporter_Phone: "",
-    Reporter_Email: "",
-    Is_Victim_Reporter: true,
-    Victim_Name: "",
-    Victim_Contact: "",
-    Suspect_Description: "",
-    Suspect_Vehicle: "",
-    Witness_Info: "",
-    Media_Attachments: [],
+    reporter_info: {
+      name: "",
+      phone: "",
+      email: "",
+    },
+    is_victim_reporter: true,
+
+    // People Involved (arrays to support multiple entries)
+    victims: [],
+    suspects: [],
+    witnesses: [],
+
+    // Media attachments
+    media: [],
   });
 
   // UI state
@@ -105,6 +111,7 @@ const ReportScreen = () => {
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
       const audioRecordingStatus = await Audio.requestPermissionsAsync();
+      const locationStatus = await Location.requestForegroundPermissionsAsync(); // Added location permission
 
       if (cameraRollStatus.status !== "granted") {
         Alert.alert(
@@ -124,12 +131,69 @@ const ReportScreen = () => {
           "Sorry, we need microphone permissions for audio recording!",
         );
       }
+      if (locationStatus.status !== "granted") {
+        // Added check for location permission
+        Alert.alert(
+          "Permissions Denied",
+          "Permission to access location was denied. You can enable it in settings.",
+        );
+      }
     })();
   }, []);
 
+  const fetchAndSetCurrentLocation = async () => {
+    triggerHaptic();
+    let { status } = await Location.requestForegroundPermissionsAsync(); // Re-check/request if needed
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Denied",
+        "Permission to access location was denied. Please enable it in settings to use this feature.",
+      );
+      return;
+    }
+
+    try {
+      // Temporarily use setIsSubmitting to indicate activity, though this might be better handled by a dedicated loading state for location fetching
+      setIsSubmitting(true);
+      Alert.alert(
+        "Fetching Location",
+        "Getting your current GPS coordinates...",
+      );
+      let locationData = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High, // Request high accuracy
+      });
+      updateFormData("location", {
+        ...formData.location,
+        latitude: locationData.coords.latitude,
+        longitude: locationData.coords.longitude,
+      });
+      // Optionally, you could try to reverse geocode here to also update the address field
+      // For now, just alerting that coordinates are set.
+      Alert.alert(
+        "Location Updated",
+        `Latitude: ${locationData.coords.latitude.toFixed(5)}, Longitude: ${locationData.coords.longitude.toFixed(5)} has been set. You may still want to verify the street address.`,
+      );
+    } catch (error: any) {
+      console.error("Error getting location", error);
+      let errorMessage = "Failed to get current location.";
+      if (error.message.includes("Location services are disabled")) {
+        errorMessage =
+          "Location services are disabled. Please enable them in your device settings.";
+      } else if (
+        error.message.includes("Permission to access location was denied")
+      ) {
+        errorMessage =
+          "Permission to access location was denied. Please enable it in app settings.";
+      }
+      Alert.alert("Location Error", errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const pickImageFromGallery = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images" as MediaType], // Use string literal cast to MediaType
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
@@ -142,10 +206,9 @@ const ReportScreen = () => {
       );
     }
   };
-
   const takePhotoWithCamera = async () => {
     let result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images" as MediaType], // Use string literal cast to MediaType
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
@@ -158,10 +221,9 @@ const ReportScreen = () => {
       );
     }
   };
-
   const pickVideoFromGallery = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["videos" as MediaType], // Use string literal cast to MediaType
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
       allowsEditing: true,
       aspect: [16, 9],
       quality: 1,
@@ -174,10 +236,9 @@ const ReportScreen = () => {
       );
     }
   };
-
   const recordVideoWithCamera = async () => {
     let result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["videos" as MediaType], // Use string literal cast to MediaType
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
       allowsEditing: true,
       aspect: [16, 9],
       quality: 1,
@@ -342,19 +403,20 @@ const ReportScreen = () => {
         "Upload Successful",
         `${fileName} has been uploaded successfully! File ID: ${response.$id}`,
       );
-
       const newAttachment = {
-        url: asset.localUri, // Changed from uri to url
-        type: actualFileType,
-        name: fileName,
-        appwrite_file_id: response.$id,
+        file_id: response.$id,
+        media_type: actualFileType.startsWith("image")
+          ? "photo"
+          : actualFileType.startsWith("video")
+            ? "video"
+            : "audio",
+        file_name_original: fileName,
+        display_order: formData.media?.length || 0,
+        url: asset.localUri, // For preview purposes
         appwrite_bucket_id: APPWRITE_BUCKET_ID,
       };
 
-      updateFormData("Media_Attachments", [
-        ...(formData.Media_Attachments || []),
-        newAttachment,
-      ]);
+      updateFormData("media", [...(formData.media || []), newAttachment]);
     } catch (error: any) {
       console.error("Upload error:", error);
       Alert.alert(
@@ -383,10 +445,8 @@ const ReportScreen = () => {
           duration: 100,
           useNativeDriver: true,
         }),
-      ]).start();
-
-      // If this is the emergency section and incident is in progress
-      if (currentSection === 0 && formData.Is_In_Progress) {
+      ]).start(); // If this is the emergency section and incident is in progress
+      if (currentSection === 0 && formData.is_in_progress) {
         Alert.alert(
           "Emergency Alert",
           "If this incident is happening now and requires immediate attention, please call emergency services.",
@@ -438,43 +498,44 @@ const ReportScreen = () => {
       scrollViewRef.current.scrollTo({ y: 0, animated: true });
     }
   };
-
-  // Generalized validation function
-  const validateSection = (
-    rules: { field: keyof FormData; message: string }[],
-  ) => {
-    for (const rule of rules) {
-      if (!formData[rule.field]) {
-        Alert.alert("Missing Information", rule.message);
-        return false;
-      }
+  // Updated validation functions for new structure
+  const validateIncidentSection = () => {
+    if (!formData.incident_type) {
+      Alert.alert("Missing Information", "Please select an incident type");
+      return false;
+    }
+    if (!formData.description) {
+      Alert.alert(
+        "Missing Information",
+        "Please provide a description of what happened",
+      );
+      return false;
     }
     return true;
   };
 
-  const validateIncidentSection = () =>
-    validateSection([
-      { field: "Incident_Type", message: "Please select an incident type" },
-      {
-        field: "Description",
-        message: "Please provide a description of what happened",
-      },
-    ]);
+  const validateLocationSection = () => {
+    if (!formData.location?.address) {
+      Alert.alert("Missing Information", "Please enter a location");
+      return false;
+    }
+    return true;
+  };
 
-  const validateLocationSection = () =>
-    validateSection([
-      { field: "Location", message: "Please enter a location" },
-      { field: "Location_Type", message: "Please select a location type" },
-    ]);
-
-  const validatePeopleSection = () =>
-    validateSection([
-      { field: "Reporter_Name", message: "Please enter your name" },
-      {
-        field: "Reporter_Phone",
-        message: "Please enter your phone number for follow-up",
-      },
-    ]);
+  const validatePeopleSection = () => {
+    if (!formData.reporter_info?.name) {
+      Alert.alert("Missing Information", "Please enter your name");
+      return false;
+    }
+    if (!formData.reporter_info?.phone) {
+      Alert.alert(
+        "Missing Information",
+        "Please enter your phone number for follow-up",
+      );
+      return false;
+    }
+    return true;
+  };
 
   const validateCurrentSection = () => {
     switch (currentSection) {
@@ -564,22 +625,21 @@ const ReportScreen = () => {
     ]).start();
 
     setIsSubmitting(true);
-
     console.log("Submitting report:", formData);
-    await submitReport(formData) // Pass formData directly
-      .then(() => {
-        setIsSubmitting(false);
-        Alert.alert(
-          "Report Submitted",
-          "Your crime report has been successfully submitted. A case number will be sent to your phone.",
-          [{ text: "OK", onPress: () => router.back() }],
-        );
-      })
-      .catch((error) => {
-        console.error("Error submitting report:", error);
-        Alert.alert("Error", "There was an error submitting your report.");
-        setIsSubmitting(false);
-      });
+    try {
+      // Use normalized report submission
+      await submitNormalizedReport(formData);
+      setIsSubmitting(false);
+      Alert.alert(
+        "Report Submitted",
+        "Your crime report has been successfully submitted. A case number will be sent to your phone.",
+        [{ text: "OK", onPress: () => router.back() }],
+      );
+    } catch (error) {
+      console.error("Error submitting report:", error);
+      Alert.alert("Error", "There was an error submitting your report.");
+      setIsSubmitting(false);
+    }
   };
 
   // Calculate progress based on current section
@@ -671,6 +731,7 @@ const ReportScreen = () => {
             {...commonProps}
             triggerHaptic={triggerHaptic}
             selectorScale={selectorScale}
+            onGetGPS={fetchAndSetCurrentLocation} // Passed prop
           />
         );
       case 2:

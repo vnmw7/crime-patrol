@@ -57,11 +57,10 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
 
     setShowTypeSelectorModal(true);
   };
-
   // Select incident type
   const selectIncidentType = (type: string) => {
     triggerHaptic();
-    updateFormData("Incident_Type", type);
+    updateFormData("incident_type", type);
     setShowTypeSelectorModal(false);
   };
 
@@ -88,14 +87,15 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
             onPress={toggleTypeSelector}
             activeOpacity={0.8}
           >
+            <Text> </Text>
             <Text
               style={[
-                formData.Incident_Type
+                formData.incident_type
                   ? { color: theme.text }
                   : { color: theme.textSecondary },
               ]}
             >
-              {formData.Incident_Type || "Select incident type"}
+              {formData.incident_type || "Select incident type"}
             </Text>
             <Ionicons
               name="chevron-down"
@@ -139,7 +139,7 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
                   <Text style={[styles.typeOptionText, { color: theme.text }]}>
                     {type}
                   </Text>
-                  {formData.Incident_Type === type && (
+                  {formData.incident_type === type && (
                     <Ionicons
                       name="checkmark"
                       size={20}
@@ -171,8 +171,9 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
             onPress={() => setShowDatePicker(true)}
           >
             <Ionicons name="calendar" size={20} color={theme.primary} />
+            <Text> </Text>
             <Text style={{ color: theme.text, marginLeft: 8 }}>
-              {formData.Incident_Date.toLocaleDateString()}
+              {formData.incident_date.toLocaleDateString()}
             </Text>
           </TouchableOpacity>
 
@@ -188,8 +189,9 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
             onPress={() => setShowTimePicker(true)}
           >
             <Ionicons name="time" size={20} color={theme.primary} />
+            <Text> </Text>
             <Text style={{ color: theme.text, marginLeft: 8 }}>
-              {formData.Incident_Time.toLocaleTimeString([], {
+              {formData.incident_time.toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
@@ -200,13 +202,13 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
         {/* Date Picker */}
         {showDatePicker && (
           <DateTimePicker
-            value={formData.Incident_Date}
+            value={formData.incident_date}
             mode="date"
             display="default"
             onChange={(event, selectedDate) => {
               setShowDatePicker(false);
               if (selectedDate) {
-                updateFormData("Incident_Date", selectedDate);
+                updateFormData("incident_date", selectedDate);
               }
             }}
           />
@@ -215,13 +217,13 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
         {/* Time Picker */}
         {showTimePicker && (
           <DateTimePicker
-            value={formData.Incident_Time}
+            value={formData.incident_time}
             mode="time"
             display="default"
             onChange={(event, selectedTime) => {
               setShowTimePicker(false);
               if (selectedTime) {
-                updateFormData("Incident_Time", selectedTime);
+                updateFormData("incident_time", selectedTime);
               }
             }}
           />
@@ -235,10 +237,11 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
         </Text>
         <View style={styles.toggleContainer}>
           <Text style={[{ color: theme.text }]}>No</Text>
+          <Text> </Text>
           <Switch
-            value={formData.Is_In_Progress}
+            value={formData.is_in_progress}
             onValueChange={(value) => {
-              updateFormData("Is_In_Progress", value);
+              updateFormData("is_in_progress", value);
               if (value) {
                 // Show emergency alert when toggled on
                 Alert.alert(
@@ -282,8 +285,8 @@ const IncidentSection: React.FC<IncidentSectionProps> = ({
           placeholderTextColor={theme.textSecondary}
           multiline
           textAlignVertical="top"
-          value={formData.Description}
-          onChangeText={(text) => updateFormData("Description", text)}
+          value={formData.description}
+          onChangeText={(text) => updateFormData("description", text)}
         />
       </View>
     </View>

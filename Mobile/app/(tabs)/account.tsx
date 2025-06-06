@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { getCurrentUser, signOut } from "../../lib/appwrite";
+import { signOut } from "../../lib/appwrite";
 
 // Initialize Appwrite client
 const themeColors = {
