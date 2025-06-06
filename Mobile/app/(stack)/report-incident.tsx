@@ -85,9 +85,9 @@ const ReportScreen = () => {
     // Media attachments
     media: [],
   });
-
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingGPS, setIsLoadingGPS] = useState(false);
   // const [audio, setAudio] = useState<string | null>(null); // Removed, using formData.Media_Attachments
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   // const [sound, setSound] = useState<Audio.Sound | null>(null); // Commented out as loadAndPlaySound is not currently used
@@ -140,7 +140,6 @@ const ReportScreen = () => {
       }
     })();
   }, []);
-
   const fetchAndSetCurrentLocation = async () => {
     triggerHaptic();
     let { status } = await Location.requestForegroundPermissionsAsync(); // Re-check/request if needed
@@ -153,8 +152,8 @@ const ReportScreen = () => {
     }
 
     try {
-      // Temporarily use setIsSubmitting to indicate activity, though this might be better handled by a dedicated loading state for location fetching
-      setIsSubmitting(true);
+      // Use dedicated GPS loading state
+      setIsLoadingGPS(true);
       Alert.alert(
         "Fetching Location",
         "Getting your current GPS coordinates...",
@@ -187,7 +186,7 @@ const ReportScreen = () => {
       }
       Alert.alert("Location Error", errorMessage);
     } finally {
-      setIsSubmitting(false);
+      setIsLoadingGPS(false);
     }
   };
 
@@ -732,6 +731,7 @@ const ReportScreen = () => {
             triggerHaptic={triggerHaptic}
             selectorScale={selectorScale}
             onGetGPS={fetchAndSetCurrentLocation} // Passed prop
+            isLoadingGPS={isLoadingGPS}
           />
         );
       case 2:
