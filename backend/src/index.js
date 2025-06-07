@@ -3,7 +3,10 @@ const express = require("express");
 const app = express();
 const port = process.env.PORT || 3000;
 
-const { setupNormalizedCollections } = require("./services/appwriteService.js");
+const {
+  setupNormalizedCollections,
+  setupAppwriteBuckets,
+} = require("./services/appwriteService.js");
 
 // Middleware
 app.use(express.json());
@@ -17,12 +20,13 @@ async function initializeAppwrite() {
   try {
     console.log("Initializing Appwrite normalized collections setup...");
     await setupNormalizedCollections();
+    await setupAppwriteBuckets();
     console.log(
       "Appwrite normalized collections setup completed successfully."
     );
   } catch (error) {
     console.error("Error during Appwrite initialization:", error);
-    // Don't exit the process, just log the error and continue
+
     console.log("Server will continue running despite database setup errors.");
   }
 }

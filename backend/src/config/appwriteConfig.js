@@ -50,6 +50,13 @@ const NORMALIZED_COLLECTIONS = {
   },
 };
 
+const STORAGE_BUCKETS = {
+  CRIME_PATROL: {
+    id: process.env.APPWRITE_CRIME_PATROL_BUCKET_ID || "crime_patrol",
+    name: process.env.APPWRITE_CRIME_PATROL_BUCKET_NAME || "Crime Patrol",
+  },
+};
+
 module.exports = {
   APPWRITE_ENDPOINT,
   APPWRITE_PROJECT_ID,
@@ -57,4 +64,5 @@ module.exports = {
   DATABASE_ID: APPWRITE_DATABASE_ID,
   APPWRITE_API_KEY: process.env.APPWRITE_API_KEY,
   NORMALIZED_COLLECTIONS,
+  STORAGE_BUCKETS,
 };

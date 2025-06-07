@@ -1,10 +1,18 @@
-const { Client, Databases, ID } = require("node-appwrite");
+const {
+  Client,
+  Databases,
+  Storage,
+  ID,
+  Permission,
+  Role,
+} = require("node-appwrite");
 const {
   APPWRITE_ENDPOINT,
   APPWRITE_PROJECT_ID,
   APPWRITE_API_KEY,
   DATABASE_ID,
   NORMALIZED_COLLECTIONS,
+  STORAGE_BUCKETS,
 } = require("../config/appwriteConfig.js");
 
 const client = new Client()
@@ -13,6 +21,7 @@ const client = new Client()
   .setKey(APPWRITE_API_KEY);
 
 const databases = new Databases(client);
+const storage = new Storage(client);
 
 // Helper function to add delay between operations
 function delay(ms) {
@@ -213,11 +222,20 @@ async function createCollectionIfNotExists(
     }
   }
   console.log(`Creating new collection: ${collectionName}`);
+
+  const collectionPermissions = [
+    Permission.create(Role.any()),
+    Permission.read(Role.any()),
+    Permission.update(Role.any()),
+    Permission.delete(Role.any()),
+  ];
+
   const collection = await retryWithBackoff(async () => {
     return await databases.createCollection(
       databaseId,
       collectionId,
-      collectionName
+      collectionName,
+      collectionPermissions
     );
   });
   console.log(
@@ -324,6 +342,147 @@ async function isCollectionSetupComplete(
     return isComplete;
   } catch (error) {
     return false;
+  }
+}
+
+// Helper function to create bucket only if it doesn't exist
+async function createBucketIfNotExists(
+  bucketId,
+  bucketName,
+  permissions = null
+) {
+  try {
+    // First, try to get the bucket to check if it exists
+    console.log(`🔍 Checking if bucket '${bucketName}' exists...`);
+    const existingBucket = await retryWithBackoff(async () => {
+      return await storage.getBucket(bucketId);
+    });
+
+    console.log(
+      `✅ Bucket '${bucketName}' already exists with ID: ${existingBucket.$id}`
+    );
+    return existingBucket;
+  } catch (error) {
+    // If bucket doesn't exist (404 error), create it
+    if (error.code === 404 || error.type === "storage_bucket_not_found") {
+      try {
+        console.log(`📁 Creating bucket '${bucketName}'...`);
+        const bucket = await retryWithBackoff(async () => {
+          return await storage.createBucket(bucketId, bucketName, permissions);
+        });
+        console.log(
+          `✨ Bucket '${bucketName}' created successfully with ID: ${bucket.$id}`
+        );
+        // Add delay after bucket creation
+        await delay(1000);
+        return bucket;
+      } catch (createError) {
+        console.error(
+          `Error creating bucket '${bucketName}': ${createError.message}`
+        );
+        throw createError;
+      }
+    } else {
+      // Some other error occurred while checking bucket existence
+      console.error(`Error checking bucket '${bucketName}': ${error.message}`);
+      throw error;
+    }
+  }
+}
+
+// Setup Appwrite storage buckets for report media
+async function setupAppwriteBuckets() {
+  try {
+    console.log("=== Setting up Appwrite Storage Bucket ===");
+    console.log(
+      "Creating single bucket for all media types (images, videos, audios)..."
+    );
+
+    // Default permissions for buckets
+    const bucketPermissions = [
+      Permission.create(Role.any()),
+      Permission.read(Role.any()),
+      Permission.update(Role.any()),
+      Permission.delete(Role.any()),
+    ];
+
+    // Create the single Crime Patrol bucket
+    console.log("\n🔄 Setting up Crime Patrol Bucket...");
+    await createBucketIfNotExists(
+      STORAGE_BUCKETS.CRIME_PATROL.id,
+      STORAGE_BUCKETS.CRIME_PATROL.name,
+      bucketPermissions
+    );
+
+    console.log("\n🎉 === Storage bucket setup completed successfully! === 🎉");
+    console.log("✅ Bucket created with retry logic:");
+    console.log(
+      `   📁 ${STORAGE_BUCKETS.CRIME_PATROL.name} (${STORAGE_BUCKETS.CRIME_PATROL.id}) - For all media files (images, videos, audios)`
+    );
+    console.log(
+      "\n🔄 Single bucket setup completed - optimized for free plan limitations"
+    );
+  } catch (error) {
+    console.error("\n❌ Error setting up storage buckets:");
+
+    // Check for permission errors specifically
+    if (
+      error.code === 401 ||
+      error.type === "general_unauthorized_scope" ||
+      error.message.includes("missing scope")
+    ) {
+      console.error("🔑 API Key Permission Issue:");
+      console.error(
+        "   Your Appwrite API key doesn't have storage bucket permissions."
+      );
+      console.error("   To fix this:");
+      console.error("   1. Go to your Appwrite Console");
+      console.error("   2. Navigate to Settings > API Keys");
+      console.error("   3. Edit your API key");
+      console.error("   4. Add these scopes:");
+      console.error("      - buckets.read");
+      console.error("      - buckets.write");
+      console.error("      - files.read");
+      console.error("      - files.write");
+      console.error("   5. Save the changes");
+      console.error(
+        "\n   ⚠️  Storage buckets will be unavailable until permissions are updated."
+      );
+      console.error("   📋 Database collections will work normally.");
+      return; // Don't throw error, just warn and continue
+    }
+
+    // Better error handling for timeout issues
+    if (
+      error.code === 503 ||
+      error.message.includes("timeout") ||
+      error.message.includes("503")
+    ) {
+      console.error(
+        "🔄 This appears to be a timeout error. The Appwrite server may be slow or overloaded."
+      );
+      console.error("💡 Suggestions:");
+      console.error("   - Wait a few minutes and restart the server");
+      console.error("   - Check your internet connection");
+      console.error("   - Verify Appwrite server status");
+      console.error(
+        "   - The retry logic should help, but server may need more time"
+      );
+    }
+
+    if (error.response) {
+      console.error("Status:", error.response.status);
+      console.error("Message:", error.response.data?.message);
+      console.error("Type:", error.response.data?.type);
+      console.error("Code:", error.response.data?.code);
+    } else {
+      console.error("Error message:", error.message || error);
+      console.error("Error code:", error.code);
+      if (error.code === 503) {
+        console.error("Response body:", error.response);
+      }
+    }
+    throw error; // Re-throw the error
   }
 }
 
@@ -1241,7 +1400,10 @@ async function setupNormalizedCollections() {
 
 module.exports = {
   setupNormalizedCollections,
+  setupAppwriteBuckets,
   recreateCollection,
   databases,
+  storage,
   NORMALIZED_COLLECTIONS,
+  STORAGE_BUCKETS,
 };
