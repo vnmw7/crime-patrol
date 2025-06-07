@@ -4,8 +4,8 @@ export default ({ config }) => ({
   ...config, // Spread the existing static config
   expo: {
     ...config.expo, // Spread the existing expo config
-    name: "Mobile",
-    slug: "Mobile",
+    name: "Crime Patrol",
+    slug: "crime-patrol",
     version: "0.0.1",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
@@ -14,7 +14,7 @@ export default ({ config }) => ({
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.crimepatrol.mobile",
+      bundleIdentifier: "com.lccbbsit.crimepatrol",
       config: {
         googleMapsApiKey:
           process.env.GOOGLE_MAPS_IOS_API_KEY || "YOUR_IOS_API_KEY_HERE",
@@ -33,7 +33,7 @@ export default ({ config }) => ({
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#ffffff",
       },
-      package: "com.anonymous.Mobile",
+      package: "com.lccbbsit.crimepatrol",
       config: {
         googleMaps: {
           apiKey:
@@ -98,7 +98,8 @@ export default ({ config }) => ({
       APPWRITE_PROJECT_ID: process.env.APPWRITE_PROJECT_ID,
       APPWRITE_DATABASE_ID: process.env.APPWRITE_DATABASE_ID,
       APPWRITE_ENDPOINT: process.env.APPWRITE_ENDPOINT,
-      APPWRITE_BUCKET_ID: process.env.APPWRITE_BUCKET_ID,
+      APPWRITE_CRIME_PATROL_BUCKET_ID:
+        process.env.APPWRITE_CRIME_PATROL_BUCKET_ID,
       // Collection IDs for normalized database structure
       APPWRITE_REPORTS_COLLECTION_ID:
         process.env.APPWRITE_REPORTS_COLLECTION_ID,
@@ -120,7 +121,9 @@ export default ({ config }) => ({
       GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY,
       HUGGINGFACE_API_KEY: process.env.HUGGINGFACE_API_KEY,
       OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
-      // Add other environment variables you need here
+      CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+      CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+      CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
     },
   },
 });

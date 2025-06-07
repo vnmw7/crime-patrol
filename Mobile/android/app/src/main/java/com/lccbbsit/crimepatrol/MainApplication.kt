@@ -1,4 +1,4 @@
-package com.anonymous.Mobile
+package com.lccbbsit.crimepatrol
 
 import android.app.Application
 import android.content.res.Configuration

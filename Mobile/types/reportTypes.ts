@@ -35,12 +35,18 @@ export interface WitnessInfo {
 
 // Media attachment interface for normalized structure
 export interface MediaInfo {
-  file_id: string;
+  file_id: string; // For Cloudinary, this will be the public_id
   media_type: "photo" | "audio" | "video";
   file_name_original: string;
   display_order: number;
   url?: string; // For preview purposes
-  appwrite_bucket_id?: string;
+  secure_url?: string; // Cloudinary secure URL
+  public_id?: string; // Cloudinary public ID
+  cloudinary_url?: string; // Cloudinary URL
+  appwrite_bucket_id?: string; // Legacy Appwrite field
+  isUploading?: boolean; // For UI loading state
+  file_size?: number; // File size in bytes
+  format?: string; // File format from Cloudinary
 }
 
 // Updated FormData interface to match normalized database structure

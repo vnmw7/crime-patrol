@@ -19,17 +19,16 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import * as Location from "expo-location";
-import { submitNormalizedReport, getCurrentUser } from "../../lib/appwrite";
+import {
+  submitNormalizedReport,
+  getCurrentUser,
+  APPWRITE_CRIME_PATROL_BUCKET_ID,
+} from "../../lib/appwrite";
+import { uploadToCloudinary } from "../../lib/cloudinary"; // Import Cloudinary upload function
+import { testAppwriteConnection } from "../../lib/testConnection"; // Add connection test
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
-import { Asset } from "expo-asset";
-import { Storage, ID } from "appwrite";
-import {
-  client as appwriteClient,
-  APPWRITE_BUCKET_ID,
-  createInputFileFromUrl,
-} from "../../lib/appwrite";
 
 // Import theme
 import { themeColors } from "../theme/colors";
@@ -84,13 +83,12 @@ const ReportScreen = () => {
 
     // Media attachments
     media: [],
-  });
-  // UI state
+  }); // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingGPS, setIsLoadingGPS] = useState(false);
-  // const [audio, setAudio] = useState<string | null>(null); // Removed, using formData.Media_Attachments
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  // const [sound, setSound] = useState<Audio.Sound | null>(null); // Commented out as loadAndPlaySound is not currently used
 
   // Animation values for interaction feedback
   const selectorScale = useRef(new Animated.Value(1)).current;
@@ -104,7 +102,6 @@ const ReportScreen = () => {
       [field]: value,
     }));
   };
-
   useEffect(() => {
     (async () => {
       const cameraRollStatus =
@@ -136,6 +133,16 @@ const ReportScreen = () => {
         Alert.alert(
           "Permissions Denied",
           "Permission to access location was denied. You can enable it in settings.",
+        );
+      }
+
+      // Test Appwrite connection
+      console.log("Testing Appwrite connection...");
+      const connectionResult = await testAppwriteConnection();
+      if (!connectionResult.success) {
+        console.error(
+          "Appwrite connection test failed:",
+          connectionResult.error,
         );
       }
     })();
@@ -211,19 +218,36 @@ const ReportScreen = () => {
       setIsLoadingGPS(false);
     }
   };
-
   const pickImageFromGallery = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.7, // Reduced for better performance
+      base64: false, // Don't include base64 data
     });
 
     if (!result.canceled && result.assets) {
+      // Optimistic UI update - show preview immediately
+      const tempAttachment = {
+        file_id: `temp_${Date.now()}`,
+        media_type: "photo" as const,
+        file_name_original:
+          result.assets[0].uri.split("/").pop() || "image.jpg",
+        display_order: formData.media?.length || 0,
+        url: result.assets[0].uri,
+        appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
+        isUploading: true, // Add loading state
+      };
+
+      // Add to media immediately for preview
+      updateFormData("media", [...(formData.media || []), tempAttachment]);
+
+      // Start upload in background
       await uploadMedia(
         result.assets[0].uri,
         result.assets[0].mimeType || "image/jpeg",
+        tempAttachment.file_id, // Pass temp ID to replace it
       );
     }
   };
@@ -232,13 +256,29 @@ const ReportScreen = () => {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.7, // Reduced for better performance
+      base64: false, // Don't include base64 data
     });
 
     if (!result.canceled && result.assets) {
+      // Optimistic UI update
+      const tempAttachment = {
+        file_id: `temp_${Date.now()}`,
+        media_type: "photo" as const,
+        file_name_original:
+          result.assets[0].uri.split("/").pop() || "photo.jpg",
+        display_order: formData.media?.length || 0,
+        url: result.assets[0].uri,
+        appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
+        isUploading: true,
+      };
+
+      updateFormData("media", [...(formData.media || []), tempAttachment]);
+
       await uploadMedia(
         result.assets[0].uri,
         result.assets[0].mimeType || "image/jpeg",
+        tempAttachment.file_id,
       );
     }
   };
@@ -247,13 +287,29 @@ const ReportScreen = () => {
       mediaTypes: ImagePicker.MediaTypeOptions.Videos,
       allowsEditing: true,
       aspect: [16, 9],
-      quality: 1,
+      quality: ImagePicker.UIImagePickerControllerQualityType.Medium, // Better for file size
+      videoMaxDuration: 60, // Limit to 60 seconds
     });
 
     if (!result.canceled && result.assets) {
+      // Optimistic UI update
+      const tempAttachment = {
+        file_id: `temp_${Date.now()}`,
+        media_type: "video" as const,
+        file_name_original:
+          result.assets[0].uri.split("/").pop() || "video.mp4",
+        display_order: formData.media?.length || 0,
+        url: result.assets[0].uri,
+        appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
+        isUploading: true,
+      };
+
+      updateFormData("media", [...(formData.media || []), tempAttachment]);
+
       await uploadMedia(
         result.assets[0].uri,
         result.assets[0].mimeType || "video/mp4",
+        tempAttachment.file_id,
       );
     }
   };
@@ -262,14 +318,32 @@ const ReportScreen = () => {
       mediaTypes: ImagePicker.MediaTypeOptions.Videos,
       allowsEditing: true,
       aspect: [16, 9],
-      quality: 1,
+      quality: ImagePicker.UIImagePickerControllerQualityType.Medium, // Better for file size
+      videoMaxDuration: 60, // Limit to 60 seconds
     });
 
     if (!result.canceled && result.assets) {
-      uploadMedia(result.assets[0].uri, result.assets[0].mimeType);
+      // Optimistic UI update
+      const tempAttachment = {
+        file_id: `temp_${Date.now()}`,
+        media_type: "video" as const,
+        file_name_original:
+          result.assets[0].uri.split("/").pop() || "video.mp4",
+        display_order: formData.media?.length || 0,
+        url: result.assets[0].uri,
+        appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
+        isUploading: true,
+      };
+
+      updateFormData("media", [...(formData.media || []), tempAttachment]);
+
+      uploadMedia(
+        result.assets[0].uri,
+        result.assets[0].mimeType,
+        tempAttachment.file_id,
+      );
     }
   };
-
   const pickAudioFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -282,9 +356,23 @@ const ReportScreen = () => {
         result.assets &&
         result.assets.length > 0
       ) {
+        // Optimistic UI update
+        const tempAttachment = {
+          file_id: `temp_${Date.now()}`,
+          media_type: "audio" as const,
+          file_name_original: result.assets[0].name || "audio.mp3",
+          display_order: formData.media?.length || 0,
+          url: result.assets[0].uri,
+          appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
+          isUploading: true,
+        };
+
+        updateFormData("media", [...(formData.media || []), tempAttachment]);
+
         await uploadMedia(
           result.assets[0].uri,
           result.assets[0].mimeType || "audio/mpeg",
+          tempAttachment.file_id,
         );
       }
     } catch (err: any) {
@@ -327,11 +415,20 @@ const ReportScreen = () => {
         allowsRecordingIOS: false,
       });
       if (uri) {
-        // setAudio(uri); // Removed
-        // setImage(null); // Removed
-        // setVideo(null); // Removed
-        // await loadAndPlaySound(uri); // Playback can be optional
-        await uploadMedia(uri, "audio/m4a"); // Adjust mime type if needed
+        // Optimistic UI update for recorded audio
+        const tempAttachment = {
+          file_id: `temp_${Date.now()}`,
+          media_type: "audio" as const,
+          file_name_original: `recording_${Date.now()}.m4a`,
+          display_order: formData.media?.length || 0,
+          url: uri,
+          appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
+          isUploading: true,
+        };
+
+        updateFormData("media", [...(formData.media || []), tempAttachment]);
+
+        await uploadMedia(uri, "audio/m4a", tempAttachment.file_id); // Adjust mime type if needed
       }
     } catch (err: any) {
       Alert.alert(
@@ -360,92 +457,177 @@ const ReportScreen = () => {
   //   }
   // }
 
-  // useEffect(() => { // Commented out as sound state is not currently used
-  //   return sound
+  // useEffect(() => { // Commented out as sound state is not currently used  //   return sound
   //     ? () => {
   //         sound.unloadAsync();
   //       }
   //     : undefined;
   // }, [sound]);
 
-  const uploadMedia = async (fileUri: string, fileType?: string) => {
+  const uploadMedia = async (
+    fileUri: string,
+    fileType?: string,
+    tempId?: string,
+  ) => {
     if (!fileUri) {
       Alert.alert("Error", "No file URI provided for upload.");
       return;
     }
-    setIsSubmitting(true); // Indicate loading state
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
     try {
-      const asset = Asset.fromURI(fileUri);
-      await asset.downloadAsync();
+      // Extract filename from URI or generate one
+      const fileName = fileUri.split("/").pop() || `upload_${Date.now()}`;
+      const actualFileType = fileType || "application/octet-stream";
 
-      if (!asset.localUri) {
-        Alert.alert("Error", "Failed to get local URI for upload.");
-        setIsSubmitting(false);
-        return;
+      // Determine media type for Cloudinary
+      let mediaType = "photo";
+      if (actualFileType.startsWith("image")) {
+        mediaType = "photo";
+      } else if (actualFileType.startsWith("video")) {
+        mediaType = "video";
+      } else if (actualFileType.startsWith("audio")) {
+        mediaType = "audio";
       }
 
-      const actualFileType =
-        fileType || asset.type || "application/octet-stream";
-      const fileName =
-        asset.name || `upload.${asset.localUri.split(".").pop()}`;
-
-      // Appwrite upload logic
-      if (!APPWRITE_BUCKET_ID) {
-        Alert.alert(
-          "Error",
-          "Appwrite Bucket ID is not configured. Cannot upload file.",
-        );
-        console.error(
-          "Appwrite Bucket ID is missing in appwrite.ts or environment variables.",
-        );
-        setIsSubmitting(false);
-        return;
-      }
-      const storage = new Storage(appwriteClient);
-
-      Alert.alert("Uploading...", `Uploading ${fileName}...`);
-
-      // console.log("Verifying InputFile import:", InputFile); // Commented out or removed
-
-      const fileToUpload = await createInputFileFromUrl(
-        asset.localUri,
+      console.log(
+        "Uploading to Cloudinary:",
         fileName,
         actualFileType,
-      ); // Corrected function call
-
-      const response = await storage.createFile(
-        APPWRITE_BUCKET_ID,
-        ID.unique(),
-        fileToUpload,
+        mediaType,
       );
 
-      console.log("Appwrite upload response:", response);
-      Alert.alert(
-        "Upload Successful",
-        `${fileName} has been uploaded successfully! File ID: ${response.$id}`,
-      );
+      // Show upload progress alert
+      Alert.alert("Uploading", `Uploading ${fileName}...`);
+
+      // Add retry logic for network issues
+      let uploadResponse;
+      let attempts = 0;
+      const maxAttempts = 3;
+
+      while (attempts < maxAttempts) {
+        try {
+          attempts++;
+          console.log(`Cloudinary upload attempt ${attempts}/${maxAttempts}`);
+
+          // Upload to Cloudinary with progress tracking
+          uploadResponse = await uploadToCloudinary(
+            fileUri,
+            fileName,
+            mediaType,
+            (progress: number) => {
+              console.log("Upload progress:", progress);
+              setUploadProgress(Math.min(100, Math.max(0, progress)));
+            },
+          );
+
+          // If upload succeeds, break out of retry loop
+          console.log("Cloudinary upload response:", uploadResponse);
+          break;
+        } catch (retryError: any) {
+          console.log(`Upload attempt ${attempts} failed:`, retryError.message);
+
+          if (attempts >= maxAttempts) {
+            // If this was the last attempt, throw the error to be caught by outer catch
+            throw retryError;
+          }
+
+          // Wait before retrying (exponential backoff)
+          const delay = Math.min(1000 * Math.pow(2, attempts - 1), 5000);
+          console.log(`Retrying in ${delay}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+
+      // Ensure uploadResponse is defined
+      if (!uploadResponse) {
+        throw new Error("Upload failed after all retry attempts");
+      }
+
+      // Create media attachment object with Cloudinary data
       const newAttachment = {
-        file_id: response.$id,
-        media_type: actualFileType.startsWith("image")
-          ? "photo"
-          : actualFileType.startsWith("video")
-            ? "video"
-            : "audio",
+        file_id: uploadResponse.public_id, // Use Cloudinary public_id as file_id
+        media_type: mediaType as "photo" | "video" | "audio",
         file_name_original: fileName,
         display_order: formData.media?.length || 0,
-        url: asset.localUri, // For preview purposes
-        appwrite_bucket_id: APPWRITE_BUCKET_ID,
+        url: fileUri, // Keep local URI for preview
+        secure_url: uploadResponse.secure_url, // Cloudinary secure URL
+        public_id: uploadResponse.public_id, // Cloudinary public ID
+        cloudinary_url: uploadResponse.url, // Cloudinary URL
+        file_size: uploadResponse.bytes, // File size from Cloudinary
+        format: uploadResponse.format, // File format from Cloudinary
+        isUploading: false, // Upload complete
       };
 
-      updateFormData("media", [...(formData.media || []), newAttachment]);
-    } catch (error: any) {
-      console.error("Upload error:", error);
+      // If we have a temp ID, replace the temporary entry, otherwise add new
+      if (tempId) {
+        const updatedMedia = (formData.media || []).map((item) =>
+          item.file_id === tempId ? newAttachment : item,
+        );
+        updateFormData("media", updatedMedia);
+      } else {
+        updateFormData("media", [...(formData.media || []), newAttachment]);
+      }
+
       Alert.alert(
-        "Error",
-        "Upload failed: " + (error.message || "Unknown error"),
+        "Upload Successful",
+        `${fileName} has been uploaded successfully to Cloudinary!`,
       );
+    } catch (error: any) {
+      console.error("Cloudinary upload error:", error);
+
+      // If we have a temp ID, remove the temporary entry on error
+      if (tempId) {
+        const updatedMedia = (formData.media || []).filter(
+          (item) => item.file_id !== tempId,
+        );
+        updateFormData("media", updatedMedia);
+      }
+
+      let errorMessage = "Upload failed: ";
+
+      if (
+        error.message?.includes("File size too large") ||
+        error.message?.includes("413")
+      ) {
+        errorMessage += "File is too large. Please select a smaller file.";
+      } else if (
+        error.message?.includes("Invalid file type") ||
+        error.message?.includes("400")
+      ) {
+        errorMessage += "File type not supported.";
+      } else if (
+        error.message?.includes("Network request failed") ||
+        error.message?.includes("Network") ||
+        error.message?.includes("Failed to fetch")
+      ) {
+        errorMessage +=
+          "Network connection failed. Please check your internet connection and try uploading again. If the problem persists, try uploading a smaller file.";
+      } else if (error.message?.includes("fetch")) {
+        errorMessage +=
+          "Failed to read file. Please try selecting the file again.";
+      } else if (
+        error.message?.includes("unauthorized") ||
+        error.message?.includes("401")
+      ) {
+        errorMessage +=
+          "Authentication failed. Please check Cloudinary configuration.";
+      } else if (
+        error.message?.includes("forbidden") ||
+        error.message?.includes("403")
+      ) {
+        errorMessage +=
+          "Permission denied. Please check Cloudinary permissions.";
+      } else {
+        errorMessage += error.message || "Unknown error occurred";
+      }
+
+      Alert.alert("Upload Error", errorMessage);
     } finally {
-      setIsSubmitting(false); // Reset loading state
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -768,6 +950,8 @@ const ReportScreen = () => {
             mediaButtonsScale={mediaButtonsScale}
             handleAttachMedia={handleAttachMedia}
             recording={!!recording} // Pass recording state (as boolean)
+            isUploading={isUploading}
+            uploadProgress={uploadProgress}
           />
         );
       case 4:

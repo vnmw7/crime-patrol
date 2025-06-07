@@ -88,9 +88,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.anonymous.Mobile'
+    namespace 'com.lccbbsit.crimepatrol'
     defaultConfig {
-        applicationId 'com.anonymous.Mobile'
+        applicationId 'com.lccbbsit.crimepatrol'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

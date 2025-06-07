@@ -1,4 +1,4 @@
-package com.anonymous.Mobile
+package com.lccbbsit.crimepatrol
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

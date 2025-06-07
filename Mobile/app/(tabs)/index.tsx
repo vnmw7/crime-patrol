@@ -19,7 +19,11 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { getCurrentUser, getCurrentSession } from "../../lib/appwrite";
+import {
+  getCurrentUser,
+  getCurrentSession,
+  pingAppwrite,
+} from "../../lib/appwrite";
 import { usePostHog } from "posthog-react-native";
 
 // Mock user state - in a real app, this would come from authentication
@@ -58,6 +62,8 @@ const themeColors = {
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const [user, setUser] = useState(mockUser);
+  const [isPinging, setIsPinging] = useState(false);
+  const [pingResult, setPingResult] = useState<any>(null);
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
@@ -102,7 +108,6 @@ const HomeScreen = () => {
     console.log("PANIC button pressed - sending location");
     // Show confirmation alert
   };
-
   // Function to toggle user login status (for demo purposes)
   const toggleLogin = () => {
     triggerHaptic();
@@ -110,6 +115,41 @@ const HomeScreen = () => {
       ...user,
       isLoggedIn: !user.isLoggedIn,
     });
+  };
+
+  // Function to ping Appwrite server
+  const handlePingAppwrite = async () => {
+    setIsPinging(true);
+    setPingResult(null);
+    triggerHaptic();
+
+    try {
+      const result = await pingAppwrite();
+      setPingResult(result);
+
+      if (result.success) {
+        posthog.capture("Appwrite Ping Success", {
+          endpoint: result.endpoint,
+          projectId: result.projectId,
+        });
+      } else {
+        posthog.capture("Appwrite Ping Failed", {
+          error: result.message,
+        });
+      }
+    } catch (error) {
+      console.error("Ping error:", error);
+      setPingResult({
+        success: false,
+        message: `Unexpected error: ${error}`,
+        timestamp: new Date().toISOString(),
+      });
+      posthog.capture("Appwrite Ping Error", {
+        error: String(error),
+      });
+    } finally {
+      setIsPinging(false);
+    }
   };
 
   // Function to navigate to the report screen with animation
@@ -132,7 +172,6 @@ const HomeScreen = () => {
       router.push({ pathname: "/report-incident" });
     });
   };
-
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -155,8 +194,41 @@ const HomeScreen = () => {
       }
     };
 
+    // Initial ping to test Appwrite connection on app start
+    const initialPing = async () => {
+      try {
+        console.log("🚀 Performing initial Appwrite ping...");
+        const result = await pingAppwrite();
+        setPingResult(result);
+
+        if (result.success) {
+          console.log("✅ Initial ping successful");
+          posthog.capture("App Started - Appwrite Connected", {
+            endpoint: result.endpoint,
+            projectId: result.projectId,
+          });
+        } else {
+          console.warn("⚠️ Initial ping failed");
+          posthog.capture("App Started - Appwrite Failed", {
+            error: result.message,
+          });
+        }
+      } catch (error) {
+        console.error("❌ Initial ping error:", error);
+        setPingResult({
+          success: false,
+          message: `Initial connection test failed: ${error}`,
+          timestamp: new Date().toISOString(),
+        });
+        posthog.capture("App Started - Ping Error", {
+          error: String(error),
+        });
+      }
+    };
+
     checkSession();
-  }, [router]);
+    initialPing();
+  }, [router, posthog]);
 
   return (
     <View
@@ -445,7 +517,6 @@ const HomeScreen = () => {
               Information
             </Text>
           </View>
-
           <TouchableOpacity
             style={[styles.infoButton, { borderBottomColor: theme.border }]}
             onPress={() => {
@@ -461,7 +532,6 @@ const HomeScreen = () => {
             </Text>
             <Ionicons name="chevron-forward" size={20} color={theme.primary} />
           </TouchableOpacity>
-
           {user.isLoggedIn && (
             <TouchableOpacity
               style={[styles.infoButton, { borderBottomColor: theme.border }]}
@@ -482,8 +552,7 @@ const HomeScreen = () => {
                 color={theme.primary}
               />
             </TouchableOpacity>
-          )}
-
+          )}{" "}
           <TouchableOpacity
             style={[styles.infoButton, { borderBottomColor: theme.border }]}
             onPress={() => {
@@ -499,6 +568,126 @@ const HomeScreen = () => {
             </Text>
             <Ionicons name="chevron-forward" size={20} color={theme.primary} />
           </TouchableOpacity>
+        </View>
+
+        {/* Appwrite Connection Status Card */}
+        <View
+          style={[
+            styles.instagramCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <Ionicons name="server" size={22} color={theme.primary} />
+            <Text style={[styles.cardTitle, { color: theme.text }]}>
+              Server Connection
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.infoButton,
+              {
+                borderBottomColor: theme.border,
+                opacity: isPinging ? 0.7 : 1,
+              },
+            ]}
+            onPress={handlePingAppwrite}
+            disabled={isPinging}
+            activeOpacity={0.7}
+            accessibilityLabel="Test Appwrite connection"
+            accessibilityRole="button"
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
+            >
+              {isPinging ? (
+                <Ionicons
+                  name="sync"
+                  size={20}
+                  color={theme.primary}
+                  style={{ marginRight: 8 }}
+                />
+              ) : (
+                <Ionicons
+                  name="radio"
+                  size={20}
+                  color={theme.primary}
+                  style={{ marginRight: 8 }}
+                />
+              )}
+              <Text style={[styles.infoButtonText, { color: theme.text }]}>
+                {isPinging
+                  ? "Testing Connection..."
+                  : "Test Appwrite Connection"}
+              </Text>
+            </View>
+            {!isPinging && (
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={theme.primary}
+              />
+            )}
+          </TouchableOpacity>
+
+          {/* Ping Result Display */}
+          {pingResult && (
+            <View
+              style={[
+                styles.pingResultContainer,
+                {
+                  backgroundColor: pingResult.success
+                    ? theme.primary + "10"
+                    : theme.secondary + "10",
+                  borderColor: pingResult.success
+                    ? theme.primary + "30"
+                    : theme.secondary + "30",
+                },
+              ]}
+            >
+              <View style={styles.pingResultHeader}>
+                <Ionicons
+                  name={
+                    pingResult.success ? "checkmark-circle" : "close-circle"
+                  }
+                  size={18}
+                  color={pingResult.success ? theme.primary : theme.secondary}
+                />
+                <Text
+                  style={[
+                    styles.pingResultStatus,
+                    {
+                      color: pingResult.success
+                        ? theme.primary
+                        : theme.secondary,
+                      marginLeft: 6,
+                    },
+                  ]}
+                >
+                  {pingResult.success
+                    ? "Connection Successful"
+                    : "Connection Failed"}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  styles.pingResultMessage,
+                  { color: theme.textSecondary },
+                ]}
+              >
+                {pingResult.message}
+              </Text>
+              <Text
+                style={[styles.pingResultTime, { color: theme.textSecondary }]}
+              >
+                {new Date(pingResult.timestamp).toLocaleTimeString()}
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -706,6 +895,30 @@ const styles = StyleSheet.create({
   infoButtonText: {
     fontSize: 15,
     fontWeight: "500",
+  },
+  pingResultContainer: {
+    margin: 12,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  pingResultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  pingResultStatus: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  pingResultMessage: {
+    fontSize: 12,
+    marginBottom: 4,
+    lineHeight: 16,
+  },
+  pingResultTime: {
+    fontSize: 10,
+    fontStyle: "italic",
   },
 });
 

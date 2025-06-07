@@ -1,8 +1,6 @@
 import { Account, Client, ID, Databases } from "appwrite";
 import Constants from "expo-constants";
 
-// Initialize Appwrite client
-// Prioritize environment variable (for CI/testing), then Expo's extra config
 export const APPWRITE_PROJECT_ID =
   process.env.APPWRITE_PROJECT_ID ||
   Constants.expoConfig?.extra?.APPWRITE_PROJECT_ID ||
@@ -14,11 +12,11 @@ export const APPWRITE_DATABASE_ID =
 export const APPWRITE_ENDPOINT =
   process.env.APPWRITE_ENDPOINT ||
   Constants.expoConfig?.extra?.APPWRITE_ENDPOINT ||
-  "https://cloud.appwrite.io/v1";
-export const APPWRITE_BUCKET_ID =
-  process.env.APPWRITE_BUCKET_ID ||
-  Constants.expoConfig?.extra?.APPWRITE_BUCKET_ID ||
-  "";
+  "https://fra.cloud.appwrite.io/v1";
+export const APPWRITE_CRIME_PATROL_BUCKET_ID =
+  process.env.APPWRITE_CRIME_PATROL_BUCKET_ID || // Use the specific env var for this bucket
+  Constants.expoConfig?.extra?.APPWRITE_CRIME_PATROL_BUCKET_ID ||
+  "crime_patrol"; // Default to the correct ID
 
 // Define collection IDs for normalized database structure using environment variables
 export const REPORTS_MAIN_COLLECTION_ID =
@@ -78,16 +76,18 @@ if (!REPORTS_MAIN_COLLECTION_ID) {
     "Please set the APPWRITE_REPORTS_COLLECTION_ID environment variable.",
   );
 }
-if (!APPWRITE_BUCKET_ID) {
+if (!APPWRITE_CRIME_PATROL_BUCKET_ID) {
   console.error(
-    "ERROR: Appwrite Bucket ID is not configured! File operations will fail.",
+    "ERROR: Appwrite Bucket ID (crime_patrol) is not configured! File operations will fail.",
   );
-  console.error("Please set the APPWRITE_BUCKET_ID environment variable.");
+  console.error(
+    "Please set the APPWRITE_CRIME_PATROL_BUCKET_ID environment variable.",
+  );
 }
 
 const client = new Client()
   .setEndpoint(APPWRITE_ENDPOINT)
-  .setProject(APPWRITE_PROJECT_ID); // Use the environment variable
+  .setProject(APPWRITE_PROJECT_ID); // Explicitly set platform for React Native
 
 const account = new Account(client);
 const databases = new Databases(client);
@@ -120,6 +120,97 @@ const handleAppwriteOperation = async <T>(
     }
     // If no defaultReturn is specified, just re-throw the error.
     throw error;
+  }
+};
+
+// Ping function to test Appwrite connection and register the app
+export const pingAppwrite = async () => {
+  try {
+    console.log("📡 Pinging Appwrite server...");
+    console.log(`🔗 Endpoint: ${APPWRITE_ENDPOINT}`);
+    console.log(`🆔 Project ID: ${APPWRITE_PROJECT_ID}`);
+
+    // Test basic connectivity by trying to get current account (will fail gracefully if no user is logged in)
+    let connectionTest = false;
+    let accountInfo = null;
+
+    try {
+      accountInfo = await account.get();
+      console.log("✅ Account connection successful:", accountInfo.email);
+      connectionTest = true;
+    } catch (accountError: any) {
+      // This is expected when no user is logged in
+      if (
+        accountError?.type === "user_missing_scope" ||
+        accountError?.message?.includes("missing scope")
+      ) {
+        console.log("ℹ️ No active user session (expected for guest users)");
+        connectionTest = true; // Connection is working, just no user logged in
+      } else if (accountError?.code === 401) {
+        console.log("ℹ️ Unauthorized (expected when not logged in)");
+        connectionTest = true; // Connection is working
+      } else {
+        console.warn("⚠️ Account check failed:", accountError);
+        connectionTest = false;
+      }
+    }
+
+    // Test database connection by trying to get database info
+    let databaseTest = false;
+    try {
+      // Try to access the database (this will fail if project/database doesn't exist)
+      await databases.listDocuments(
+        APPWRITE_DATABASE_ID,
+        REPORTS_MAIN_COLLECTION_ID,
+        [],
+      );
+      databaseTest = true;
+      console.log("✅ Database connection successful");
+    } catch (dbError: any) {
+      if (dbError?.code === 404) {
+        console.log("ℹ️ Database/Collection not found (may need setup)");
+        databaseTest = true; // Connection works, but collection might not exist yet
+      } else if (dbError?.code === 401) {
+        console.log("ℹ️ Database access unauthorized (expected for guests)");
+        databaseTest = true; // Connection works
+      } else {
+        console.warn("⚠️ Database check failed:", dbError);
+        databaseTest = false;
+      }
+    }
+
+    const success = connectionTest && databaseTest;
+
+    if (success) {
+      console.log("🎉 Appwrite ping completed successfully!");
+    } else {
+      console.warn("⚠️ Appwrite ping completed with issues");
+    }
+
+    return {
+      success,
+      message: success
+        ? "Appwrite connection established successfully"
+        : "Some connection tests failed",
+      timestamp: new Date().toISOString(),
+      endpoint: APPWRITE_ENDPOINT,
+      projectId: APPWRITE_PROJECT_ID,
+      details: {
+        accountTest: connectionTest,
+        databaseTest: databaseTest,
+        hasActiveUser: !!accountInfo,
+      },
+    };
+  } catch (error) {
+    console.error("❌ Appwrite ping failed:", error);
+    return {
+      success: false,
+      message: `Appwrite connection failed: ${error}`,
+      timestamp: new Date().toISOString(),
+      endpoint: APPWRITE_ENDPOINT,
+      projectId: APPWRITE_PROJECT_ID,
+      error,
+    };
   }
 };
 
@@ -374,18 +465,62 @@ export const submitNormalizedReport = async (formData: any) => {
 
 // Helper function to create a File object from a URI for Appwrite
 export const createInputFileFromUrl = async (
-  url: string,
+  uri: string,
   name: string,
-  type: string,
+  type: string, // This is the MIME type, e.g., 'image/jpeg'
 ): Promise<File> => {
-  const response = await fetch(url);
-  if (!response.ok) {
+  console.log(
+    `Attempting to create File: URI='${uri}', Name='${name}', Type='${type}'`,
+  );
+  try {
+    console.log(`Fetching URI: ${uri}`);
+    const response = await fetch(uri);
+    console.log(
+      `Fetch response status: ${response.status}, ok: ${response.ok}`,
+    );
+
+    if (!response.ok) {
+      const responseText = await response
+        .text()
+        .catch(() => "Could not read response text");
+      console.error(
+        `Fetch failed: Status ${response.status}, Response: ${responseText}`,
+      );
+      throw new Error(
+        `Failed to fetch URI: ${uri}. Status: ${response.status}`,
+      );
+    }
+
+    console.log("Converting response to blob...");
+    const originalBlob = await response.blob();
+    console.log(
+      `Original blob created: Size=${originalBlob.size}, Type=${originalBlob.type}`,
+    );
+
+    // Ensure the blob has the correct MIME type, especially for local files from image/document pickers
+    const typedBlob = new Blob([originalBlob], { type: type });
+    console.log(
+      `Typed blob created: Size=${typedBlob.size}, Type=${typedBlob.type}`,
+    );
+
+    // Create a standard File object directly instead of using InputFile.fromBlob
+    const file = new File([typedBlob], name, { type: type });
+    console.log(
+      `File created successfully: name='${file.name}', size=${file.size}, type='${file.type}'`,
+    );
+    return file;
+  } catch (error: any) {
+    console.error("Error in createInputFileFromUrl:", error);
+    console.error(
+      `Detailed error for URI: ${uri}, name: ${name}, type: ${type}`,
+    );
+    if (error.response) {
+      console.error("Error response:", error.response);
+    }
     throw new Error(
-      `Failed to fetch file from URI: ${response.status} ${response.statusText}`,
+      `Failed to create File object from URI: ${uri}. Name: ${name}. Type: ${type}. Original error: ${error.message}`,
     );
   }
-  const blob = await response.blob();
-  return new File([blob], name, { type });
 };
 
 // Export the client and account for direct access if needed
