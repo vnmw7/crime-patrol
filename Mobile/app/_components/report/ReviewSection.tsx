@@ -182,7 +182,7 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
             </>
           )}
         </View>
-        <Text> </Text>
+        <Text> </Text>{" "}
         {formData.media && formData.media.length > 0 && (
           <View style={styles.reviewSection}>
             <Text style={[styles.reviewSectionTitle, { color: theme.primary }]}>
@@ -196,16 +196,53 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
               {formData.media.length !== 1 ? "s" : ""})
             </Text>
             {formData.media.map((item, index) => (
-              <Text
-                key={index}
+              <View key={index} style={styles.mediaReviewItem}>
+                <Text
+                  style={[
+                    styles.reviewValue,
+                    { color: theme.text, marginLeft: 12 },
+                  ]}
+                >
+                  • {item.file_name_original} ({item.media_type})
+                </Text>
+                {item.isUploaded === false && (
+                  <Text
+                    style={[
+                      styles.uploadStatusText,
+                      { color: theme.textSecondary, marginLeft: 12 },
+                    ]}
+                  >
+                    Ready to upload on submission
+                  </Text>
+                )}
+              </View>
+            ))}
+            {formData.media.some((item) => item.isUploaded === false) && (
+              <View
                 style={[
-                  styles.reviewValue,
-                  { color: theme.text, marginLeft: 12 },
+                  styles.uploadNoticeBox,
+                  {
+                    backgroundColor: theme.progressBackground,
+                    borderColor: theme.border,
+                  },
                 ]}
               >
-                • {item.file_name_original} ({item.media_type})
-              </Text>
-            ))}
+                <MaterialIcons
+                  name="cloud-upload"
+                  size={16}
+                  color={theme.primary}
+                />
+                <Text
+                  style={[
+                    styles.uploadNoticeText,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  Media files will be uploaded securely when you submit this
+                  report
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -275,6 +312,28 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 13,
     lineHeight: 18,
+  },
+  mediaReviewItem: {
+    marginBottom: 8,
+  },
+  uploadStatusText: {
+    fontSize: 12,
+    fontStyle: "italic",
+    marginTop: 2,
+  },
+  uploadNoticeBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  uploadNoticeText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 12,
+    lineHeight: 16,
   },
 });
 

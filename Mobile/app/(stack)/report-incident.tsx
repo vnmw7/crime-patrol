@@ -52,7 +52,9 @@ const ReportScreen = () => {
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
 
   // Section navigation state
-  const [currentSection, setCurrentSection] = useState(0); // State for report form data - comprehensive crime report fields  const [formData, setFormData] = useState<FormData>({
+  const [currentSection, setCurrentSection] = useState(0);
+
+  // State for report form data - comprehensive crime report fields
   const [formData, setFormData] = useState<FormData>({
     // Incident Information
     incident_type: "",
@@ -79,11 +81,11 @@ const ReportScreen = () => {
     // People Involved (arrays to support multiple entries)
     victims: [],
     suspects: [],
-    witnesses: [],
-
-    // Media attachments
+    witnesses: [], // Media attachments
     media: [],
-  }); // UI state
+  });
+
+  // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingGPS, setIsLoadingGPS] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -228,27 +230,22 @@ const ReportScreen = () => {
     });
 
     if (!result.canceled && result.assets) {
-      // Optimistic UI update - show preview immediately
-      const tempAttachment = {
-        file_id: `temp_${Date.now()}`,
+      // Store local file for preview - upload will happen on submission
+      const localAttachment = {
+        file_id: `local_${Date.now()}`,
         media_type: "photo" as const,
         file_name_original:
           result.assets[0].uri.split("/").pop() || "image.jpg",
         display_order: formData.media?.length || 0,
         url: result.assets[0].uri,
+        localUri: result.assets[0].uri, // Store local URI
+        mimeType: result.assets[0].mimeType || "image/jpeg",
         appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
-        isUploading: true, // Add loading state
+        isUploaded: false, // Not uploaded yet
       };
 
-      // Add to media immediately for preview
-      updateFormData("media", [...(formData.media || []), tempAttachment]);
-
-      // Start upload in background
-      await uploadMedia(
-        result.assets[0].uri,
-        result.assets[0].mimeType || "image/jpeg",
-        tempAttachment.file_id, // Pass temp ID to replace it
-      );
+      // Add to media for preview
+      updateFormData("media", [...(formData.media || []), localAttachment]);
     }
   };
   const takePhotoWithCamera = async () => {
@@ -261,25 +258,21 @@ const ReportScreen = () => {
     });
 
     if (!result.canceled && result.assets) {
-      // Optimistic UI update
-      const tempAttachment = {
-        file_id: `temp_${Date.now()}`,
+      // Store local file for preview - upload will happen on submission
+      const localAttachment = {
+        file_id: `local_${Date.now()}`,
         media_type: "photo" as const,
         file_name_original:
           result.assets[0].uri.split("/").pop() || "photo.jpg",
         display_order: formData.media?.length || 0,
         url: result.assets[0].uri,
+        localUri: result.assets[0].uri,
+        mimeType: result.assets[0].mimeType || "image/jpeg",
         appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
-        isUploading: true,
+        isUploaded: false,
       };
 
-      updateFormData("media", [...(formData.media || []), tempAttachment]);
-
-      await uploadMedia(
-        result.assets[0].uri,
-        result.assets[0].mimeType || "image/jpeg",
-        tempAttachment.file_id,
-      );
+      updateFormData("media", [...(formData.media || []), localAttachment]);
     }
   };
   const pickVideoFromGallery = async () => {
@@ -292,25 +285,21 @@ const ReportScreen = () => {
     });
 
     if (!result.canceled && result.assets) {
-      // Optimistic UI update
-      const tempAttachment = {
-        file_id: `temp_${Date.now()}`,
+      // Store local file for preview - upload will happen on submission
+      const localAttachment = {
+        file_id: `local_${Date.now()}`,
         media_type: "video" as const,
         file_name_original:
           result.assets[0].uri.split("/").pop() || "video.mp4",
         display_order: formData.media?.length || 0,
         url: result.assets[0].uri,
+        localUri: result.assets[0].uri,
+        mimeType: result.assets[0].mimeType || "video/mp4",
         appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
-        isUploading: true,
+        isUploaded: false,
       };
 
-      updateFormData("media", [...(formData.media || []), tempAttachment]);
-
-      await uploadMedia(
-        result.assets[0].uri,
-        result.assets[0].mimeType || "video/mp4",
-        tempAttachment.file_id,
-      );
+      updateFormData("media", [...(formData.media || []), localAttachment]);
     }
   };
   const recordVideoWithCamera = async () => {
@@ -323,25 +312,20 @@ const ReportScreen = () => {
     });
 
     if (!result.canceled && result.assets) {
-      // Optimistic UI update
-      const tempAttachment = {
-        file_id: `temp_${Date.now()}`,
+      // Store local file for preview - upload will happen on submission
+      const localAttachment = {
+        file_id: `local_${Date.now()}`,
         media_type: "video" as const,
         file_name_original:
           result.assets[0].uri.split("/").pop() || "video.mp4",
         display_order: formData.media?.length || 0,
         url: result.assets[0].uri,
+        localUri: result.assets[0].uri,
+        mimeType: result.assets[0].mimeType || "video/mp4",
         appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
-        isUploading: true,
+        isUploaded: false,
       };
-
-      updateFormData("media", [...(formData.media || []), tempAttachment]);
-
-      uploadMedia(
-        result.assets[0].uri,
-        result.assets[0].mimeType,
-        tempAttachment.file_id,
-      );
+      updateFormData("media", [...(formData.media || []), localAttachment]);
     }
   };
   const pickAudioFile = async () => {
@@ -356,24 +340,20 @@ const ReportScreen = () => {
         result.assets &&
         result.assets.length > 0
       ) {
-        // Optimistic UI update
-        const tempAttachment = {
-          file_id: `temp_${Date.now()}`,
+        // Store local file for preview - upload will happen on submission
+        const localAttachment = {
+          file_id: `local_${Date.now()}`,
           media_type: "audio" as const,
           file_name_original: result.assets[0].name || "audio.mp3",
           display_order: formData.media?.length || 0,
           url: result.assets[0].uri,
+          localUri: result.assets[0].uri,
+          mimeType: result.assets[0].mimeType || "audio/mpeg",
           appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
-          isUploading: true,
+          isUploaded: false,
         };
 
-        updateFormData("media", [...(formData.media || []), tempAttachment]);
-
-        await uploadMedia(
-          result.assets[0].uri,
-          result.assets[0].mimeType || "audio/mpeg",
-          tempAttachment.file_id,
-        );
+        updateFormData("media", [...(formData.media || []), localAttachment]);
       }
     } catch (err: any) {
       Alert.alert(
@@ -415,20 +395,20 @@ const ReportScreen = () => {
         allowsRecordingIOS: false,
       });
       if (uri) {
-        // Optimistic UI update for recorded audio
-        const tempAttachment = {
-          file_id: `temp_${Date.now()}`,
+        // Store recorded audio for preview - upload will happen on submission
+        const localAttachment = {
+          file_id: `local_${Date.now()}`,
           media_type: "audio" as const,
           file_name_original: `recording_${Date.now()}.m4a`,
           display_order: formData.media?.length || 0,
           url: uri,
+          localUri: uri,
+          mimeType: "audio/m4a",
           appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
-          isUploading: true,
+          isUploaded: false,
         };
 
-        updateFormData("media", [...(formData.media || []), tempAttachment]);
-
-        await uploadMedia(uri, "audio/m4a", tempAttachment.file_id); // Adjust mime type if needed
+        updateFormData("media", [...(formData.media || []), localAttachment]);
       }
     } catch (err: any) {
       Alert.alert(
@@ -463,174 +443,6 @@ const ReportScreen = () => {
   //       }
   //     : undefined;
   // }, [sound]);
-
-  const uploadMedia = async (
-    fileUri: string,
-    fileType?: string,
-    tempId?: string,
-  ) => {
-    if (!fileUri) {
-      Alert.alert("Error", "No file URI provided for upload.");
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadProgress(0);
-
-    try {
-      // Extract filename from URI or generate one
-      const fileName = fileUri.split("/").pop() || `upload_${Date.now()}`;
-      const actualFileType = fileType || "application/octet-stream";
-
-      // Determine media type for Cloudinary
-      let mediaType = "photo";
-      if (actualFileType.startsWith("image")) {
-        mediaType = "photo";
-      } else if (actualFileType.startsWith("video")) {
-        mediaType = "video";
-      } else if (actualFileType.startsWith("audio")) {
-        mediaType = "audio";
-      }
-
-      console.log(
-        "Uploading to Cloudinary:",
-        fileName,
-        actualFileType,
-        mediaType,
-      );
-
-      // Show upload progress alert
-      Alert.alert("Uploading", `Uploading ${fileName}...`);
-
-      // Add retry logic for network issues
-      let uploadResponse;
-      let attempts = 0;
-      const maxAttempts = 3;
-
-      while (attempts < maxAttempts) {
-        try {
-          attempts++;
-          console.log(`Cloudinary upload attempt ${attempts}/${maxAttempts}`);
-
-          // Upload to Cloudinary with progress tracking
-          uploadResponse = await uploadToCloudinary(
-            fileUri,
-            fileName,
-            mediaType,
-            (progress: number) => {
-              console.log("Upload progress:", progress);
-              setUploadProgress(Math.min(100, Math.max(0, progress)));
-            },
-          );
-
-          // If upload succeeds, break out of retry loop
-          console.log("Cloudinary upload response:", uploadResponse);
-          break;
-        } catch (retryError: any) {
-          console.log(`Upload attempt ${attempts} failed:`, retryError.message);
-
-          if (attempts >= maxAttempts) {
-            // If this was the last attempt, throw the error to be caught by outer catch
-            throw retryError;
-          }
-
-          // Wait before retrying (exponential backoff)
-          const delay = Math.min(1000 * Math.pow(2, attempts - 1), 5000);
-          console.log(`Retrying in ${delay}ms...`);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-      }
-
-      // Ensure uploadResponse is defined
-      if (!uploadResponse) {
-        throw new Error("Upload failed after all retry attempts");
-      }
-
-      // Create media attachment object with Cloudinary data
-      const newAttachment = {
-        file_id: uploadResponse.public_id, // Use Cloudinary public_id as file_id
-        media_type: mediaType as "photo" | "video" | "audio",
-        file_name_original: fileName,
-        display_order: formData.media?.length || 0,
-        url: fileUri, // Keep local URI for preview
-        secure_url: uploadResponse.secure_url, // Cloudinary secure URL
-        public_id: uploadResponse.public_id, // Cloudinary public ID
-        cloudinary_url: uploadResponse.url, // Cloudinary URL
-        file_size: uploadResponse.bytes, // File size from Cloudinary
-        format: uploadResponse.format, // File format from Cloudinary
-        isUploading: false, // Upload complete
-      };
-
-      // If we have a temp ID, replace the temporary entry, otherwise add new
-      if (tempId) {
-        const updatedMedia = (formData.media || []).map((item) =>
-          item.file_id === tempId ? newAttachment : item,
-        );
-        updateFormData("media", updatedMedia);
-      } else {
-        updateFormData("media", [...(formData.media || []), newAttachment]);
-      }
-
-      Alert.alert(
-        "Upload Successful",
-        `${fileName} has been uploaded successfully to Cloudinary!`,
-      );
-    } catch (error: any) {
-      console.error("Cloudinary upload error:", error);
-
-      // If we have a temp ID, remove the temporary entry on error
-      if (tempId) {
-        const updatedMedia = (formData.media || []).filter(
-          (item) => item.file_id !== tempId,
-        );
-        updateFormData("media", updatedMedia);
-      }
-
-      let errorMessage = "Upload failed: ";
-
-      if (
-        error.message?.includes("File size too large") ||
-        error.message?.includes("413")
-      ) {
-        errorMessage += "File is too large. Please select a smaller file.";
-      } else if (
-        error.message?.includes("Invalid file type") ||
-        error.message?.includes("400")
-      ) {
-        errorMessage += "File type not supported.";
-      } else if (
-        error.message?.includes("Network request failed") ||
-        error.message?.includes("Network") ||
-        error.message?.includes("Failed to fetch")
-      ) {
-        errorMessage +=
-          "Network connection failed. Please check your internet connection and try uploading again. If the problem persists, try uploading a smaller file.";
-      } else if (error.message?.includes("fetch")) {
-        errorMessage +=
-          "Failed to read file. Please try selecting the file again.";
-      } else if (
-        error.message?.includes("unauthorized") ||
-        error.message?.includes("401")
-      ) {
-        errorMessage +=
-          "Authentication failed. Please check Cloudinary configuration.";
-      } else if (
-        error.message?.includes("forbidden") ||
-        error.message?.includes("403")
-      ) {
-        errorMessage +=
-          "Permission denied. Please check Cloudinary permissions.";
-      } else {
-        errorMessage += error.message || "Unknown error occurred";
-      }
-
-      Alert.alert("Upload Error", errorMessage);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
-  };
-
   // Navigation between sections
   const goToNextSection = () => {
     if (validateCurrentSection()) {
@@ -809,6 +621,86 @@ const ReportScreen = () => {
     }
   };
 
+  // Batch upload all local media files before submission
+  const uploadAllMedia = async () => {
+    const localMediaItems =
+      formData.media?.filter((item) => !item.isUploaded) || [];
+
+    if (localMediaItems.length === 0) {
+      return formData; // No media to upload
+    }
+
+    setIsUploading(true);
+    let uploadedCount = 0;
+    const updatedMedia = [...(formData.media || [])];
+
+    try {
+      for (const mediaItem of localMediaItems) {
+        if (!mediaItem.localUri) {
+          console.warn("Media item missing localUri, skipping:", mediaItem);
+          continue;
+        }
+
+        setUploadProgress((uploadedCount / localMediaItems.length) * 100);
+
+        // Upload to Cloudinary
+        const uploadResponse = await uploadToCloudinary(
+          mediaItem.localUri,
+          mediaItem.file_name_original,
+          mediaItem.media_type,
+          (progress: number) => {
+            const overallProgress =
+              ((uploadedCount + progress / 100) / localMediaItems.length) * 100;
+            setUploadProgress(overallProgress);
+          },
+        );
+
+        // Update the media item with upload details
+        const updatedMediaItem = {
+          ...mediaItem,
+          file_id: uploadResponse.public_id,
+          secure_url: uploadResponse.secure_url,
+          public_id: uploadResponse.public_id,
+          cloudinary_url: uploadResponse.url,
+          file_size: uploadResponse.bytes,
+          format: uploadResponse.format,
+          isUploaded: true,
+        };
+
+        // Replace the local item with uploaded item
+        const itemIndex = updatedMedia.findIndex(
+          (item) => item.file_id === mediaItem.file_id,
+        );
+        if (itemIndex !== -1) {
+          updatedMedia[itemIndex] = updatedMediaItem;
+        }
+
+        uploadedCount++;
+      }
+
+      // Return updated form data with uploaded media
+      return {
+        ...formData,
+        media: updatedMedia,
+      };
+    } catch (error: any) {
+      console.error("Batch upload error:", error);
+
+      let errorMessage = "Failed to upload media: ";
+      if (error.message?.includes("Network")) {
+        errorMessage +=
+          "Network connection failed. Please check your internet connection.";
+      } else {
+        errorMessage += error.message || "Unknown error occurred";
+      }
+
+      throw new Error(errorMessage);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
   // Submit the report with animation
   const handleSubmit = async () => {
     triggerHaptic();
@@ -829,18 +721,26 @@ const ReportScreen = () => {
 
     setIsSubmitting(true);
     console.log("Submitting report:", formData);
+
     try {
-      // Use normalized report submission
-      await submitNormalizedReport(formData);
+      // First, upload all media files
+      const updatedFormData = await uploadAllMedia();
+
+      // Then submit the report with uploaded media URLs
+      await submitNormalizedReport(updatedFormData);
+
       setIsSubmitting(false);
       Alert.alert(
         "Report Submitted",
         "Your crime report has been successfully submitted. A case number will be sent to your phone.",
         [{ text: "OK", onPress: () => router.back() }],
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting report:", error);
-      Alert.alert("Error", "There was an error submitting your report.");
+      Alert.alert(
+        "Error",
+        `There was an error submitting your report: ${error.message || "Unknown error"}`,
+      );
       setIsSubmitting(false);
     }
   };

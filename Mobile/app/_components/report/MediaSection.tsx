@@ -53,11 +53,11 @@ const MediaSection: React.FC<PropertySectionProps> = ({
             },
           ]}
         >
-          {/* Media Type Icon and Preview */}
+          {/* Media Type Icon and Preview */}{" "}
           <View style={styles.mediaPreviewContent}>
-            {media.media_type === "photo" && media.url ? (
+            {media.media_type === "photo" && (media.url || media.localUri) ? (
               <Image
-                source={{ uri: media.url }}
+                source={{ uri: media.localUri || media.url }}
                 style={styles.mediaThumbnail}
                 resizeMode="cover"
                 onError={() => console.log("Failed to load image preview")}
@@ -87,15 +87,10 @@ const MediaSection: React.FC<PropertySectionProps> = ({
                 style={[styles.mediaTypeText, { color: theme.textSecondary }]}
               >
                 {media.media_type.toUpperCase()}
+                {media.isUploaded === false && " • Ready to upload"}
                 {media.isUploading && " • Uploading..."}
               </Text>
             </View>
-            {/* Upload overlay */}
-            {media.isUploading && (
-              <View style={styles.uploadOverlay}>
-                <ActivityIndicator size="small" color={theme.text} />
-              </View>
-            )}
           </View>
         </View>
 

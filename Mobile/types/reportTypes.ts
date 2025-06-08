@@ -47,6 +47,9 @@ export interface MediaInfo {
   isUploading?: boolean; // For UI loading state
   file_size?: number; // File size in bytes
   format?: string; // File format from Cloudinary
+  localUri?: string; // Local file URI for preview before upload
+  mimeType?: string; // MIME type of the file
+  isUploaded?: boolean; // Whether the file has been uploaded to cloud
 }
 
 // Updated FormData interface to match normalized database structure
