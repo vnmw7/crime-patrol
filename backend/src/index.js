@@ -20,6 +20,7 @@ const {
 
 const {
   setupEmergencyPingsCollection,
+  setupEmergencyWebSocketHandlers,
 } = require("./services/emergencyService.js");
 
 const { setupUserCollections } = require("./services/userServices.js");
@@ -48,6 +49,9 @@ io.on("connection", (socket) => {
     console.log(`[SOCKET.IO] Client disconnected: ${socket.id}`);
   });
 });
+
+// Setup emergency WebSocket handlers
+setupEmergencyWebSocketHandlers(io);
 
 // Routes
 const reportsRouter = require("./routes/reports");

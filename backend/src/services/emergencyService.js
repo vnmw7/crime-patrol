@@ -56,6 +56,7 @@ async function setupEmergencyPingsCollection() {
 
     // Create attributes
     const attributes = [
+      { key: "id", type: "string", size: 255, required: true },
       { key: "latitude", type: "double", required: true },
       { key: "longitude", type: "double", required: true },
       { key: "timestamp", type: "datetime", required: true },
@@ -66,8 +67,10 @@ async function setupEmergencyPingsCollection() {
         size: 50,
         required: false,
         default: "pending",
-      }, // Added status attribute
-      { key: "lastPing", type: "datetime", required: true },
+      },
+      { key: "lastLatitude", type: "double", required: false },
+      { key: "lastLongitude", type: "double", required: false },
+      { key: "lastPing", type: "datetime", required: false },
       { key: "respondedBy", type: "string", size: 255, required: false },
       { key: "respondedAt", type: "datetime", required: false },
     ];
@@ -149,11 +152,13 @@ async function setupEmergencyPingsCollection() {
  */
 async function createEmergencyPing(pingData) {
   try {
+    const uniqueId = ID.unique(); // Generate unique ID
     const document = await databases.createDocument(
       DATABASE_ID,
       EMERGENCY_PINGS_COLLECTION_ID,
-      ID.unique(),
+      uniqueId, // Use uniqueId for document ID
       {
+        id: uniqueId, // Add uniqueId to the payload
         latitude: pingData.latitude,
         longitude: pingData.longitude,
         timestamp: pingData.timestamp || new Date().toISOString(),
@@ -236,6 +241,143 @@ async function updateEmergencyPingStatus(pingId, status, respondedBy = null) {
 }
 
 /**
+ * Update emergency ping location data for continuous pinging
+ */
+async function updateEmergencyPingLocation(pingId, locationData) {
+  try {
+    const updateData = {
+      lastLatitude: locationData.latitude,
+      lastLongitude: locationData.longitude,
+      lastPing: locationData.timestamp || new Date().toISOString(),
+    };
+
+    const document = await databases.updateDocument(
+      DATABASE_ID,
+      EMERGENCY_PINGS_COLLECTION_ID,
+      pingId,
+      updateData
+    );
+
+    console.log(`Emergency ping ${pingId} location updated`);
+    return document;
+  } catch (error) {
+    console.error(`Error updating emergency ping location ${pingId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Update emergency ping location data for continuous pinging via WebSocket
+ */
+async function updateEmergencyPingLocationWebSocket(sessionId, locationData) {
+  try {
+    const updateData = {
+      lastLatitude: locationData.latitude,
+      lastLongitude: locationData.longitude,
+      lastPing: locationData.timestamp || new Date().toISOString(),
+    };
+
+    const document = await databases.updateDocument(
+      DATABASE_ID,
+      EMERGENCY_PINGS_COLLECTION_ID,
+      sessionId,
+      updateData
+    );
+
+    console.log(`Emergency ping ${sessionId} location updated via WebSocket`);
+    return document;
+  } catch (error) {
+    console.error(
+      `Error updating emergency ping location via WebSocket ${sessionId}:`,
+      error
+    );
+    throw error;
+  }
+}
+
+/**
+ * Setup WebSocket handlers for emergency location updates
+ */
+function setupEmergencyWebSocketHandlers(io) {
+  io.on("connection", (socket) => {
+    console.log(`[EMERGENCY] Client connected: ${socket.id}`);
+
+    // Handle emergency location updates
+    socket.on("emergency-location-update", async (data) => {
+      try {
+        console.log(
+          `[EMERGENCY] Received location update from ${socket.id}:`,
+          data
+        );
+
+        const { sessionId, latitude, longitude, timestamp, userId } = data;
+
+        if (!sessionId || !latitude || !longitude) {
+          socket.emit("emergency-error", {
+            error: "Missing required fields: sessionId, latitude, longitude",
+          });
+          return;
+        }
+
+        // Update the emergency ping document
+        const updatedDocument = await updateEmergencyPingLocationWebSocket(
+          sessionId,
+          {
+            latitude,
+            longitude,
+            timestamp,
+          }
+        );
+
+        // Emit confirmation back to client
+        socket.emit("emergency-location-updated", {
+          sessionId,
+          timestamp: updatedDocument.lastPing,
+          success: true,
+        });
+
+        // Broadcast to emergency services room for real-time monitoring
+        socket.to("emergency-services").emit("emergency-ping-updated", {
+          sessionId,
+          latitude,
+          longitude,
+          timestamp: updatedDocument.lastPing,
+          userId,
+        });
+
+        console.log(`[EMERGENCY] Location updated for session ${sessionId}`);
+      } catch (error) {
+        console.error(`[EMERGENCY] Error handling location update:`, error);
+        socket.emit("emergency-error", {
+          error: "Failed to update location",
+          message: error.message,
+        });
+      }
+    });
+
+    // Handle emergency session join
+    socket.on("join-emergency-session", (sessionId) => {
+      socket.join(`emergency-${sessionId}`);
+      console.log(
+        `[EMERGENCY] Client ${socket.id} joined emergency session ${sessionId}`
+      );
+    });
+
+    // Handle emergency session leave
+    socket.on("leave-emergency-session", (sessionId) => {
+      socket.leave(`emergency-${sessionId}`);
+      console.log(
+        `[EMERGENCY] Client ${socket.id} left emergency session ${sessionId}`
+      );
+    });
+
+    socket.on("disconnect", () => {
+      console.log(`[EMERGENCY] Client disconnected: ${socket.id}`);
+    });
+  });
+}
+
+/**
  * Get emergency pings by location (within radius)
  */
 async function getEmergencyPingsByLocation(latitude, longitude, radiusKm = 10) {
@@ -287,5 +429,8 @@ module.exports = {
   createEmergencyPing,
   getRecentEmergencyPings,
   updateEmergencyPingStatus,
+  updateEmergencyPingLocation,
+  updateEmergencyPingLocationWebSocket,
+  setupEmergencyWebSocketHandlers,
   getEmergencyPingsByLocation,
 };

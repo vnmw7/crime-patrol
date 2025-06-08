@@ -5,11 +5,11 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
-  Platform,
-  useColorScheme,
-  Animated,
-  Alert,
-  Linking,
+  Animated, // Added for animations
+  Platform, // Added for platform-specific logic
+  Linking, // Added for opening URLs (tel:, sms:)
+  Alert, // Added for alerts
+  useColorScheme, // Added for color scheme detection
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,6 +28,7 @@ import {
 } from "../../lib/appwrite";
 import { usePostHog } from "posthog-react-native";
 import * as Location from "expo-location"; // Added for location services
+import { emergencyWebSocket } from "../../lib/emergencyWebSocket";
 
 // Emergency contact number
 const EMERGENCY_NUMBER = "+639485685828"; // Philippine number in international format
@@ -87,14 +88,36 @@ const HomeScreen = () => {
   const [user, setUser] = useState(mockUser);
   const [isPinging, setIsPinging] = useState(false);
   const [pingResult, setPingResult] = useState<any>(null);
+  const [continuousPingIntervalId, setContinuousPingIntervalId] =
+    useState<NodeJS.Timeout | null>(null); // New state for emergency ping interval
+  const [isContinuousPingingActive, setIsContinuousPingingActive] =
+    useState(false); // New state to track active pinging
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null); // Session ID for continuous pinging
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
   const posthog = usePostHog();
-
   useEffect(() => {
     posthog.capture("Home Screen Viewed");
   }, [posthog]);
+
+  // Cleanup effect for continuous pinging interval
+  useEffect(() => {
+    return () => {
+      if (continuousPingIntervalId) {
+        clearInterval(continuousPingIntervalId);
+        setIsContinuousPingingActive(false);
+        setCurrentSessionId(null); // Clear session ID on unmount
+
+        // Disconnect WebSocket on unmount
+        emergencyWebSocket.disconnect();
+
+        console.log(
+          "[HomeScreen Unmount] Cleared continuous emergency ping interval and disconnected WebSocket.",
+        );
+      }
+    };
+  }, [continuousPingIntervalId]);
 
   // Animated values for button feedback
   const panicButtonScale = useRef(new Animated.Value(1)).current;
@@ -255,15 +278,37 @@ const HomeScreen = () => {
         },
         body: JSON.stringify(payload),
       });
-
       if (response.ok) {
         const responseData = await response.json();
         console.log(
           "[pingLocationToBackend] Location successfully pinged to backend:",
           responseData,
-        );
+        ); // Store the session ID for continuous pinging
+        if (responseData.data && responseData.data.sessionId) {
+          setCurrentSessionId(responseData.data.sessionId);
+          console.log(
+            `[pingLocationToBackend] Session ID stored: ${responseData.data.sessionId}`,
+          );
 
-        // Show success feedback
+          // Establish WebSocket connection for continuous pinging
+          try {
+            await emergencyWebSocket.connect();
+            emergencyWebSocket.joinEmergencySession(
+              responseData.data.sessionId,
+            );
+            console.log(
+              "[pingLocationToBackend] WebSocket connected and joined emergency session",
+            );
+          } catch (wsError) {
+            console.error(
+              "[pingLocationToBackend] Failed to connect WebSocket:",
+              wsError,
+            );
+            // Continue with REST API fallback
+          }
+        }
+
+        // Show success feedback for the initial ping
         Alert.alert(
           "Emergency Alert Sent",
           "Your location has been sent to emergency services.",
@@ -276,7 +321,15 @@ const HomeScreen = () => {
           longitude,
           accuracy: location.coords.accuracy,
           userId: user.isLoggedIn ? user.name : "anonymous",
-        });
+        }); // Start continuous pinging if not already active
+        if (!continuousPingIntervalId) {
+          console.log(
+            "[pingLocationToBackend] Starting continuous location pinging every 2 seconds.",
+          );
+          const intervalId = setInterval(sendPeriodicLocationUpdate, 2000);
+          setContinuousPingIntervalId(intervalId);
+          setIsContinuousPingingActive(true);
+        }
       } else {
         const errorText = await response.text();
         console.error(
@@ -334,6 +387,119 @@ const HomeScreen = () => {
       posthog.capture("Emergency Location Ping Error", {
         error: String(error),
         errorMessage: error.message || "Unknown error",
+      });
+    }
+  };
+  // New function to send periodic location updates via WebSocket
+  const sendPeriodicLocationUpdate = async () => {
+    console.log(
+      "[sendPeriodicLocationUpdate] Sending periodic location update via WebSocket.",
+    );
+
+    try {
+      // Check if WebSocket is connected
+      if (!emergencyWebSocket.isSocketConnected()) {
+        console.warn(
+          "[sendPeriodicLocationUpdate] WebSocket not connected, skipping update",
+        );
+        return;
+      }
+
+      // Get current location
+      let location;
+      try {
+        location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+      } catch (locationError) {
+        console.warn(
+          "[sendPeriodicLocationUpdate] High accuracy location failed for periodic update, trying with balanced accuracy:",
+          locationError,
+        );
+        try {
+          location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+        } catch (fallbackError) {
+          console.warn(
+            "[sendPeriodicLocationUpdate] Balanced accuracy location failed for periodic update, trying with low accuracy:",
+            fallbackError,
+          );
+          location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Low,
+          });
+        }
+      }
+
+      if (!location || !location.coords) {
+        console.warn(
+          "[sendPeriodicLocationUpdate] Could not obtain location coordinates for periodic update.",
+        );
+        posthog.capture("Periodic Emergency Location Ping Error", {
+          error: "Could not obtain location coordinates",
+          userId: user.isLoggedIn ? user.name : "anonymous",
+        });
+        return;
+      }
+
+      const { latitude, longitude } = location.coords;
+      const timestamp = new Date().toISOString();
+
+      console.log(
+        `[sendPeriodicLocationUpdate] Periodic Location: Lat: ${latitude}, Lon: ${longitude}, Timestamp: ${timestamp}`,
+      );
+
+      // Send location update via WebSocket
+      emergencyWebSocket.sendLocationUpdate({
+        latitude,
+        longitude,
+        timestamp,
+        userId: user.isLoggedIn ? user.name : "anonymous",
+      });
+
+      // Track success with PostHog
+      posthog.capture("Periodic Emergency Location Ping Success", {
+        latitude,
+        longitude,
+        accuracy: location.coords.accuracy,
+        userId: user.isLoggedIn ? user.name : "anonymous",
+      });
+    } catch (error: any) {
+      console.error(
+        "[sendPeriodicLocationUpdate] Error during periodic location update:",
+        error,
+      );
+      let errorMessage = "Unknown error during periodic location update";
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      posthog.capture("Periodic Emergency Location Ping Error", {
+        error: String(error),
+        errorMessage: errorMessage,
+        userId: user.isLoggedIn ? user.name : "anonymous",
+      });
+    }
+  }; // New function to stop continuous pinging  // New function to stop continuous pinging
+  const stopContinuousPinging = () => {
+    if (continuousPingIntervalId) {
+      clearInterval(continuousPingIntervalId);
+      setContinuousPingIntervalId(null);
+      setIsContinuousPingingActive(false);
+      setCurrentSessionId(null); // Clear session ID when stopping
+
+      // Disconnect WebSocket
+      emergencyWebSocket.disconnect();
+      console.log("[stopContinuousPinging] WebSocket disconnected");
+
+      console.log(
+        "[stopContinuousPinging] Continuous location pinging stopped.",
+      );
+      Alert.alert(
+        "Pinging Stopped",
+        "Continuous location updates have been stopped.",
+      );
+      posthog.capture("Continuous Emergency Ping Stopped", {
+        userId: user.isLoggedIn ? user.name : "anonymous",
       });
     }
   };
@@ -630,23 +796,44 @@ const HomeScreen = () => {
               <Text style={[styles.cardTitle, { color: theme.text }]}>
                 Emergency Options
               </Text>
-            </View>
-
+            </View>{" "}
             {/* Main Action Buttons */}
             <Animated.View style={{ transform: [{ scale: panicButtonScale }] }}>
               <TouchableOpacity
                 style={[
                   styles.panicButton,
-                  { backgroundColor: theme.secondary },
+                  {
+                    backgroundColor: isContinuousPingingActive
+                      ? "#34C759"
+                      : theme.secondary,
+                  },
                 ]}
-                onPress={handlePanic}
+                onPress={
+                  isContinuousPingingActive
+                    ? stopContinuousPinging
+                    : handlePanic
+                }
                 activeOpacity={0.8}
-                accessibilityLabel="Panic button"
+                accessibilityLabel={
+                  isContinuousPingingActive
+                    ? "Stop pinging button"
+                    : "Panic button"
+                }
                 accessibilityRole="button"
-                accessibilityHint="Press to send emergency alert with your location"
+                accessibilityHint={
+                  isContinuousPingingActive
+                    ? "Press to stop continuous location updates"
+                    : "Press to send emergency alert with your location"
+                }
               >
-                <Ionicons name="warning" size={26} color="#FFF" />
-                <Text style={styles.panicButtonText}>PANIC</Text>
+                <Ionicons
+                  name={isContinuousPingingActive ? "stop-circle" : "warning"}
+                  size={26}
+                  color="#FFF"
+                />
+                <Text style={styles.panicButtonText}>
+                  {isContinuousPingingActive ? "STOP PINGING" : "PANIC"}
+                </Text>
               </TouchableOpacity>
             </Animated.View>
           </View>

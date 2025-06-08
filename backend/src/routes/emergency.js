@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createEmergencyPing,
   getRecentEmergencyPings,
+  updateEmergencyPingLocation,
 } = require("../services/emergencyService.js");
 
 /**
@@ -11,7 +12,7 @@ const {
  */
 router.post("/location", async (req, res) => {
   try {
-    const { latitude, longitude, timestamp, userId } = req.body;
+    const { latitude, longitude, timestamp, userId, sessionId } = req.body;
 
     // Validate required fields
     if (!latitude || !longitude || !timestamp) {
@@ -34,57 +35,101 @@ router.post("/location", async (req, res) => {
       });
     }
 
-    console.log(`[EMERGENCY PING] Received location ping:`, {
-      latitude,
-      longitude,
-      timestamp,
-      userId: userId || "anonymous",
-    });
-
     const now = new Date();
     const utc8Offset = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
     const utc8Now = new Date(now.getTime() + utc8Offset);
     const isoStringUtc8 = utc8Now.toISOString().replace("Z", "+08:00");
 
-    const emergencyPing = await createEmergencyPing({
-      latitude: parseFloat(latitude),
-      longitude: parseFloat(longitude),
-      timestamp: isoStringUtc8,
-      userId: userId || "anonymous",
-      emergencyContact: req.body.emergencyContact || null,
-      status: "active",
-      lastPing: isoStringUtc8,
-    });
-
-    const io = req.app.get("io");
-    if (io) {
-      io.emit("emergency-ping", {
-        id: emergencyPing.$id,
-        latitude: emergencyPing.latitude,
-        longitude: emergencyPing.longitude,
-        timestamp: emergencyPing.timestamp,
-        userId: emergencyPing.userId,
-        emergencyContact: emergencyPing.emergencyContact,
-        receivedAt: emergencyPing.receivedAt,
-        status: emergencyPing.status,
+    // Check if this is a continuous ping update (sessionId provided)
+    if (sessionId) {
+      console.log(`[EMERGENCY PING] Updating continuous ping session:`, {
+        sessionId,
+        latitude,
+        longitude,
+        timestamp,
       });
-      console.log(
-        `[EMERGENCY PING] Real-time notification sent for ping ID: ${emergencyPing.$id}`
-      );
-    }
 
-    res.status(201).json({
-      success: true,
-      message: "Emergency location ping received successfully",
-      data: {
-        id: emergencyPing.$id,
-        latitude: emergencyPing.latitude,
-        longitude: emergencyPing.longitude,
-        timestamp: emergencyPing.timestamp,
-        receivedAt: emergencyPing.receivedAt,
-        status: emergencyPing.status,
-      },
-    });
+      const updatedPing = await updateEmergencyPingLocation(sessionId, {
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        timestamp: isoStringUtc8,
+      });
+
+      const io = req.app.get("io");
+      if (io) {
+        io.emit("emergency-ping-updated", {
+          id: sessionId,
+          lastLatitude: updatedPing.lastLatitude,
+          lastLongitude: updatedPing.lastLongitude,
+          lastPing: updatedPing.lastPing,
+          status: updatedPing.status,
+        });
+        console.log(
+          `[EMERGENCY PING] Real-time location update sent for session ID: ${sessionId}`
+        );
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Emergency location ping updated successfully",
+        data: {
+          sessionId: sessionId,
+          lastLatitude: updatedPing.lastLatitude,
+          lastLongitude: updatedPing.lastLongitude,
+          lastPing: updatedPing.lastPing,
+          status: updatedPing.status,
+        },
+      });
+    } else {
+      // This is a new emergency ping session
+      console.log(`[EMERGENCY PING] Creating new emergency ping session:`, {
+        latitude,
+        longitude,
+        timestamp,
+        userId: userId || "anonymous",
+      });
+
+      const emergencyPing = await createEmergencyPing({
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        timestamp: isoStringUtc8,
+        userId: userId || "anonymous",
+        emergencyContact: req.body.emergencyContact || null,
+        status: "active",
+        lastPing: isoStringUtc8,
+      });
+
+      const io = req.app.get("io");
+      if (io) {
+        io.emit("emergency-ping", {
+          id: emergencyPing.$id,
+          latitude: emergencyPing.latitude,
+          longitude: emergencyPing.longitude,
+          timestamp: emergencyPing.timestamp,
+          userId: emergencyPing.userId,
+          emergencyContact: emergencyPing.emergencyContact,
+          receivedAt: emergencyPing.receivedAt,
+          status: emergencyPing.status,
+        });
+        console.log(
+          `[EMERGENCY PING] Real-time notification sent for ping ID: ${emergencyPing.$id}`
+        );
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Emergency location ping session created successfully",
+        data: {
+          sessionId: emergencyPing.$id, // Return session ID for continuous pings
+          id: emergencyPing.$id,
+          latitude: emergencyPing.latitude,
+          longitude: emergencyPing.longitude,
+          timestamp: emergencyPing.timestamp,
+          receivedAt: emergencyPing.receivedAt,
+          status: emergencyPing.status,
+        },
+      });
+    }
   } catch (error) {
     console.error("[EMERGENCY PING] Error processing location ping:", error);
     res.status(500).json({
