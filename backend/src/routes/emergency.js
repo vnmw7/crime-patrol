@@ -11,8 +11,7 @@ const {
  */
 router.post("/location", async (req, res) => {
   try {
-    const { latitude, longitude, timestamp, userId, emergencyContact } =
-      req.body;
+    const { latitude, longitude, timestamp, userId } = req.body;
 
     // Validate required fields
     if (!latitude || !longitude || !timestamp) {
@@ -22,7 +21,6 @@ router.post("/location", async (req, res) => {
       });
     }
 
-    // Validate coordinates
     if (
       latitude < -90 ||
       latitude > 90 ||
@@ -41,21 +39,23 @@ router.post("/location", async (req, res) => {
       longitude,
       timestamp,
       userId: userId || "anonymous",
-      emergencyContact,
     });
 
-    // Create emergency ping record
+    const now = new Date();
+    const utc8Offset = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+    const utc8Now = new Date(now.getTime() + utc8Offset);
+    const isoStringUtc8 = utc8Now.toISOString().replace("Z", "+08:00");
+
     const emergencyPing = await createEmergencyPing({
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
-      timestamp,
+      timestamp: isoStringUtc8,
       userId: userId || "anonymous",
-      emergencyContact: emergencyContact || null,
+      emergencyContact: req.body.emergencyContact || null,
       status: "active",
-      receivedAt: new Date().toISOString(),
+      lastPing: isoStringUtc8,
     });
 
-    // Emit real-time notification to connected clients (emergency services, etc.)
     const io = req.app.get("io");
     if (io) {
       io.emit("emergency-ping", {

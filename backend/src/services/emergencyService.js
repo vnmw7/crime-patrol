@@ -69,7 +69,7 @@ async function setupEmergencyPingsCollection() {
       }, // Added status attribute
       { key: "lastPing", type: "datetime", required: true },
       { key: "respondedBy", type: "string", size: 255, required: false },
-      { key: "resolvedAt", type: "datetime", required: false },
+      { key: "respondedAt", type: "datetime", required: false },
     ];
 
     for (const attr of attributes) {
@@ -161,7 +161,7 @@ async function createEmergencyPing(pingData) {
         status: pingData.status || "pending",
         lastPing: pingData.lastPing || new Date().toISOString(),
         respondedBy: null,
-        resolvedAt: null,
+        respondedAt: null,
       }
     );
 

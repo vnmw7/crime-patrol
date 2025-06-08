@@ -31,7 +31,23 @@ import * as Location from "expo-location"; // Added for location services
 
 // Emergency contact number
 const EMERGENCY_NUMBER = "+639485685828"; // Philippine number in international format
-const LOCATION_PING_ENDPOINT = "http://localhost:3000/api/emergency/location"; // Backend API endpoint
+
+// Backend URL configuration for different environments
+const getBackendUrl = () => {
+  if (__DEV__) {
+    // Development mode
+    if (Platform.OS === "android") {
+      return "http://192.168.254.120:3000/api/emergency/location";
+    } else {
+      // iOS simulator can use localhost directly
+      return "http://localhost:3000/api/emergency/location";
+    }
+  } else {
+    return "https://your-production-backend.com/api/emergency/location";
+  }
+};
+
+const LOCATION_PING_ENDPOINT = getBackendUrl();
 
 // Mock user state - in a real app, this would come from authentication
 const mockUser = {
@@ -161,13 +177,12 @@ const HomeScreen = () => {
         );
         showEmergencyAlternatives();
       });
-  };
-
-  // Function to ping location to backend
+  }; // Function to ping location to backend
   const pingLocationToBackend = async () => {
     console.log(
       "[pingLocationToBackend] Attempting to get location and ping backend.",
     );
+
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
@@ -184,9 +199,37 @@ const HomeScreen = () => {
       console.log(
         "[pingLocationToBackend] Location permission granted. Fetching current position...",
       );
-      let location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High, // Request high accuracy for emergency
-      });
+
+      // Get location with fallback to lower accuracy if needed
+      let location;
+      try {
+        location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+      } catch (locationError) {
+        console.warn(
+          "[pingLocationToBackend] High accuracy location failed, trying with lower accuracy:",
+          locationError,
+        );
+        try {
+          location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+        } catch (fallbackError) {
+          console.warn(
+            "[pingLocationToBackend] Balanced accuracy failed, trying low accuracy:",
+            fallbackError,
+          );
+          location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Low,
+          });
+        }
+      }
+
+      if (!location || !location.coords) {
+        throw new Error("Could not obtain location coordinates");
+      }
+
       const { latitude, longitude } = location.coords;
       const timestamp = new Date().toISOString();
 
@@ -197,18 +240,20 @@ const HomeScreen = () => {
         `[pingLocationToBackend] Pinging location to: ${LOCATION_PING_ENDPOINT}`,
       );
 
+      // Create the request payload
+      const payload = {
+        latitude,
+        longitude,
+        timestamp,
+        userId: user.isLoggedIn ? user.name : "anonymous",
+      };
+
       const response = await fetch(LOCATION_PING_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          latitude,
-          longitude,
-          timestamp,
-          userId: user.isLoggedIn ? user.name : "anonymous", // Example: include user info if available
-          emergencyContact: EMERGENCY_NUMBER, // Example: include context
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -217,33 +262,79 @@ const HomeScreen = () => {
           "[pingLocationToBackend] Location successfully pinged to backend:",
           responseData,
         );
-        // Non-intrusive feedback, perhaps a toast notification in a real app. For now, console log is fine.
-        // Alert.alert("Location Sent", "Your current location has been sent."); // Avoid if too intrusive during panic
+
+        // Show success feedback
+        Alert.alert(
+          "Emergency Alert Sent",
+          "Your location has been sent to emergency services.",
+          [{ text: "OK" }],
+        );
+
+        // Track success with PostHog
+        posthog.capture("Emergency Location Ping Success", {
+          latitude,
+          longitude,
+          accuracy: location.coords.accuracy,
+          userId: user.isLoggedIn ? user.name : "anonymous",
+        });
       } else {
         const errorText = await response.text();
         console.error(
           `[pingLocationToBackend] Failed to ping location. Status: ${response.status}. Response: ${errorText}`,
         );
+
         Alert.alert(
-          "Location Ping Failed",
-          `Could not send location to server (Status: ${response.status}). Please check your internet connection. Your emergency call might still go through.`,
+          "Location Send Failed",
+          `Could not send location to emergency services (Status: ${response.status}). Your emergency call should still go through. Please inform them of your location verbally.`,
         );
+
+        posthog.capture("Emergency Location Ping Failed", {
+          error: `HTTP ${response.status}: ${errorText}`,
+          latitude,
+          longitude,
+        });
       }
     } catch (error: any) {
       console.error(
         "[pingLocationToBackend] Error during location ping process:",
         error,
       );
+
       let errorMessage =
         "An unexpected error occurred while trying to send your location.";
-      if (error.message.includes("Location provider is disabled")) {
+
+      if (
+        error.message &&
+        error.message.includes("Location provider is disabled")
+      ) {
         errorMessage =
-          "Location services are disabled on your device. Please enable them to send your location.";
-      } else if (error.message.includes("denied")) {
-        // Should be caught by permission check, but as a fallback
+          "Location services are disabled on your device. Please enable them and try again.";
+      } else if (error.message && error.message.includes("denied")) {
         errorMessage = "Location permission was denied. Cannot send location.";
+      } else if (
+        error.message &&
+        (error.message.includes("timeout") ||
+          error.message.includes("Request timeout"))
+      ) {
+        errorMessage =
+          "Location request timed out. Your emergency call should still go through.";
+      } else if (
+        error.message &&
+        error.message.includes("Network request failed")
+      ) {
+        errorMessage =
+          "Network connection failed. Check your internet connection. Your emergency call should still go through.";
       }
-      Alert.alert("Location Error", errorMessage);
+
+      Alert.alert(
+        "Location Error",
+        `${errorMessage}\n\nPlease inform emergency services of your location verbally when they answer.`,
+      );
+
+      posthog.capture("Emergency Location Ping Error", {
+        error: String(error),
+        errorMessage: error.message || "Unknown error",
+      });
     }
   };
 
