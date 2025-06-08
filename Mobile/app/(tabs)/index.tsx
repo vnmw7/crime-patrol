@@ -8,6 +8,8 @@ import {
   Platform,
   useColorScheme,
   Animated,
+  Alert,
+  Linking,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,6 +27,11 @@ import {
   pingAppwrite,
 } from "../../lib/appwrite";
 import { usePostHog } from "posthog-react-native";
+import * as Location from "expo-location"; // Added for location services
+
+// Emergency contact number
+const EMERGENCY_NUMBER = "+639485685828"; // Philippine number in international format
+const LOCATION_PING_ENDPOINT = "http://localhost:3000/api/emergency/location"; // Backend API endpoint
 
 // Mock user state - in a real app, this would come from authentication
 const mockUser = {
@@ -86,7 +93,6 @@ const HomeScreen = () => {
     triggerHaptic();
     router.push("/menu" as any); // Corrected path with type assertion
   };
-
   // Function to handle the panic button press with animation
   const handlePanic = () => {
     triggerHaptic();
@@ -104,9 +110,197 @@ const HomeScreen = () => {
       }),
     ]).start();
 
+    // Show confirmation alert before making the call
+    Alert.alert(
+      "Emergency Call",
+      `Are you sure you want to call ${EMERGENCY_NUMBER}? This will also attempt to send your current location to emergency services.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () =>
+            console.log("[handlePanic] Emergency action cancelled by user."),
+        },
+        {
+          text: "Call Now & Send Location",
+          style: "destructive",
+          onPress: () => {
+            console.log(
+              "[handlePanic] User confirmed emergency action. Initiating call and location ping.",
+            );
+            makeEmergencyCall();
+            pingLocationToBackend();
+          },
+        },
+      ],
+    );
+
     // Add logic for sending location to authorities
-    console.log("PANIC button pressed - sending location");
-    // Show confirmation alert
+    console.log("PANIC button pressed - preparing emergency call");
+  }; // Function to make emergency call
+  const makeEmergencyCall = () => {
+    const url = `tel:${EMERGENCY_NUMBER}`;
+    console.log("[makeEmergencyCall] Attempting to open dialer with:", url);
+
+    Linking.openURL(url)
+      .then(() => {
+        console.log(
+          "[makeEmergencyCall] Successfully handed off to OS to open dialer with:",
+          url,
+        );
+      })
+      .catch((error) => {
+        console.warn(
+          "[makeEmergencyCall] Failed to open dialer with URL:",
+          url,
+          "Error:",
+          error,
+        );
+        console.log(
+          "[makeEmergencyCall] Could not open dialer, showing alternatives.",
+        );
+        showEmergencyAlternatives();
+      });
+  };
+
+  // Function to ping location to backend
+  const pingLocationToBackend = async () => {
+    console.log(
+      "[pingLocationToBackend] Attempting to get location and ping backend.",
+    );
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Denied",
+          "Permission to access location was denied. Cannot send location automatically. Please ensure location services are enabled for this app.",
+        );
+        console.warn(
+          "[pingLocationToBackend] Location permission denied by user.",
+        );
+        return;
+      }
+
+      console.log(
+        "[pingLocationToBackend] Location permission granted. Fetching current position...",
+      );
+      let location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High, // Request high accuracy for emergency
+      });
+      const { latitude, longitude } = location.coords;
+      const timestamp = new Date().toISOString();
+
+      console.log(
+        `[pingLocationToBackend] Location fetched: Lat: ${latitude}, Lon: ${longitude}, Timestamp: ${timestamp}`,
+      );
+      console.log(
+        `[pingLocationToBackend] Pinging location to: ${LOCATION_PING_ENDPOINT}`,
+      );
+
+      const response = await fetch(LOCATION_PING_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          latitude,
+          longitude,
+          timestamp,
+          userId: user.isLoggedIn ? user.name : "anonymous", // Example: include user info if available
+          emergencyContact: EMERGENCY_NUMBER, // Example: include context
+        }),
+      });
+
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log(
+          "[pingLocationToBackend] Location successfully pinged to backend:",
+          responseData,
+        );
+        // Non-intrusive feedback, perhaps a toast notification in a real app. For now, console log is fine.
+        // Alert.alert("Location Sent", "Your current location has been sent."); // Avoid if too intrusive during panic
+      } else {
+        const errorText = await response.text();
+        console.error(
+          `[pingLocationToBackend] Failed to ping location. Status: ${response.status}. Response: ${errorText}`,
+        );
+        Alert.alert(
+          "Location Ping Failed",
+          `Could not send location to server (Status: ${response.status}). Please check your internet connection. Your emergency call might still go through.`,
+        );
+      }
+    } catch (error: any) {
+      console.error(
+        "[pingLocationToBackend] Error during location ping process:",
+        error,
+      );
+      let errorMessage =
+        "An unexpected error occurred while trying to send your location.";
+      if (error.message.includes("Location provider is disabled")) {
+        errorMessage =
+          "Location services are disabled on your device. Please enable them to send your location.";
+      } else if (error.message.includes("denied")) {
+        // Should be caught by permission check, but as a fallback
+        errorMessage = "Location permission was denied. Cannot send location.";
+      }
+      Alert.alert("Location Error", errorMessage);
+    }
+  };
+
+  // Function to show alternative emergency options when phone calls aren't supported
+  const showEmergencyAlternatives = () => {
+    Alert.alert(
+      "Emergency Options",
+      "Could not open the phone dialer. Choose an alternative:",
+      [
+        {
+          text: "Copy Emergency Number",
+          onPress: () => copyEmergencyNumber(),
+        },
+        {
+          text: "Send SMS",
+          onPress: () => sendEmergencySMS(),
+        },
+        {
+          text: "Find Police Stations",
+          onPress: () => router.push("/police-stations"),
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ],
+    );
+  };
+
+  const copyEmergencyNumber = () => {
+    Alert.alert(
+      "Emergency Number",
+      `Emergency Number: ${EMERGENCY_NUMBER}\n\nYou can manually dial this number from your phone app.`,
+      [
+        {
+          text: "OK",
+          onPress: () => console.log("Emergency number shown to user"),
+        },
+      ],
+    );
+  };
+
+  // Function to send emergency SMS
+  const sendEmergencySMS = () => {
+    const smsUrl = `sms:${EMERGENCY_NUMBER}?body=EMERGENCY: I need immediate assistance. This is an automated message from Crime Patrol app.`;
+
+    Linking.canOpenURL(smsUrl)
+      .then((supported) => {
+        if (supported) {
+          return Linking.openURL(smsUrl);
+        }
+        Alert.alert("Error", "SMS is not supported on this device");
+      })
+      .catch((error) => {
+        console.error("Error sending SMS:", error);
+        Alert.alert("Error", "An error occurred while trying to send SMS");
+      });
   };
   // Function to toggle user login status (for demo purposes)
   const toggleLogin = () => {

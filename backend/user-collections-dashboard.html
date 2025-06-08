@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Crime Patrol - User Collections Status</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+        background: #f5f5f5;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      pre {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 4px;
+        overflow-x: auto;
+      }
+      #results {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🚨 Crime Patrol - User Collections Status Dashboard</h1>
+
+      <div class="status info">
+        <h3>📋 User Collections Implementation</h3>
+        <p><strong>Status:</strong> ✅ Implemented and Ready</p>
+        <ul>
+          <li>
+            <strong>Users Collection:</strong> firstName, lastName, role,
+            isVerified
+          </li>
+          <li>
+            <strong>User Contacts Collection:</strong> email, phone, address,
+            userId
+          </li>
+          <li>
+            <strong>User Documents Collection:</strong> idPictureUrl,
+            documentType, isVerified, uploadedAt, verifiedAt, verifiedBy, userId
+          </li>
+        </ul>
+      </div>
+
+      <div class="status success">
+        <h3>🔗 Available API Endpoints</h3>
+        <ul>
+          <li>
+            <strong>POST /api/users</strong> - Create complete user with contact
+            info
+          </li>
+          <li>
+            <strong>GET /api/users</strong> - Get users with filtering options
+          </li>
+          <li>
+            <strong>GET /api/users/:id</strong> - Get user by ID with
+            contact/document info
+          </li>
+          <li><strong>PUT /api/users/:id</strong> - Update user information</li>
+          <li>
+            <strong>DELETE /api/users/:id</strong> - Delete user and associated
+            data
+          </li>
+          <li>
+            <strong>PUT /api/users/:id/contact</strong> - Update user contact
+            info
+          </li>
+          <li>
+            <strong>PUT /api/users/:id/document</strong> - Update user document
+            info
+          </li>
+          <li>
+            <strong>POST /api/users/:id/verify-document</strong> - Verify user
+            document
+          </li>
+          <li>
+            <strong>GET /api/users/pending-documents</strong> - Get users with
+            pending documents
+          </li>
+          <li>
+            <strong>GET /api/users/search/email/:email</strong> - Find user by
+            email
+          </li>
+        </ul>
+      </div>
+
+      <h3>🧪 API Tests</h3>
+      <button onclick="testRootEndpoint()">Test Root Endpoint</button>
+      <button onclick="testCreateUser()">Test Create User</button>
+      <button onclick="testGetUsers()">Test Get Users</button>
+      <button onclick="testServerStatus()">Test Server Status</button>
+
+      <div id="results"></div>
+    </div>
+
+    <script>
+      const API_BASE = "http://localhost:3000";
+
+      function updateResults(message, type = "info") {
+        const results = document.getElementById("results");
+        const div = document.createElement("div");
+        div.className = `status ${type}`;
+        div.innerHTML = `<pre>${message}</pre>`;
+        results.appendChild(div);
+        results.scrollTop = results.scrollHeight;
+      }
+
+      async function testRootEndpoint() {
+        try {
+          updateResults("Testing root endpoint...", "info");
+          const response = await fetch(`${API_BASE}/`);
+          const data = await response.json();
+          updateResults(
+            `✅ Root endpoint success:\n${JSON.stringify(data, null, 2)}`,
+            "success"
+          );
+        } catch (error) {
+          updateResults(`❌ Root endpoint failed: ${error.message}`, "error");
+        }
+      }
+
+      async function testCreateUser() {
+        try {
+          updateResults("Testing create user...", "info");
+          const userData = {
+            firstName: "Test",
+            lastName: "User",
+            role: "citizen",
+            email: "test@example.com",
+            phone: "+1234567890",
+          };
+
+          const response = await fetch(`${API_BASE}/api/users`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(userData),
+          });
+
+          const data = await response.json();
+          if (response.ok) {
+            updateResults(
+              `✅ Create user success:\n${JSON.stringify(data, null, 2)}`,
+              "success"
+            );
+          } else {
+            updateResults(
+              `❌ Create user failed: ${data.error || "Unknown error"}`,
+              "error"
+            );
+          }
+        } catch (error) {
+          updateResults(`❌ Create user failed: ${error.message}`, "error");
+        }
+      }
+
+      async function testGetUsers() {
+        try {
+          updateResults("Testing get users...", "info");
+          const response = await fetch(
+            `${API_BASE}/api/users?includeContacts=true&limit=5`
+          );
+          const data = await response.json();
+
+          if (response.ok) {
+            updateResults(
+              `✅ Get users success (${data.length} users):\n${JSON.stringify(
+                data,
+                null,
+                2
+              )}`,
+              "success"
+            );
+          } else {
+            updateResults(
+              `❌ Get users failed: ${data.error || "Unknown error"}`,
+              "error"
+            );
+          }
+        } catch (error) {
+          updateResults(`❌ Get users failed: ${error.message}`, "error");
+        }
+      }
+
+      async function testServerStatus() {
+        try {
+          updateResults("Testing server connectivity...", "info");
+          const response = await fetch(`${API_BASE}/`);
+          updateResults(`✅ Server is running on port 3000`, "success");
+        } catch (error) {
+          updateResults(
+            `❌ Server connection failed: ${error.message}\nMake sure the server is running with: node src/index.js`,
+            "error"
+          );
+        }
+      }
+
+      // Auto-test server status on load
+      window.onload = () => {
+        updateResults("🚀 User Collections Dashboard loaded", "info");
+        testServerStatus();
+      };
+    </script>
+  </body>
+</html>

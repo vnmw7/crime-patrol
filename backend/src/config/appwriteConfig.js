@@ -48,6 +48,24 @@ const NORMALIZED_COLLECTIONS = {
     name:
       process.env.APPWRITE_REPORT_METADATA_COLLECTION_NAME || "Report Metadata",
   },
+  EMERGENCY_PINGS: {
+    id: process.env.APPWRITE_EMERGENCY_PINGS_COLLECTION_ID || "emergency_pings",
+    name:
+      process.env.APPWRITE_EMERGENCY_PINGS_COLLECTION_NAME || "Emergency Pings",
+  },
+  USERS: {
+    id: process.env.APPWRITE_USERS_COLLECTION_ID || "users",
+    name: process.env.APPWRITE_USERS_COLLECTION_NAME || "Users",
+  },
+  USER_CONTACTS: {
+    id: process.env.APPWRITE_USER_CONTACTS_COLLECTION_ID || "user_contacts",
+    name: process.env.APPWRITE_USER_CONTACTS_COLLECTION_NAME || "User Contacts",
+  },
+  USER_DOCUMENTS: {
+    id: process.env.APPWRITE_USER_DOCUMENTS_COLLECTION_ID || "user_documents",
+    name:
+      process.env.APPWRITE_USER_DOCUMENTS_COLLECTION_NAME || "User Documents",
+  },
 };
 
 const STORAGE_BUCKETS = {
