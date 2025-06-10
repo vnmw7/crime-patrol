@@ -115,8 +115,7 @@ const MediaSection: React.FC<PropertySectionProps> = ({
       <View style={styles.formField}>
         <Text style={[styles.fieldLabel, { color: theme.text }]}>
           Attach Media Evidence
-        </Text>
-
+        </Text>{" "}
         {/* Media buttons with improved layout */}
         <Animated.View
           style={[
@@ -131,8 +130,6 @@ const MediaSection: React.FC<PropertySectionProps> = ({
               {
                 borderColor: theme.border,
                 backgroundColor: theme.inputBackground,
-                width: "48%",
-                marginBottom: 10,
               },
             ]}
             onPress={() => handleAttachMedia("photo_gallery")}
@@ -150,8 +147,6 @@ const MediaSection: React.FC<PropertySectionProps> = ({
               {
                 borderColor: theme.border,
                 backgroundColor: theme.inputBackground,
-                width: "48%",
-                marginBottom: 10,
               },
             ]}
             onPress={() => handleAttachMedia("photo_camera")}
@@ -170,8 +165,6 @@ const MediaSection: React.FC<PropertySectionProps> = ({
               {
                 borderColor: theme.border,
                 backgroundColor: theme.inputBackground,
-                width: "48%",
-                marginBottom: 10,
               },
             ]}
             onPress={() => handleAttachMedia("video_gallery")}
@@ -189,8 +182,6 @@ const MediaSection: React.FC<PropertySectionProps> = ({
               {
                 borderColor: theme.border,
                 backgroundColor: theme.inputBackground,
-                width: "48%",
-                marginBottom: 10,
               },
             ]}
             onPress={() => handleAttachMedia("video_camera")}
@@ -209,8 +200,6 @@ const MediaSection: React.FC<PropertySectionProps> = ({
               {
                 borderColor: theme.border,
                 backgroundColor: theme.inputBackground,
-                width: "48%",
-                marginBottom: 10,
               },
             ]}
             onPress={() => handleAttachMedia("audio_file")}
@@ -228,8 +217,6 @@ const MediaSection: React.FC<PropertySectionProps> = ({
               {
                 borderColor: theme.border,
                 backgroundColor: theme.inputBackground,
-                width: "48%",
-                marginBottom: 10,
               },
             ]}
             onPress={() => handleAttachMedia("audio_record")}
@@ -241,7 +228,6 @@ const MediaSection: React.FC<PropertySectionProps> = ({
             </Text>
           </TouchableOpacity>
         </Animated.View>
-
         {/* Upload Progress Indicator */}
         {isUploading && (
           <View style={styles.uploadProgressContainer}>
@@ -251,7 +237,6 @@ const MediaSection: React.FC<PropertySectionProps> = ({
             </Text>
           </View>
         )}
-
         {/* Enhanced Media Preview */}
         {formData.media && formData.media.length > 0 && (
           <View style={styles.mediaPreviewSectionContainer}>
@@ -311,6 +296,7 @@ const styles = StyleSheet.create({
   },
   mediaButtonsContainer: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
   },
   mediaButton: {
@@ -319,6 +305,8 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderRadius: 8,
+    width: "48%",
+    marginBottom: 12,
   },
   mediaButtonText: {
     marginTop: 6,

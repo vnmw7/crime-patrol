@@ -1225,6 +1225,7 @@ async function setupNormalizedCollections() {
       "file_id",
       "media_type",
       "file_name_original",
+      "file_url",
       "display_order",
     ];
 
@@ -1287,6 +1288,20 @@ async function setupNormalizedCollections() {
           DATABASE_ID,
           NORMALIZED_COLLECTIONS.REPORT_MEDIA.id,
           "file_name_original",
+          255,
+          false
+        )
+    );
+
+    await createAttributeIfNotExists(
+      DATABASE_ID,
+      NORMALIZED_COLLECTIONS.REPORT_MEDIA.id,
+      "file_url",
+      () =>
+        databases.createStringAttribute(
+          DATABASE_ID,
+          NORMALIZED_COLLECTIONS.REPORT_MEDIA.id,
+          "file_url",
           255,
           false
         )
