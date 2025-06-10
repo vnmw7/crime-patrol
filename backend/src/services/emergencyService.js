@@ -338,22 +338,28 @@ function setupEmergencyWebSocketHandlers(io) {
             longitude,
             timestamp,
           }
-        );
-
-        // Emit confirmation back to client
+        ); // Emit confirmation back to client
         socket.emit("emergency-location-updated", {
           sessionId,
           timestamp: updatedDocument.lastPing,
           success: true,
         });
 
-        // Broadcast to emergency services room for real-time monitoring
-        socket.to("emergency-services").emit("emergency-ping-updated", {
-          sessionId,
-          latitude,
-          longitude,
-          timestamp: updatedDocument.lastPing,
-          userId,
+        // Get the IO instance for proper broadcasting
+        const io = socket.server;
+
+        // Broadcast to map clients using the proper broadcast function
+        broadcastEmergencyPingUpdated(io, {
+          id: sessionId,
+          $id: sessionId,
+          latitude: latitude,
+          longitude: longitude,
+          lastLatitude: latitude,
+          lastLongitude: longitude,
+          lastPing: updatedDocument.lastPing,
+          timestamp: updatedDocument.timestamp,
+          userId: userId,
+          status: updatedDocument.status || "active",
         });
 
         console.log(`✅ [EMERGENCY] Database updated for session ${sessionId}`);

@@ -6,7 +6,7 @@ const getBackendWsUrl = () => {
   if (__DEV__) {
     // Development mode
     if (Platform.OS === "android") {
-      return "http://192.168.254.120:3000"; // Android emulator uses this IP for localhost
+      return "http://10.0.2.2:3000"; // Android emulator uses this IP for localhost
     } else {
       return "http://localhost:3000"; // iOS simulator and web
     }
