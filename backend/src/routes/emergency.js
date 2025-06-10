@@ -4,6 +4,8 @@ const {
   createEmergencyPing,
   getRecentEmergencyPings,
   updateEmergencyPingLocation,
+  broadcastEmergencyPingCreated,
+  broadcastEmergencyPingUpdated,
 } = require("../services/emergencyService.js");
 
 /**
@@ -54,9 +56,12 @@ router.post("/location", async (req, res) => {
         longitude: parseFloat(longitude),
         timestamp: isoStringUtc8,
       });
-
       const io = req.app.get("io");
       if (io) {
+        // Broadcast to map clients
+        broadcastEmergencyPingUpdated(io, updatedPing);
+
+        // Also emit for backwards compatibility
         io.emit("emergency-ping-updated", {
           id: sessionId,
           lastLatitude: updatedPing.lastLatitude,
@@ -98,9 +103,12 @@ router.post("/location", async (req, res) => {
         status: "active",
         lastPing: isoStringUtc8,
       });
-
       const io = req.app.get("io");
       if (io) {
+        // Broadcast to map clients
+        broadcastEmergencyPingCreated(io, emergencyPing);
+
+        // Also emit for backwards compatibility
         io.emit("emergency-ping", {
           id: emergencyPing.$id,
           latitude: emergencyPing.latitude,

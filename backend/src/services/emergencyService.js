@@ -185,7 +185,7 @@ async function getRecentEmergencyPings(options = {}) {
   try {
     const { limit = 50, status = "active", since } = options;
 
-    let queries = [Query.limit(limit), Query.orderDesc("receivedAt")];
+    let queries = [Query.limit(limit), Query.orderDesc("timestamp")];
 
     // Add status filter if provided
     if (status) {
@@ -194,7 +194,7 @@ async function getRecentEmergencyPings(options = {}) {
 
     // Add time filter if provided
     if (since) {
-      queries.push(Query.greaterThan("receivedAt", since));
+      queries.push(Query.greaterThan("timestamp", since));
     }
 
     const response = await databases.listDocuments(
@@ -284,11 +284,18 @@ async function updateEmergencyPingLocationWebSocket(sessionId, locationData) {
       updateData
     );
 
-    console.log(`Emergency ping ${sessionId} location updated via WebSocket`);
+    console.log(
+      `✅ [DATABASE UPDATE] Emergency ping ${sessionId} location updated via WebSocket`
+    );
+    console.log(
+      `   📍 New coordinates: ${locationData.latitude}, ${locationData.longitude}`
+    );
+    console.log(`   🕐 Last ping time: ${document.lastPing}`);
+
     return document;
   } catch (error) {
     console.error(
-      `Error updating emergency ping location via WebSocket ${sessionId}:`,
+      `❌ [DATABASE ERROR] Failed to update emergency ping location via WebSocket ${sessionId}:`,
       error
     );
     throw error;
@@ -300,19 +307,23 @@ async function updateEmergencyPingLocationWebSocket(sessionId, locationData) {
  */
 function setupEmergencyWebSocketHandlers(io) {
   io.on("connection", (socket) => {
-    console.log(`[EMERGENCY] Client connected: ${socket.id}`);
-
-    // Handle emergency location updates
+    console.log(`[EMERGENCY] Client connected: ${socket.id}`); // Handle emergency location updates
     socket.on("emergency-location-update", async (data) => {
       try {
-        console.log(
-          `[EMERGENCY] Received location update from ${socket.id}:`,
-          data
-        );
+        const currentTime = new Date().toISOString();
+        console.log(`\n📍 [EMERGENCY PING UPDATE] ${currentTime}`);
+        console.log(`   Client: ${socket.id}`);
+        console.log(`   Session: ${data.sessionId}`);
+        console.log(`   Coordinates: ${data.latitude}, ${data.longitude}`);
+        console.log(`   User: ${data.userId || "anonymous"}`);
+        console.log(`   Timestamp: ${data.timestamp}`);
 
         const { sessionId, latitude, longitude, timestamp, userId } = data;
 
         if (!sessionId || !latitude || !longitude) {
+          console.log(
+            `❌ [EMERGENCY] Missing required fields for session ${sessionId}`
+          );
           socket.emit("emergency-error", {
             error: "Missing required fields: sessionId, latitude, longitude",
           });
@@ -345,7 +356,7 @@ function setupEmergencyWebSocketHandlers(io) {
           userId,
         });
 
-        console.log(`[EMERGENCY] Location updated for session ${sessionId}`);
+        console.log(`✅ [EMERGENCY] Database updated for session ${sessionId}`);
       } catch (error) {
         console.error(`[EMERGENCY] Error handling location update:`, error);
         socket.emit("emergency-error", {
@@ -361,46 +372,115 @@ function setupEmergencyWebSocketHandlers(io) {
       console.log(
         `[EMERGENCY] Client ${socket.id} joined emergency session ${sessionId}`
       );
-    });
-
-    // Handle emergency session leave
+    }); // Handle emergency session leave
     socket.on("leave-emergency-session", (sessionId) => {
       socket.leave(`emergency-${sessionId}`);
       console.log(
         `[EMERGENCY] Client ${socket.id} left emergency session ${sessionId}`
       );
+
+      // Notify map clients that this emergency ping has ended
+      socket.to("map-updates").emit("emergency-ping-ended", sessionId);
+      console.log(`[MAP] Broadcasted emergency ping ended: ${sessionId}`);
     });
 
     socket.on("disconnect", () => {
       console.log(`[EMERGENCY] Client disconnected: ${socket.id}`);
+      // Note: We could track active sessions per socket and end them on disconnect
+      // but that would require additional session management
     });
   });
 }
 
 /**
- * Get emergency pings by location (within radius)
+ * Setup map-specific WebSocket handlers for real-time emergency ping updates
  */
-async function getEmergencyPingsByLocation(latitude, longitude, radiusKm = 10) {
+function setupMapWebSocketHandlers(io) {
+  io.on("connection", (socket) => {
+    console.log(`[MAP] Client connected: ${socket.id}`);
+
+    // Handle map room join
+    socket.on("map-join", () => {
+      socket.join("map-updates");
+      console.log(`[MAP] Client ${socket.id} joined map-updates room`);
+    });
+
+    // Handle map room leave
+    socket.on("map-leave", () => {
+      socket.leave("map-updates");
+      console.log(`[MAP] Client ${socket.id} left map-updates room`);
+    }); // Handle request for active emergency pings - DISABLED for real-time only map
+    // socket.on("get-active-emergency-pings", async () => {
+    //   try {
+    //     const activePings = await getRecentEmergencyPings({
+    //       status: "active",
+    //       limit: 50,
+    //     });
+    //     socket.emit("active-emergency-pings", activePings);
+    //   } catch (error) {
+    //     console.error("Error fetching active emergency pings:", error);
+    //     socket.emit("emergency-error", {
+    //       error: "Failed to fetch emergency pings",
+    //       message: error.message,
+    //     });
+    //   }
+    // });    // Handle request for emergency pings by location - DISABLED for real-time only map
+    // socket.on("get-emergency-pings-by-location", async (data) => {
+    //   try {
+    //     const { latitude, longitude, radius = 10 } = data;
+    //     const pings = await getEmergencyPingsByLocation(
+    //       latitude,
+    //       longitude,
+    //       radius
+    //     );
+    //     socket.emit("emergency-pings-by-location", pings);
+    //   } catch (error) {
+    //     console.error("Error fetching emergency pings by location:", error);
+    //     socket.emit("emergency-error", {
+    //       error: "Failed to fetch emergency pings by location",
+    //       message: error.message,
+    //     });
+    //   }
+    // });
+  });
+}
+
+/**
+ * Get emergency pings near a specific location
+ */
+async function getEmergencyPingsByLocation(latitude, longitude, radius = 10) {
   try {
-    // For now, get all active pings and filter client-side
-    // In production, you'd want to use geospatial queries if supported
-    const pings = await getRecentEmergencyPings({
-      status: "active",
-      limit: 100,
-    });
+    // Convert radius from kilometers to approximate degrees
+    // 1 degree latitude ≈ 111 km
+    // 1 degree longitude ≈ 111 km * cos(latitude)
+    const latDelta = radius / 111;
+    const lngDelta = radius / (111 * Math.cos((latitude * Math.PI) / 180));
 
-    // Filter by distance (simple calculation)
-    const filteredPings = pings.filter((ping) => {
-      const distance = calculateDistance(
-        latitude,
-        longitude,
-        ping.latitude,
-        ping.longitude
-      );
-      return distance <= radiusKm;
-    });
+    // Calculate bounding box
+    const minLat = latitude - latDelta;
+    const maxLat = latitude + latDelta;
+    const minLng = longitude - lngDelta;
+    const maxLng = longitude + lngDelta;
 
-    return filteredPings;
+    console.log(
+      `Searching for emergency pings near ${latitude}, ${longitude} within ${radius}km`
+    );
+
+    let queries = [
+      Query.between("latitude", minLat, maxLat),
+      Query.between("longitude", minLng, maxLng),
+      Query.orderDesc("timestamp"),
+      Query.limit(50),
+    ];
+
+    const response = await databases.listDocuments(
+      DATABASE_ID,
+      EMERGENCY_PINGS_COLLECTION_ID,
+      queries
+    );
+
+    console.log(`Found ${response.documents.length} emergency pings in area`);
+    return response.documents;
   } catch (error) {
     console.error("Error fetching emergency pings by location:", error);
     throw error;
@@ -408,20 +488,27 @@ async function getEmergencyPingsByLocation(latitude, longitude, radiusKm = 10) {
 }
 
 /**
- * Calculate distance between two points in kilometers
+ * Broadcast emergency ping creation to map clients
  */
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Earth's radius in kilometers
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+function broadcastEmergencyPingCreated(io, ping) {
+  io.to("map-updates").emit("emergency-ping-created", ping);
+  console.log(`[MAP] Broadcasted emergency ping created: ${ping.id}`);
+}
+
+/**
+ * Broadcast emergency ping update to map clients
+ */
+function broadcastEmergencyPingUpdated(io, ping) {
+  io.to("map-updates").emit("emergency-ping-updated", ping);
+  console.log(`[MAP] Broadcasted emergency ping updated: ${ping.id}`);
+}
+
+/**
+ * Broadcast emergency ping response to map clients
+ */
+function broadcastEmergencyPingResponded(io, ping) {
+  io.to("map-updates").emit("emergency-ping-responded", ping);
+  console.log(`[MAP] Broadcasted emergency ping responded: ${ping.id}`);
 }
 
 module.exports = {
@@ -432,5 +519,9 @@ module.exports = {
   updateEmergencyPingLocation,
   updateEmergencyPingLocationWebSocket,
   setupEmergencyWebSocketHandlers,
+  setupMapWebSocketHandlers,
+  broadcastEmergencyPingCreated,
+  broadcastEmergencyPingUpdated,
+  broadcastEmergencyPingResponded,
   getEmergencyPingsByLocation,
 };

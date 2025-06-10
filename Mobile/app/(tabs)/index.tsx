@@ -33,6 +33,9 @@ import { emergencyWebSocket } from "../../lib/emergencyWebSocket";
 // Emergency contact number
 const EMERGENCY_NUMBER = "+639485685828"; // Philippine number in international format
 
+// Ping counter for tracking continuous updates
+let pingCounter = 0;
+
 // Backend URL configuration for different environments
 const getBackendUrl = () => {
   if (__DEV__) {
@@ -93,6 +96,7 @@ const HomeScreen = () => {
   const [isContinuousPingingActive, setIsContinuousPingingActive] =
     useState(false); // New state to track active pinging
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null); // Session ID for continuous pinging
+  const [shouldContinuePinging, setShouldContinuePinging] = useState(false); // Flag to control pinging
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
@@ -324,11 +328,21 @@ const HomeScreen = () => {
         }); // Start continuous pinging if not already active
         if (!continuousPingIntervalId) {
           console.log(
-            "[pingLocationToBackend] Starting continuous location pinging every 2 seconds.",
+            "[pingLocationToBackend] Starting continuous location pinging every 5 seconds.",
           );
-          const intervalId = setInterval(sendPeriodicLocationUpdate, 2000);
-          setContinuousPingIntervalId(intervalId);
+          // Reset ping counter when starting new session
+          pingCounter = 0;
+          setShouldContinuePinging(true); // Set flag to allow pinging
           setIsContinuousPingingActive(true);
+
+          // Use setTimeout to ensure state is set before starting interval
+          setTimeout(() => {
+            const intervalId = setInterval(sendPeriodicLocationUpdate, 5000);
+            setContinuousPingIntervalId(intervalId);
+            console.log(
+              `🔄 [CONTINUOUS PING] Started with interval ID: ${intervalId}`,
+            );
+          }, 100);
         }
       } else {
         const errorText = await response.text();
@@ -389,11 +403,45 @@ const HomeScreen = () => {
         errorMessage: error.message || "Unknown error",
       });
     }
-  };
-  // New function to send periodic location updates via WebSocket
+  }; // New function to send periodic location updates via WebSocket
   const sendPeriodicLocationUpdate = async () => {
+    // Increment ping counter for tracking
+    pingCounter += 1;
+    const currentPingNumber = pingCounter;
+
     console.log(
-      "[sendPeriodicLocationUpdate] Sending periodic location update via WebSocket.",
+      `\n🔄 [PING #${currentPingNumber}] Starting periodic location update at ${new Date().toISOString()}`,
+    );
+
+    // Enhanced state checks with detailed logging
+    console.log(`🔍 [PING #${currentPingNumber}] State check:`);
+    console.log(`   shouldContinuePinging: ${shouldContinuePinging}`);
+    console.log(`   isContinuousPingingActive: ${isContinuousPingingActive}`);
+    console.log(`   continuousPingIntervalId: ${continuousPingIntervalId}`);
+    console.log(`   currentSessionId: ${currentSessionId}`);
+
+    // First check - immediately return if pinging should not continue
+    if (!shouldContinuePinging) {
+      console.log(
+        `❌ [PING #${currentPingNumber}] shouldContinuePinging is false, skipping update`,
+      );
+      return;
+    }
+
+    // Second check - ensure we're still in active pinging mode
+    if (!isContinuousPingingActive) {
+      console.log(
+        `❌ [PING #${currentPingNumber}] isContinuousPingingActive is false, skipping update`,
+      );
+      return;
+    }
+
+    console.log(
+      `✅ [PING #${currentPingNumber}] State checks passed, proceeding with location update`,
+    );
+
+    console.log(
+      `📍 [PING #${currentPingNumber}] Sending periodic location update via WebSocket.`,
     );
 
     try {
@@ -481,6 +529,16 @@ const HomeScreen = () => {
     }
   }; // New function to stop continuous pinging  // New function to stop continuous pinging
   const stopContinuousPinging = () => {
+    console.log(
+      `🛑 [STOP PINGING] Initiating stop sequence... (Total pings sent: ${pingCounter})`,
+    );
+
+    // Reset ping counter when stopping
+    pingCounter = 0;
+
+    // Set flag to false immediately to prevent race conditions
+    setShouldContinuePinging(false);
+
     if (continuousPingIntervalId) {
       clearInterval(continuousPingIntervalId);
       setContinuousPingIntervalId(null);
@@ -494,6 +552,7 @@ const HomeScreen = () => {
       console.log(
         "[stopContinuousPinging] Continuous location pinging stopped.",
       );
+
       Alert.alert(
         "Pinging Stopped",
         "Continuous location updates have been stopped.",

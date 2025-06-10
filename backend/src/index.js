@@ -21,6 +21,7 @@ const {
 const {
   setupEmergencyPingsCollection,
   setupEmergencyWebSocketHandlers,
+  setupMapWebSocketHandlers,
 } = require("./services/emergencyService.js");
 
 const { setupUserCollections } = require("./services/userServices.js");
@@ -52,6 +53,9 @@ io.on("connection", (socket) => {
 
 // Setup emergency WebSocket handlers
 setupEmergencyWebSocketHandlers(io);
+
+// Setup map WebSocket handlers for real-time emergency ping updates
+setupMapWebSocketHandlers(io);
 
 // Routes
 const reportsRouter = require("./routes/reports");
