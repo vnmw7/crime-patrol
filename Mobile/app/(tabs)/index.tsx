@@ -93,23 +93,30 @@ const HomeScreen = () => {
   const [pingResult, setPingResult] = useState<any>(null);
   const [continuousPingIntervalId, setContinuousPingIntervalId] =
     useState<NodeJS.Timeout | null>(null); // New state for emergency ping interval
+  const [shouldContinuePinging, setShouldContinuePinging] = useState(false); // State to control continuous pinging
   const [isContinuousPingingActive, setIsContinuousPingingActive] =
     useState(false); // New state to track active pinging
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null); // Session ID for continuous pinging
-  const [shouldContinuePinging, setShouldContinuePinging] = useState(false); // Flag to control pinging
+  const shouldContinuePingingRef = useRef(false); // Ref to avoid stale closure
+  const isContinuousPingingActiveRef = useRef(false); // Ref to avoid stale closure
+  const continuousPingIntervalRef = useRef<NodeJS.Timeout | null>(null); // Ref for interval cleanup
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
   const posthog = usePostHog();
   useEffect(() => {
     posthog.capture("Home Screen Viewed");
-  }, [posthog]);
-
-  // Cleanup effect for continuous pinging interval
+  }, [posthog]); // Cleanup effect for continuous pinging interval
   useEffect(() => {
     return () => {
-      if (continuousPingIntervalId) {
-        clearInterval(continuousPingIntervalId);
+      console.log(
+        "[HomeScreen Unmount] Cleaning up emergency ping resources...",
+      );
+      setShouldContinuePinging(false);
+      shouldContinuePingingRef.current = false;
+      isContinuousPingingActiveRef.current = false;
+      if (continuousPingIntervalRef.current) {
+        clearInterval(continuousPingIntervalRef.current);
         setIsContinuousPingingActive(false);
         setCurrentSessionId(null); // Clear session ID on unmount
 
@@ -121,7 +128,7 @@ const HomeScreen = () => {
         );
       }
     };
-  }, [continuousPingIntervalId]);
+  }, []); // Empty dependency array - only runs on unmount
 
   // Animated values for button feedback
   const panicButtonScale = useRef(new Animated.Value(1)).current;
@@ -334,11 +341,14 @@ const HomeScreen = () => {
           pingCounter = 0;
           setShouldContinuePinging(true); // Set flag to allow pinging
           setIsContinuousPingingActive(true);
-
-          // Use setTimeout to ensure state is set before starting interval
+          shouldContinuePingingRef.current = true;
+          isContinuousPingingActiveRef.current = true; // Use setTimeout to ensure state is set before starting interval
           setTimeout(() => {
-            const intervalId = setInterval(sendPeriodicLocationUpdate, 5000);
+            const intervalId = setInterval(() => {
+              sendPeriodicLocationUpdate();
+            }, 5000);
             setContinuousPingIntervalId(intervalId);
+            continuousPingIntervalRef.current = intervalId; // Store in ref for cleanup
             console.log(
               `🔄 [CONTINUOUS PING] Started with interval ID: ${intervalId}`,
             );
@@ -411,25 +421,26 @@ const HomeScreen = () => {
 
     console.log(
       `\n🔄 [PING #${currentPingNumber}] Starting periodic location update at ${new Date().toISOString()}`,
-    );
-
-    // Enhanced state checks with detailed logging
+    ); // State checks with detailed logging
     console.log(`🔍 [PING #${currentPingNumber}] State check:`);
-    console.log(`   shouldContinuePinging: ${shouldContinuePinging}`);
-    console.log(`   isContinuousPingingActive: ${isContinuousPingingActive}`);
+    console.log(
+      `   shouldContinuePinging: ${shouldContinuePingingRef.current}`,
+    );
+    console.log(
+      `   isContinuousPingingActive: ${isContinuousPingingActiveRef.current}`,
+    );
     console.log(`   continuousPingIntervalId: ${continuousPingIntervalId}`);
     console.log(`   currentSessionId: ${currentSessionId}`);
 
-    // First check - immediately return if pinging should not continue
-    if (!shouldContinuePinging) {
+    // Exit early if conditions aren't met
+    if (!shouldContinuePingingRef.current) {
       console.log(
         `❌ [PING #${currentPingNumber}] shouldContinuePinging is false, skipping update`,
       );
       return;
     }
 
-    // Second check - ensure we're still in active pinging mode
-    if (!isContinuousPingingActive) {
+    if (!isContinuousPingingActiveRef.current) {
       console.log(
         `❌ [PING #${currentPingNumber}] isContinuousPingingActive is false, skipping update`,
       );
@@ -534,14 +545,14 @@ const HomeScreen = () => {
     );
 
     // Reset ping counter when stopping
-    pingCounter = 0;
-
-    // Set flag to false immediately to prevent race conditions
+    pingCounter = 0; // Set flag to false immediately to prevent race conditions
     setShouldContinuePinging(false);
-
+    shouldContinuePingingRef.current = false;
+    isContinuousPingingActiveRef.current = false;
     if (continuousPingIntervalId) {
       clearInterval(continuousPingIntervalId);
       setContinuousPingIntervalId(null);
+      continuousPingIntervalRef.current = null; // Clear ref as well
       setIsContinuousPingingActive(false);
       setCurrentSessionId(null); // Clear session ID when stopping
 
