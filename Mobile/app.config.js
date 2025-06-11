@@ -34,13 +34,7 @@ export default ({ config }) => ({
         backgroundColor: "#ffffff",
       },
       package: "com.lccbbsit.crimepatrol",
-      config: {
-        googleMaps: {
-          apiKey:
-            process.env.GOOGLE_MAPS_ANDROID_API_KEY ||
-            "YOUR_ANDROID_API_KEY_HERE",
-        },
-      },
+      config: {},
       permissions: [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",

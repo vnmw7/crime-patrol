@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   StyleSheet,
   View,
@@ -19,6 +25,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { io, Socket } from "socket.io-client";
 import { dictLocationPing } from "../types/types_location";
+import WebView, { WebViewMessageEvent } from "react-native-webview";
 
 const themeColors = {
   light: {
@@ -78,16 +85,20 @@ interface EmergencyPing {
 
 // Main Map component
 const MapScreen = () => {
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [, setUserLocation] = useState<UserLocation | null>(null); // Mark userLocation as unused
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [emergencyPings, setEmergencyPings] = useState<EmergencyPing[]>([]); // State for emergency pings
+  const webViewRef = useRef<WebView>(null);
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [mapCenter] = useState({
+    lat: 10.67587960052236,
+    lng: 122.95247794951611,
+  });
 
   const getBackendUrl = () => {
     if (__DEV__) {
@@ -103,7 +114,6 @@ const MapScreen = () => {
 
   // Function to get user's location
   const getUserLocation = useCallback(async () => {
-    setIsLoading(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
 
@@ -173,7 +183,6 @@ const MapScreen = () => {
           : "Failed to get your location. Please try again.";
       Alert.alert("Error", message);
     } finally {
-      setIsLoading(false); // Ensure loading is always stopped
     }
   }, []);
 
@@ -247,11 +256,10 @@ const MapScreen = () => {
     });
 
     setSocket(newSocket);
-  }, [isConnecting, isConnected]); // Add isConnecting and isConnected to dependencies
+  }, [isConnecting, isConnected]);
   useEffect(() => {
-    getUserLocation();
     connectToSocket();
-  }, [getUserLocation, connectToSocket]);
+  }, [connectToSocket]);
 
   useEffect(() => {
     return () => {
@@ -259,16 +267,183 @@ const MapScreen = () => {
         socket.disconnect();
       }
     };
-  }, [socket]); // Add socket to dependencies
+  }, [socket]);
 
-  // Navigation function
   const navigateToMenu = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push("/menu" as any);
   };
 
-  // Provide haptic feedback
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+  const handleWebViewMessage = (event: WebViewMessageEvent) => {
+    const data = JSON.parse(event.nativeEvent.data);
+    if (data.type === "webViewLoaded") {
+      console.log("WebView content loaded");
+      // You can now send initial data to the WebView if needed
+    } else if (data.type === "webViewLog" || data.type === "webViewError") {
+      console.log(`${data.message}`);
+    }
+    // Handle other messages from WebView if needed
+  };
+
+  // Create HTML for the map - MEMOIZED
+  const mapHTML = useMemo(() => {
+    console.log("[TestMapScreen] Generating map HTML (should happen rarely)"); // For debugging
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+          <style>
+              body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
+              #map { height: 100vh; width: 100vw; }
+              .custom-popup { min-width: 200px; }
+              .marker-title { font-weight: bold; font-size: 16px; margin-bottom: 5px; color: #333; }
+              .marker-description { font-size: 14px; margin-bottom: 5px; color: #666; }
+              .marker-type { font-size: 12px; font-weight: 600; color: #0095F6; }
+          </style>
+      </head>
+      <body>
+          <div id="map"></div>
+          
+          <script>
+              // Store original console methods
+              var originalLog = console.log;
+              var originalError = console.error;
+      
+              function postToReactNative(type, data) {
+                  if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+                      window.ReactNativeWebView.postMessage(JSON.stringify({ type: type, ...data }));
+                  } else {
+                      originalError.call(console, 'ReactNativeWebView.postMessage is not available.');
+                  }
+              }
+      
+              // Override console.log
+              console.log = function() {
+                  var args = Array.from(arguments);
+                  var message = args.map(function(arg) {
+                      if (typeof arg === 'object' && arg !== null) {
+                          try { return JSON.stringify(arg); } catch (e) { return arg.toString(); }
+                      }
+                      return arg;
+                  }).join(' ');
+                  postToReactNative('webViewLog', { message: '[WebView LOG] ' + message });
+                  originalLog.apply(console, args);
+              };
+      
+              // Override console.error
+              console.error = function() {
+                  var args = Array.from(arguments);
+                  var message = args.map(function(arg) {
+                      if (typeof arg === 'object' && arg !== null) {
+                          try { return JSON.stringify(arg); } catch (e) { return arg.toString(); }
+                      }
+                      return arg;
+                  }).join(' ');
+                  postToReactNative('webViewError', { message: '[WebView ERROR] ' + message });
+                  originalError.apply(console, args);
+              };
+      
+              console.log('WebView console override initialized.');
+      
+              var map = null;
+              var userMarker = null;
+              var markers = []; // To store Leaflet marker instances
+      
+              try {
+                  map = L.map('map').setView([${mapCenter.lat}, ${mapCenter.lng}], 13);
+                  console.log('Map initialized successfully at [${mapCenter.lat}, ${mapCenter.lng}].');
+              } catch(e) {
+                  console.error('Error initializing map:', e.toString(), e.stack);
+              }
+              
+              if (map) {
+                  try {
+                      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                          attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                          maxZoom: 19,
+                          keepBuffer: 8
+                      }).addTo(map);
+                      console.log('Tile layer added to map.');
+                  } catch(e) {
+                      console.error('Error adding tile layer:', e.toString(), e.stack);
+                  }
+              } else {
+                  console.error('Map object not available for adding tile layer or markers.');
+              }
+      
+              // Handle messages from React Native
+              window.addEventListener('message', function(event) {
+                  console.log('Message received from RN (raw):', event.data); 
+                  try {
+                      var data = JSON.parse(event.data);
+                      console.log('Parsed data from RN:', data);
+                      
+                      if (!map) {
+                          console.error('Map not initialized, cannot process message:', data.type);
+                          return;
+                      }
+      
+                      if (data.type === 'centerOnUser') {
+                          console.log('Processing centerOnUser. Lat:', data.lat, 'Lng:', data.lng);
+                          if (typeof map.setView === 'function') {
+                              map.setView([data.lat, data.lng], 15);
+                              console.log('map.setView called for user location.');
+                              
+                              if (userMarker) {
+                                  map.removeLayer(userMarker);
+                                  console.log('Previous userMarker removed.');
+                              }
+                              
+                              userMarker = L.marker([data.lat, data.lng], {
+                                  icon: L.divIcon({
+                                      className: 'user-location-icon',
+                                      html: '<div style="background-color: #0095F6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.5);"></div>',
+                                      iconSize: [22, 22], iconAnchor: [11, 11]
+                                  })
+                              }).addTo(map);
+                              userMarker.setZIndexOffset(1000); // Ensure user marker is on top
+                              console.log('New userMarker added at [', data.lat, ',', data.lng, '].');
+                          } else {
+                              console.error('map.setView is not a function.');
+                          }
+                      } else if (data.type === 'fitToMarkers') {
+                          console.log('Processing fitToMarkers. Current markers count:', markers.length);
+                          if (markers.length > 0 && typeof map.fitBounds === 'function') {
+                              var group = new L.featureGroup(markers);
+                              if (userMarker) {
+                                  group.addLayer(userMarker);
+                              }
+                              if (group.getLayers().length > 0) {
+                                map.fitBounds(group.getBounds().pad(0.1));
+                                console.log('map.fitBounds called for markers.');
+                              } else {
+                                console.log('fitToMarkers: No layers in feature group to fit.');
+                              }
+                          } else if (markers.length === 0) {
+                              console.error('fitToMarkers: No markers to fit.');
+                          } else {
+                              console.error('map.fitBounds is not a function or no markers.');
+                          }
+                      } else {
+                          console.log('Received unhandled message type from RN:', data.type);
+                      }
+                  } catch (e) {
+                      console.error('Error processing message from RN:', e.toString(), 'Stack:', e.stack, 'Raw data:', event.data);
+                  }
+              });
+              console.log('Message event listener for RN messages added.');
+              postToReactNative('webViewLoaded', { status: 'success' }); // Inform RN that WebView JS is ready
+          </script>
+      </body>
+      </html>
+      `;
+  }, [mapCenter]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -297,10 +472,23 @@ const MapScreen = () => {
           <View style={styles.headerSpacer} />{" "}
         </View>
       </View>
-      {/* Map Placeholder */}
+      {/* Map */}
       <View
         style={[styles.mapContainer, { backgroundColor: theme.background }]}
       >
+        {/* Map Container */}
+        <View style={styles.mapContainer}>
+          <WebView
+            ref={webViewRef}
+            source={{ html: mapHTML }}
+            style={styles.map}
+            onMessage={handleWebViewMessage}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            originWhitelist={["*"]}
+            allowsInlineMediaPlayback={true}
+          />
+        </View>
         {/* Location Button */}
         <View style={styles.mapControls}>
           <TouchableOpacity
@@ -318,66 +506,6 @@ const MapScreen = () => {
               color={isLoading ? theme.primary : theme.text}
             />
           </TouchableOpacity>
-        </View>
-
-        <View style={[styles.mapPlaceholder, { borderColor: theme.border }]}>
-          <Ionicons name="map" size={48} color={theme.textSecondary} />
-          <Text
-            style={[styles.mapPlaceholderText, { color: theme.textSecondary }]}
-          >
-            Map View
-          </Text>
-          <Text style={[styles.mapSubtext, { color: theme.textSecondary }]}>
-            {emergencyPings.length > 0
-              ? `${emergencyPings.length} Emergency Alert${emergencyPings.length !== 1 ? "s" : ""}`
-              : "No emergency alerts"}
-          </Text>
-
-          {/* Emergency Pings List */}
-          {emergencyPings.length > 0 && (
-            <ScrollView
-              style={styles.pingsList}
-              showsVerticalScrollIndicator={false}
-            >
-              {emergencyPings.map((ping) => (
-                <View
-                  key={ping.id}
-                  style={[
-                    styles.pingItem,
-                    { backgroundColor: theme.card, borderColor: theme.border },
-                  ]}
-                >
-                  <View style={styles.pingHeader}>
-                    <Ionicons
-                      name="alert-circle"
-                      size={16}
-                      color={theme.secondary}
-                    />
-                    <Text style={[styles.pingId, { color: theme.text }]}>
-                      Alert {ping.id.substring(0, 8)}...
-                    </Text>
-                  </View>
-                  <Text
-                    style={[styles.pingCoords, { color: theme.textSecondary }]}
-                  >
-                    {ping.latitude.toFixed(4)}, {ping.longitude.toFixed(4)}
-                  </Text>
-                  {ping.description && (
-                    <Text
-                      style={[styles.pingDescription, { color: theme.text }]}
-                    >
-                      {ping.description}
-                    </Text>
-                  )}
-                  <Text
-                    style={[styles.pingTime, { color: theme.textSecondary }]}
-                  >
-                    {new Date(ping.timestamp).toLocaleTimeString()}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          )}
         </View>
       </View>
       {isLoading && <LoadingIndicator theme={theme} />}
@@ -489,6 +617,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.7)",
+  },
+  loadingOverlay: {
+    // Added loadingOverlay style
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10, // Ensure it's above other elements
   },
   loadingText: {
     marginTop: 10,
