@@ -30,13 +30,10 @@ import { usePostHog } from "posthog-react-native";
 import * as Location from "expo-location"; // Added for location services
 import { emergencyWebSocket } from "../../lib/emergencyWebSocket";
 
-// Emergency contact number
-const EMERGENCY_NUMBER = "+639485685828"; // Philippine number in international format
+const EMERGENCY_NUMBER = "911";
 
-// Ping counter for tracking continuous updates
 let pingCounter = 0;
 
-// Backend URL configuration for different environments
 const getBackendUrl = () => {
   if (__DEV__) {
     // Development mode

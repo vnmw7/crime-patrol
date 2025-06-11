@@ -1,4 +1,3 @@
-// filepath: c:\projects\crime-patrol\Mobile\app\(stack)\report-details.tsx
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -65,6 +64,7 @@ const ReportDetailsScreen = () => {
     fetchReportDetails();
   }, [reportId]);
   const openMediaModal = (media: MediaItem) => {
+    console.log("[report-details.tsx] Opening media modal for:", media);
     setSelectedMedia(media);
     setModalVisible(true);
   };
@@ -252,25 +252,6 @@ const ReportDetailsScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          { backgroundColor: colors.card, borderBottomColor: colors.border },
-        ]}
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Report Details
-        </Text>
-        <View style={styles.placeholder} />
-      </View>
-
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -590,7 +571,6 @@ const ReportDetailsScreen = () => {
               showsHorizontalScrollIndicator={false}
               style={styles.mediaScroll}
             >
-              {" "}
               {report.media.map((media, index) => {
                 const mediaUri =
                   media.cloudinary_url || media.secure_url || media.file_url;
@@ -601,7 +581,6 @@ const ReportDetailsScreen = () => {
                     style={styles.mediaThumbnail}
                     onPress={() => openMediaModal(media)}
                   >
-                    {" "}
                     {media.media_type === "photo" && mediaUri && (
                       <Image
                         source={{

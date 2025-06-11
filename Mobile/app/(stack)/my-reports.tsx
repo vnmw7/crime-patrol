@@ -1,4 +1,3 @@
-// filepath: c:\\projects\\crime-patrol\\Mobile\\app\\(stack)\\my-reports.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -28,11 +27,9 @@ const MyReportsScreen = () => {
     setError(null);
 
     try {
-      // Get current user to filter reports
       const currentUser = await getCurrentUser();
       const userId = currentUser?.$id;
 
-      // Fetch reports using the new service
       const fetchedReports = await reportService.fetchReportsForList(userId);
       setReports(fetchedReports);
     } catch (e: any) {
@@ -54,8 +51,7 @@ const MyReportsScreen = () => {
   }, [fetchReports]);
 
   const handleReportPress = (report: ReportListItem) => {
-    // Navigate to a detailed report view, passing report ID
-    router.push(`/report-details?reportId=${report.$id}`);
+    router.replace(`/report-details?reportId=${report.$id}`);
   };
 
   const renderReportItem = ({ item }: { item: ReportListItem }) => (
