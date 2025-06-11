@@ -6,7 +6,8 @@ const getBackendWsUrl = () => {
   if (__DEV__) {
     // Development mode
     if (Platform.OS === "android") {
-      return "http://192.168.254.120:3000"; // Android emulator uses this IP for localhost
+      // For Android emulator, try localhost first as we're on the same machine
+      return "http://localhost:3000";
     } else {
       return "http://localhost:3000"; // iOS simulator and web
     }
@@ -42,21 +43,24 @@ class EmergencyWebSocket {
   private isConnected: boolean = false;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
-
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       const backendUrl = getBackendWsUrl();
       console.log(`[EmergencyWebSocket] Connecting to: ${backendUrl}`);
 
       this.socket = io(backendUrl, {
-        transports: ["websocket"],
+        transports: ["polling", "websocket"], // Start with polling, then upgrade
         timeout: 10000,
         forceNew: true,
+        upgrade: true,
       });
 
       this.socket.on("connect", () => {
         console.log(
           `[EmergencyWebSocket] Connected with ID: ${this.socket?.id}`,
+        );
+        console.log(
+          `[EmergencyWebSocket] Transport: ${this.socket?.io.engine.transport.name}`,
         );
         this.isConnected = true;
         this.reconnectAttempts = 0;
@@ -80,6 +84,13 @@ class EmergencyWebSocket {
         }
 
         this.handleReconnect();
+      });
+
+      // Log transport upgrades
+      this.socket.on("upgrade", () => {
+        console.log(
+          `[EmergencyWebSocket] Transport upgraded to: ${this.socket?.io.engine.transport.name}`,
+        );
       });
 
       // Set up emergency-specific event handlers

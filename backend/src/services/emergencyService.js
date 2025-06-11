@@ -22,9 +22,6 @@ const EMERGENCY_PINGS_COLLECTION_ID = NORMALIZED_COLLECTIONS.EMERGENCY_PINGS.id;
 const EMERGENCY_PINGS_COLLECTION_NAME =
   NORMALIZED_COLLECTIONS.EMERGENCY_PINGS.name;
 
-/**
- * Setup emergency pings collection in Appwrite
- */
 async function setupEmergencyPingsCollection() {
   try {
     console.log("Setting up emergency pings collection..."); // Try to get the collection first
@@ -147,9 +144,6 @@ async function setupEmergencyPingsCollection() {
   }
 }
 
-/**
- * Create a new emergency ping record
- */
 async function createEmergencyPing(pingData) {
   try {
     const uniqueId = ID.unique(); // Generate unique ID

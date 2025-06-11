@@ -5,676 +5,91 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
-  Animated, // Added for animations
-  Platform, // Added for platform-specific logic
-  Linking, // Added for opening URLs (tel:, sms:)
-  Alert, // Added for alerts
-  useColorScheme, // Added for color scheme detection
+  Animated,
+  Platform,
+  useColorScheme,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState, useRef, useEffect } from "react";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import {
   Ionicons,
   MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import {
-  getCurrentUser,
-  getCurrentSession,
-  pingAppwrite,
-} from "../../lib/appwrite";
+import { getCurrentUser, getCurrentSession } from "../../lib/appwrite";
 import { usePostHog } from "posthog-react-native";
-import * as Location from "expo-location"; // Added for location services
-import { emergencyWebSocket } from "../../lib/emergencyWebSocket";
+import BttnEmergencyPing, {
+  getCurrentLocation,
+} from "../_components/bttn_emergency_ping";
 
-const EMERGENCY_NUMBER = "911";
+interface User {
+  isLoggedIn: boolean;
+  name: string;
+  avatar?: string | null;
+}
 
-let pingCounter = 0;
-
-const getBackendUrl = () => {
-  if (__DEV__) {
-    // Development mode
-    if (Platform.OS === "android") {
-      return "http://192.168.254.120:3000/api/emergency/location";
-    } else {
-      // iOS simulator can use localhost directly
-      return "http://localhost:3000/api/emergency/location";
-    }
-  } else {
-    return "https://your-production-backend.com/api/emergency/location";
-  }
-};
-
-const LOCATION_PING_ENDPOINT = getBackendUrl();
-
-// Mock user state - in a real app, this would come from authentication
-const mockUser = {
-  isLoggedIn: false,
-  name: "User",
-  avatar: null,
-};
-
-// App theme colors
 const themeColors = {
   light: {
-    primary: "#0095F6", // Instagram blue as primary color
-    secondary: "#FF3B30", // Red for danger/emergency
-    tertiary: "#007AFF", // Blue for secondary actions
-    background: "#FAFAFA", // Light background
-    card: "#FFFFFF", // White card background
-    text: "#262626", // Dark text
-    textSecondary: "#8E8E8E", // Gray secondary text
-    border: "#DBDBDB", // Light gray border
-    inactiveTab: "#8E8E8E", // Inactive tab color
+    primary: "#0095F6",
+    secondary: "#FF3B30",
+    tertiary: "#007AFF",
+    background: "#FAFAFA",
+    card: "#FFFFFF",
+    text: "#262626",
+    textSecondary: "#8E8E8E",
+    border: "#DBDBDB",
+    inactiveTab: "#8E8E8E",
   },
   dark: {
-    primary: "#0095F6", // Keep Instagram blue as primary
-    secondary: "#FF453A", // Slightly adjusted red for dark mode
-    tertiary: "#0A84FF", // Adjusted blue for dark mode
-    background: "#121212", // Dark background
-    card: "#1E1E1E", // Dark card background
-    text: "#FFFFFF", // White text
-    textSecondary: "#ABABAB", // Light gray secondary text
-    border: "#2C2C2C", // Dark gray border
-    inactiveTab: "#6E6E6E", // Inactive tab color for dark mode
+    primary: "#0095F6",
+    secondary: "#FF453A",
+    tertiary: "#0A84FF",
+    background: "#121212",
+    card: "#1E1E1E",
+    text: "#FFFFFF",
+    textSecondary: "#ABABAB",
+    border: "#2C2C2C",
+    inactiveTab: "#6E6E6E",
   },
 };
 
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
-  const [user, setUser] = useState(mockUser);
-  const [isPinging, setIsPinging] = useState(false);
-  const [pingResult, setPingResult] = useState<any>(null);
-  const [continuousPingIntervalId, setContinuousPingIntervalId] =
-    useState<NodeJS.Timeout | null>(null); // New state for emergency ping interval
-  const [shouldContinuePinging, setShouldContinuePinging] = useState(false); // State to control continuous pinging
-  const [isContinuousPingingActive, setIsContinuousPingingActive] =
-    useState(false); // New state to track active pinging
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null); // Session ID for continuous pinging
-  const shouldContinuePingingRef = useRef(false); // Ref to avoid stale closure
-  const isContinuousPingingActiveRef = useRef(false); // Ref to avoid stale closure
-  const continuousPingIntervalRef = useRef<NodeJS.Timeout | null>(null); // Ref for interval cleanup
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
   const posthog = usePostHog();
+  const [dictCurrentLocation, setDictCurrentLocation] = useState<{
+    dblLatitude: number;
+    dblLongitude: number;
+  }>({ dblLatitude: 0, dblLongitude: 0 });
+
   useEffect(() => {
     posthog.capture("Home Screen Viewed");
-  }, [posthog]); // Cleanup effect for continuous pinging interval
-  useEffect(() => {
-    return () => {
-      console.log(
-        "[HomeScreen Unmount] Cleaning up emergency ping resources...",
-      );
-      setShouldContinuePinging(false);
-      shouldContinuePingingRef.current = false;
-      isContinuousPingingActiveRef.current = false;
-      if (continuousPingIntervalRef.current) {
-        clearInterval(continuousPingIntervalRef.current);
-        setIsContinuousPingingActive(false);
-        setCurrentSessionId(null); // Clear session ID on unmount
+  }, [posthog]);
 
-        // Disconnect WebSocket on unmount
-        emergencyWebSocket.disconnect();
-
-        console.log(
-          "[HomeScreen Unmount] Cleared continuous emergency ping interval and disconnected WebSocket.",
-        );
-      }
-    };
-  }, []); // Empty dependency array - only runs on unmount
-
-  // Animated values for button feedback
-  const panicButtonScale = useRef(new Animated.Value(1)).current;
   const reportButtonScale = useRef(new Animated.Value(1)).current;
 
-  // Function to trigger haptic feedback
   const triggerHaptic = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
   const navigateToMenu = () => {
     triggerHaptic();
-    router.push("/menu" as any); // Corrected path with type assertion
+    router.push("/menu" as any);
   };
-  // Function to handle the panic button press with animation
-  const handlePanic = () => {
-    triggerHaptic();
-    // Add animation
-    Animated.sequence([
-      Animated.timing(panicButtonScale, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(panicButtonScale, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Show confirmation alert before making the call
-    Alert.alert(
-      "Emergency Call",
-      `Are you sure you want to call ${EMERGENCY_NUMBER}? This will also attempt to send your current location to emergency services.`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-          onPress: () =>
-            console.log("[handlePanic] Emergency action cancelled by user."),
-        },
-        {
-          text: "Call Now & Send Location",
-          style: "destructive",
-          onPress: () => {
-            console.log(
-              "[handlePanic] User confirmed emergency action. Initiating call and location ping.",
-            );
-            makeEmergencyCall();
-            pingLocationToBackend();
-          },
-        },
-      ],
-    );
-
-    // Add logic for sending location to authorities
-    console.log("PANIC button pressed - preparing emergency call");
-  }; // Function to make emergency call
-  const makeEmergencyCall = () => {
-    const url = `tel:${EMERGENCY_NUMBER}`;
-    console.log("[makeEmergencyCall] Attempting to open dialer with:", url);
-
-    Linking.openURL(url)
-      .then(() => {
-        console.log(
-          "[makeEmergencyCall] Successfully handed off to OS to open dialer with:",
-          url,
-        );
-      })
-      .catch((error) => {
-        console.warn(
-          "[makeEmergencyCall] Failed to open dialer with URL:",
-          url,
-          "Error:",
-          error,
-        );
-        console.log(
-          "[makeEmergencyCall] Could not open dialer, showing alternatives.",
-        );
-        showEmergencyAlternatives();
-      });
-  }; // Function to ping location to backend
-  const pingLocationToBackend = async () => {
-    console.log(
-      "[pingLocationToBackend] Attempting to get location and ping backend.",
-    );
-
-    try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Denied",
-          "Permission to access location was denied. Cannot send location automatically. Please ensure location services are enabled for this app.",
-        );
-        console.warn(
-          "[pingLocationToBackend] Location permission denied by user.",
-        );
-        return;
-      }
-
-      console.log(
-        "[pingLocationToBackend] Location permission granted. Fetching current position...",
-      );
-
-      // Get location with fallback to lower accuracy if needed
-      let location;
-      try {
-        location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-      } catch (locationError) {
-        console.warn(
-          "[pingLocationToBackend] High accuracy location failed, trying with lower accuracy:",
-          locationError,
-        );
-        try {
-          location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-        } catch (fallbackError) {
-          console.warn(
-            "[pingLocationToBackend] Balanced accuracy failed, trying low accuracy:",
-            fallbackError,
-          );
-          location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Low,
-          });
-        }
-      }
-
-      if (!location || !location.coords) {
-        throw new Error("Could not obtain location coordinates");
-      }
-
-      const { latitude, longitude } = location.coords;
-      const timestamp = new Date().toISOString();
-
-      console.log(
-        `[pingLocationToBackend] Location fetched: Lat: ${latitude}, Lon: ${longitude}, Timestamp: ${timestamp}`,
-      );
-      console.log(
-        `[pingLocationToBackend] Pinging location to: ${LOCATION_PING_ENDPOINT}`,
-      );
-
-      // Create the request payload
-      const payload = {
-        latitude,
-        longitude,
-        timestamp,
-        userId: user.isLoggedIn ? user.name : "anonymous",
-      };
-
-      const response = await fetch(LOCATION_PING_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      if (response.ok) {
-        const responseData = await response.json();
-        console.log(
-          "[pingLocationToBackend] Location successfully pinged to backend:",
-          responseData,
-        ); // Store the session ID for continuous pinging
-        if (responseData.data && responseData.data.sessionId) {
-          setCurrentSessionId(responseData.data.sessionId);
-          console.log(
-            `[pingLocationToBackend] Session ID stored: ${responseData.data.sessionId}`,
-          );
-
-          // Establish WebSocket connection for continuous pinging
-          try {
-            await emergencyWebSocket.connect();
-            emergencyWebSocket.joinEmergencySession(
-              responseData.data.sessionId,
-            );
-            console.log(
-              "[pingLocationToBackend] WebSocket connected and joined emergency session",
-            );
-          } catch (wsError) {
-            console.error(
-              "[pingLocationToBackend] Failed to connect WebSocket:",
-              wsError,
-            );
-            // Continue with REST API fallback
-          }
-        }
-
-        // Show success feedback for the initial ping
-        Alert.alert(
-          "Emergency Alert Sent",
-          "Your location has been sent to emergency services.",
-          [{ text: "OK" }],
-        );
-
-        // Track success with PostHog
-        posthog.capture("Emergency Location Ping Success", {
-          latitude,
-          longitude,
-          accuracy: location.coords.accuracy,
-          userId: user.isLoggedIn ? user.name : "anonymous",
-        }); // Start continuous pinging if not already active
-        if (!continuousPingIntervalId) {
-          console.log(
-            "[pingLocationToBackend] Starting continuous location pinging every 5 seconds.",
-          );
-          // Reset ping counter when starting new session
-          pingCounter = 0;
-          setShouldContinuePinging(true); // Set flag to allow pinging
-          setIsContinuousPingingActive(true);
-          shouldContinuePingingRef.current = true;
-          isContinuousPingingActiveRef.current = true; // Use setTimeout to ensure state is set before starting interval
-          setTimeout(() => {
-            const intervalId = setInterval(() => {
-              sendPeriodicLocationUpdate();
-            }, 5000);
-            setContinuousPingIntervalId(intervalId);
-            continuousPingIntervalRef.current = intervalId; // Store in ref for cleanup
-            console.log(
-              `🔄 [CONTINUOUS PING] Started with interval ID: ${intervalId}`,
-            );
-          }, 100);
-        }
-      } else {
-        const errorText = await response.text();
-        console.error(
-          `[pingLocationToBackend] Failed to ping location. Status: ${response.status}. Response: ${errorText}`,
-        );
-
-        Alert.alert(
-          "Location Send Failed",
-          `Could not send location to emergency services (Status: ${response.status}). Your emergency call should still go through. Please inform them of your location verbally.`,
-        );
-
-        posthog.capture("Emergency Location Ping Failed", {
-          error: `HTTP ${response.status}: ${errorText}`,
-          latitude,
-          longitude,
-        });
-      }
-    } catch (error: any) {
-      console.error(
-        "[pingLocationToBackend] Error during location ping process:",
-        error,
-      );
-
-      let errorMessage =
-        "An unexpected error occurred while trying to send your location.";
-
-      if (
-        error.message &&
-        error.message.includes("Location provider is disabled")
-      ) {
-        errorMessage =
-          "Location services are disabled on your device. Please enable them and try again.";
-      } else if (error.message && error.message.includes("denied")) {
-        errorMessage = "Location permission was denied. Cannot send location.";
-      } else if (
-        error.message &&
-        (error.message.includes("timeout") ||
-          error.message.includes("Request timeout"))
-      ) {
-        errorMessage =
-          "Location request timed out. Your emergency call should still go through.";
-      } else if (
-        error.message &&
-        error.message.includes("Network request failed")
-      ) {
-        errorMessage =
-          "Network connection failed. Check your internet connection. Your emergency call should still go through.";
-      }
-
-      Alert.alert(
-        "Location Error",
-        `${errorMessage}\n\nPlease inform emergency services of your location verbally when they answer.`,
-      );
-
-      posthog.capture("Emergency Location Ping Error", {
-        error: String(error),
-        errorMessage: error.message || "Unknown error",
-      });
-    }
-  }; // New function to send periodic location updates via WebSocket
-  const sendPeriodicLocationUpdate = async () => {
-    // Increment ping counter for tracking
-    pingCounter += 1;
-    const currentPingNumber = pingCounter;
-
-    console.log(
-      `\n🔄 [PING #${currentPingNumber}] Starting periodic location update at ${new Date().toISOString()}`,
-    ); // State checks with detailed logging
-    console.log(`🔍 [PING #${currentPingNumber}] State check:`);
-    console.log(
-      `   shouldContinuePinging: ${shouldContinuePingingRef.current}`,
-    );
-    console.log(
-      `   isContinuousPingingActive: ${isContinuousPingingActiveRef.current}`,
-    );
-    console.log(`   continuousPingIntervalId: ${continuousPingIntervalId}`);
-    console.log(`   currentSessionId: ${currentSessionId}`);
-
-    // Exit early if conditions aren't met
-    if (!shouldContinuePingingRef.current) {
-      console.log(
-        `❌ [PING #${currentPingNumber}] shouldContinuePinging is false, skipping update`,
-      );
-      return;
-    }
-
-    if (!isContinuousPingingActiveRef.current) {
-      console.log(
-        `❌ [PING #${currentPingNumber}] isContinuousPingingActive is false, skipping update`,
-      );
-      return;
-    }
-
-    console.log(
-      `✅ [PING #${currentPingNumber}] State checks passed, proceeding with location update`,
-    );
-
-    console.log(
-      `📍 [PING #${currentPingNumber}] Sending periodic location update via WebSocket.`,
-    );
-
-    try {
-      // Check if WebSocket is connected
-      if (!emergencyWebSocket.isSocketConnected()) {
-        console.warn(
-          "[sendPeriodicLocationUpdate] WebSocket not connected, skipping update",
-        );
-        return;
-      }
-
-      // Get current location
-      let location;
-      try {
-        location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-      } catch (locationError) {
-        console.warn(
-          "[sendPeriodicLocationUpdate] High accuracy location failed for periodic update, trying with balanced accuracy:",
-          locationError,
-        );
-        try {
-          location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-        } catch (fallbackError) {
-          console.warn(
-            "[sendPeriodicLocationUpdate] Balanced accuracy location failed for periodic update, trying with low accuracy:",
-            fallbackError,
-          );
-          location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Low,
-          });
-        }
-      }
-
-      if (!location || !location.coords) {
-        console.warn(
-          "[sendPeriodicLocationUpdate] Could not obtain location coordinates for periodic update.",
-        );
-        posthog.capture("Periodic Emergency Location Ping Error", {
-          error: "Could not obtain location coordinates",
-          userId: user.isLoggedIn ? user.name : "anonymous",
-        });
-        return;
-      }
-
-      const { latitude, longitude } = location.coords;
-      const timestamp = new Date().toISOString();
-
-      console.log(
-        `[sendPeriodicLocationUpdate] Periodic Location: Lat: ${latitude}, Lon: ${longitude}, Timestamp: ${timestamp}`,
-      );
-
-      // Send location update via WebSocket
-      emergencyWebSocket.sendLocationUpdate({
-        latitude,
-        longitude,
-        timestamp,
-        userId: user.isLoggedIn ? user.name : "anonymous",
-      });
-
-      // Track success with PostHog
-      posthog.capture("Periodic Emergency Location Ping Success", {
-        latitude,
-        longitude,
-        accuracy: location.coords.accuracy,
-        userId: user.isLoggedIn ? user.name : "anonymous",
-      });
-    } catch (error: any) {
-      console.error(
-        "[sendPeriodicLocationUpdate] Error during periodic location update:",
-        error,
-      );
-      let errorMessage = "Unknown error during periodic location update";
-      if (error.message) {
-        errorMessage = error.message;
-      }
-      posthog.capture("Periodic Emergency Location Ping Error", {
-        error: String(error),
-        errorMessage: errorMessage,
-        userId: user.isLoggedIn ? user.name : "anonymous",
-      });
-    }
-  }; // New function to stop continuous pinging  // New function to stop continuous pinging
-  const stopContinuousPinging = () => {
-    console.log(
-      `🛑 [STOP PINGING] Initiating stop sequence... (Total pings sent: ${pingCounter})`,
-    );
-
-    // Reset ping counter when stopping
-    pingCounter = 0; // Set flag to false immediately to prevent race conditions
-    setShouldContinuePinging(false);
-    shouldContinuePingingRef.current = false;
-    isContinuousPingingActiveRef.current = false;
-    if (continuousPingIntervalId) {
-      clearInterval(continuousPingIntervalId);
-      setContinuousPingIntervalId(null);
-      continuousPingIntervalRef.current = null; // Clear ref as well
-      setIsContinuousPingingActive(false);
-      setCurrentSessionId(null); // Clear session ID when stopping
-
-      // Disconnect WebSocket
-      emergencyWebSocket.disconnect();
-      console.log("[stopContinuousPinging] WebSocket disconnected");
-
-      console.log(
-        "[stopContinuousPinging] Continuous location pinging stopped.",
-      );
-
-      Alert.alert(
-        "Pinging Stopped",
-        "Continuous location updates have been stopped.",
-      );
-      posthog.capture("Continuous Emergency Ping Stopped", {
-        userId: user.isLoggedIn ? user.name : "anonymous",
-      });
-    }
-  };
-
-  // Function to show alternative emergency options when phone calls aren't supported
-  const showEmergencyAlternatives = () => {
-    Alert.alert(
-      "Emergency Options",
-      "Could not open the phone dialer. Choose an alternative:",
-      [
-        {
-          text: "Copy Emergency Number",
-          onPress: () => copyEmergencyNumber(),
-        },
-        {
-          text: "Send SMS",
-          onPress: () => sendEmergencySMS(),
-        },
-        {
-          text: "Find Police Stations",
-          onPress: () => router.push("/police-stations"),
-        },
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-      ],
-    );
-  };
-
-  const copyEmergencyNumber = () => {
-    Alert.alert(
-      "Emergency Number",
-      `Emergency Number: ${EMERGENCY_NUMBER}\n\nYou can manually dial this number from your phone app.`,
-      [
-        {
-          text: "OK",
-          onPress: () => console.log("Emergency number shown to user"),
-        },
-      ],
-    );
-  };
-
-  // Function to send emergency SMS
-  const sendEmergencySMS = () => {
-    const smsUrl = `sms:${EMERGENCY_NUMBER}?body=EMERGENCY: I need immediate assistance. This is an automated message from Crime Patrol app.`;
-
-    Linking.canOpenURL(smsUrl)
-      .then((supported) => {
-        if (supported) {
-          return Linking.openURL(smsUrl);
-        }
-        Alert.alert("Error", "SMS is not supported on this device");
-      })
-      .catch((error) => {
-        console.error("Error sending SMS:", error);
-        Alert.alert("Error", "An error occurred while trying to send SMS");
-      });
-  };
-  // Function to toggle user login status (for demo purposes)
   const toggleLogin = () => {
     triggerHaptic();
-    setUser({
-      ...user,
-      isLoggedIn: !user.isLoggedIn,
-    });
+    router.push("/(stack)/auth");
   };
-
-  // Function to ping Appwrite server
-  const handlePingAppwrite = async () => {
-    setIsPinging(true);
-    setPingResult(null);
-    triggerHaptic();
-
-    try {
-      const result = await pingAppwrite();
-      setPingResult(result);
-
-      if (result.success) {
-        posthog.capture("Appwrite Ping Success", {
-          endpoint: result.endpoint,
-          projectId: result.projectId,
-        });
-      } else {
-        posthog.capture("Appwrite Ping Failed", {
-          error: result.message,
-        });
-      }
-    } catch (error) {
-      console.error("Ping error:", error);
-      setPingResult({
-        success: false,
-        message: `Unexpected error: ${error}`,
-        timestamp: new Date().toISOString(),
-      });
-      posthog.capture("Appwrite Ping Error", {
-        error: String(error),
-      });
-    } finally {
-      setIsPinging(false);
-    }
-  };
-
-  // Function to navigate to the report screen with animation
   const navigateToReport = () => {
     triggerHaptic();
 
-    // Add animation
     Animated.sequence([
       Animated.timing(reportButtonScale, {
         toValue: 0.95,
@@ -690,6 +105,7 @@ const HomeScreen = () => {
       router.push({ pathname: "/report-incident" });
     });
   };
+
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -711,41 +127,37 @@ const HomeScreen = () => {
         router.replace("/(stack)/auth");
       }
     };
-
-    // Initial ping to test Appwrite connection on app start
-    const initialPing = async () => {
+    const getLocation = async () => {
       try {
-        console.log("🚀 Performing initial Appwrite ping...");
-        const result = await pingAppwrite();
-        setPingResult(result);
+        // Request location permissions
+        const { status } = await Location.requestForegroundPermissionsAsync();
 
-        if (result.success) {
-          console.log("✅ Initial ping successful");
-          posthog.capture("App Started - Appwrite Connected", {
-            endpoint: result.endpoint,
-            projectId: result.projectId,
-          });
-        } else {
-          console.warn("⚠️ Initial ping failed");
-          posthog.capture("App Started - Appwrite Failed", {
-            error: result.message,
-          });
+        if (status !== "granted") {
+          console.log("Location permission denied");
+          return;
         }
+
+        // Get current location
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+        const { latitude, longitude } = currentLocation.coords;
+
+        // Update location state
+        setDictCurrentLocation({
+          dblLatitude: latitude,
+          dblLongitude: longitude,
+        });
+
+        console.log("Location obtained:", { latitude, longitude });
       } catch (error) {
-        console.error("❌ Initial ping error:", error);
-        setPingResult({
-          success: false,
-          message: `Initial connection test failed: ${error}`,
-          timestamp: new Date().toISOString(),
-        });
-        posthog.capture("App Started - Ping Error", {
-          error: String(error),
-        });
+        console.error("Error getting location:", error);
       }
     };
 
     checkSession();
-    initialPing();
+    getLocation();
   }, [router, posthog]);
 
   return (
@@ -777,11 +189,11 @@ const HomeScreen = () => {
           style={styles.menuButton} // Added style for menu button
         >
           <Ionicons name="menu" size={30} color={theme.text} />
-        </TouchableOpacity>
+        </TouchableOpacity>{" "}
         <Text style={[styles.instagramLogo, { color: theme.text }]}>
           Crime Patrol
         </Text>
-        {user.isLoggedIn ? (
+        {user?.isLoggedIn ? (
           <TouchableOpacity
             onPress={() => {
               triggerHaptic();
@@ -807,8 +219,9 @@ const HomeScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {" "}
         {/* Instagram Story-like User Status */}
-        {user.isLoggedIn && (
+        {user?.isLoggedIn && (
           <View style={styles.userStatusBar}>
             <View
               style={[
@@ -822,16 +235,15 @@ const HomeScreen = () => {
               {user.name}
             </Text>
           </View>
-        )}
-
+        )}{" "}
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <Text style={[styles.welcomeText, { color: theme.text }]}>
-            {user.isLoggedIn
+            {user?.isLoggedIn
               ? `Welcome, ${user.name}`
               : "Stay Safe, Stay Alert"}
           </Text>
-          {!user.isLoggedIn && (
+          {!user?.isLoggedIn && (
             <TouchableOpacity
               style={[styles.signInButton, { backgroundColor: theme.primary }]}
               onPress={toggleLogin}
@@ -842,70 +254,7 @@ const HomeScreen = () => {
             </TouchableOpacity>
           )}
         </View>
-
-        {/* Emergency Buttons (Instagram Post-like Cards) */}
-        <View style={styles.emergencySection}>
-          <View
-            style={[
-              styles.emergencyCard,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-              },
-            ]}
-          >
-            <View style={styles.cardHeader}>
-              <MaterialCommunityIcons
-                name="shield-alert"
-                size={22}
-                color={theme.secondary}
-              />
-              <Text style={[styles.cardTitle, { color: theme.text }]}>
-                Emergency Options
-              </Text>
-            </View>{" "}
-            {/* Main Action Buttons */}
-            <Animated.View style={{ transform: [{ scale: panicButtonScale }] }}>
-              <TouchableOpacity
-                style={[
-                  styles.panicButton,
-                  {
-                    backgroundColor: isContinuousPingingActive
-                      ? "#34C759"
-                      : theme.secondary,
-                  },
-                ]}
-                onPress={
-                  isContinuousPingingActive
-                    ? stopContinuousPinging
-                    : handlePanic
-                }
-                activeOpacity={0.8}
-                accessibilityLabel={
-                  isContinuousPingingActive
-                    ? "Stop pinging button"
-                    : "Panic button"
-                }
-                accessibilityRole="button"
-                accessibilityHint={
-                  isContinuousPingingActive
-                    ? "Press to stop continuous location updates"
-                    : "Press to send emergency alert with your location"
-                }
-              >
-                <Ionicons
-                  name={isContinuousPingingActive ? "stop-circle" : "warning"}
-                  size={26}
-                  color="#FFF"
-                />
-                <Text style={styles.panicButtonText}>
-                  {isContinuousPingingActive ? "STOP PINGING" : "PANIC"}
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
-        </View>
-
+        <BttnEmergencyPing />
         {/* Report Incident - Instagram Post-like Card */}
         <Animated.View style={{ transform: [{ scale: reportButtonScale }] }}>
           <View
@@ -966,7 +315,6 @@ const HomeScreen = () => {
             </TouchableOpacity>
           </View>
         </Animated.View>
-
         {/* Location Services - Instagram Post-like Card */}
         <View
           style={[
@@ -977,13 +325,32 @@ const HomeScreen = () => {
             },
           ]}
         >
+          {" "}
           <View style={styles.cardHeader}>
             <Ionicons name="location" size={22} color={theme.primary} />
             <Text style={[styles.cardTitle, { color: theme.text }]}>
               Location Services
             </Text>
-          </View>
-
+          </View>{" "}
+          {(dictCurrentLocation.dblLatitude !== 0 ||
+            dictCurrentLocation.dblLongitude !== 0) && (
+            <View
+              style={[
+                styles.locationInfo,
+                {
+                  backgroundColor:
+                    colorScheme === "dark" ? "#2C2C2C" : "#F8F8F8",
+                },
+              ]}
+            >
+              <Text
+                style={[styles.locationText, { color: theme.textSecondary }]}
+              >
+                Current Location: {dictCurrentLocation.dblLatitude.toFixed(4)},{" "}
+                {dictCurrentLocation.dblLongitude.toFixed(4)}
+              </Text>
+            </View>
+          )}
           <View style={styles.locationButtonsContainer}>
             <TouchableOpacity
               style={[
@@ -1015,6 +382,38 @@ const HomeScreen = () => {
                     colorScheme === "dark" ? "#2C2C2C" : "#F8F8F8",
                 },
               ]}
+              onPress={async () => {
+                triggerHaptic();
+                const currentLocation = await getCurrentLocation();
+                if (currentLocation) {
+                  setDictCurrentLocation({
+                    dblLatitude: currentLocation.dblLatitude,
+                    dblLongitude: currentLocation.dblLongitude,
+                  });
+                  console.log("Location refreshed:", currentLocation);
+                } else {
+                  console.log("Failed to get location");
+                }
+              }}
+              activeOpacity={0.7}
+              accessibilityLabel="Refresh Location"
+              accessibilityRole="button"
+            >
+              <Ionicons name="refresh" size={26} color={theme.primary} />
+              <Text style={[styles.locationButtonText, { color: theme.text }]}>
+                Refresh Location
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.locationButtonsContainer}>
+            <TouchableOpacity
+              style={[
+                styles.locationButton,
+                {
+                  backgroundColor:
+                    colorScheme === "dark" ? "#2C2C2C" : "#F8F8F8",
+                },
+              ]}
               onPress={() => {
                 triggerHaptic();
                 console.log("View Police Stations pressed");
@@ -1033,9 +432,41 @@ const HomeScreen = () => {
                 Police Stations
               </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.locationButton,
+                {
+                  backgroundColor:
+                    colorScheme === "dark" ? "#2C2C2C" : "#F8F8F8",
+                },
+              ]}
+              onPress={() => {
+                triggerHaptic();
+                if (
+                  dictCurrentLocation.dblLatitude !== 0 ||
+                  dictCurrentLocation.dblLongitude !== 0
+                ) {
+                  console.log("Current location:", {
+                    latitude: dictCurrentLocation.dblLatitude,
+                    longitude: dictCurrentLocation.dblLongitude,
+                  });
+                  // You can use the location data here for other features
+                } else {
+                  console.log("No location available");
+                }
+              }}
+              activeOpacity={0.7}
+              accessibilityLabel="Show Current Location"
+              accessibilityRole="button"
+            >
+              <Ionicons name="locate" size={26} color={theme.primary} />
+              <Text style={[styles.locationButtonText, { color: theme.text }]}>
+                My Location
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
-
         {/* Information Card */}
         <View
           style={[
@@ -1068,10 +499,10 @@ const HomeScreen = () => {
           >
             <Text style={[styles.infoButtonText, { color: theme.text }]}>
               Laws & Safety Guidelines
-            </Text>
+            </Text>{" "}
             <Ionicons name="chevron-forward" size={20} color={theme.primary} />
           </TouchableOpacity>
-          {user.isLoggedIn && (
+          {user?.isLoggedIn && (
             <TouchableOpacity
               style={[styles.infoButton, { borderBottomColor: theme.border }]}
               onPress={() => {
@@ -1108,127 +539,6 @@ const HomeScreen = () => {
             <Ionicons name="chevron-forward" size={20} color={theme.primary} />
           </TouchableOpacity>
         </View>
-
-        {/* Appwrite Connection Status Card */}
-        <View
-          style={[
-            styles.instagramCard,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-            },
-          ]}
-        >
-          <View style={styles.cardHeader}>
-            <Ionicons name="server" size={22} color={theme.primary} />
-            <Text style={[styles.cardTitle, { color: theme.text }]}>
-              Server Connection
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.infoButton,
-              {
-                borderBottomColor: theme.border,
-                opacity: isPinging ? 0.7 : 1,
-              },
-            ]}
-            onPress={handlePingAppwrite}
-            disabled={isPinging}
-            activeOpacity={0.7}
-            accessibilityLabel="Test Appwrite connection"
-            accessibilityRole="button"
-          >
-            <View
-              style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
-            >
-              {isPinging ? (
-                <Ionicons
-                  name="sync"
-                  size={20}
-                  color={theme.primary}
-                  style={{ marginRight: 8 }}
-                />
-              ) : (
-                <Ionicons
-                  name="radio"
-                  size={20}
-                  color={theme.primary}
-                  style={{ marginRight: 8 }}
-                />
-              )}
-              <Text style={[styles.infoButtonText, { color: theme.text }]}>
-                {isPinging
-                  ? "Testing Connection..."
-                  : "Test Appwrite Connection"}
-              </Text>
-            </View>
-            {!isPinging && (
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={theme.primary}
-              />
-            )}
-          </TouchableOpacity>
-
-          {/* Ping Result Display */}
-          {pingResult && (
-            <View
-              style={[
-                styles.pingResultContainer,
-                {
-                  backgroundColor: pingResult.success
-                    ? theme.primary + "10"
-                    : theme.secondary + "10",
-                  borderColor: pingResult.success
-                    ? theme.primary + "30"
-                    : theme.secondary + "30",
-                },
-              ]}
-            >
-              <View style={styles.pingResultHeader}>
-                <Ionicons
-                  name={
-                    pingResult.success ? "checkmark-circle" : "close-circle"
-                  }
-                  size={18}
-                  color={pingResult.success ? theme.primary : theme.secondary}
-                />
-                <Text
-                  style={[
-                    styles.pingResultStatus,
-                    {
-                      color: pingResult.success
-                        ? theme.primary
-                        : theme.secondary,
-                      marginLeft: 6,
-                    },
-                  ]}
-                >
-                  {pingResult.success
-                    ? "Connection Successful"
-                    : "Connection Failed"}
-                </Text>
-              </View>
-              <Text
-                style={[
-                  styles.pingResultMessage,
-                  { color: theme.textSecondary },
-                ]}
-              >
-                {pingResult.message}
-              </Text>
-              <Text
-                style={[styles.pingResultTime, { color: theme.textSecondary }]}
-              >
-                {new Date(pingResult.timestamp).toLocaleTimeString()}
-              </Text>
-            </View>
-          )}
-        </View>
-
         <TouchableOpacity
           style={[
             styles.infoButton,
@@ -1236,7 +546,7 @@ const HomeScreen = () => {
           ]}
           onPress={() => {
             triggerHaptic();
-            router.push("/test_prvw_image");
+            router.push("/test_screen");
           }}
           activeOpacity={0.7}
           accessibilityLabel="About"
@@ -1441,6 +751,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     marginTop: 8,
+  },
+  locationInfo: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  locationText: {
+    fontSize: 12,
+    textAlign: "center",
   },
   infoButton: {
     flexDirection: "row",

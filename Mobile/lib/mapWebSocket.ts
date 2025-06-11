@@ -6,9 +6,12 @@ const getBackendWsUrl = () => {
   if (__DEV__) {
     // Development mode
     if (Platform.OS === "android") {
-      return "http://10.0.2.2:3000"; // Android emulator uses this IP for localhost
+      // For Android emulator, try localhost first as we're on the same machine
+      return "http://localhost:3000";
+    } else if (Platform.OS === "ios") {
+      return "http://localhost:3000"; // iOS simulator
     } else {
-      return "http://localhost:3000"; // iOS simulator and web
+      return "http://localhost:3000"; // Web or other platforms
     }
   } else {
     return "https://your-production-backend.com"; // Production URL
@@ -46,30 +49,53 @@ class MapWebSocket {
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
   private listeners: { [event: string]: Function[] } = {};
-
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       const backendUrl = getBackendWsUrl();
       console.log(`[MapWebSocket] Connecting to: ${backendUrl}`);
 
       this.socket = io(backendUrl, {
-        transports: ["websocket"],
-        timeout: 10000,
+        transports: ["polling", "websocket"], // Start with polling, then upgrade to websocket
+        timeout: 15000, // Increased timeout to 15 seconds
         forceNew: false,
+        reconnection: true,
+        reconnectionAttempts: 3,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        upgrade: true, // Allow transport upgrade
       });
+
+      // Set up a connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (!this.isConnected) {
+          console.error("[MapWebSocket] Connection timeout after 15 seconds");
+          this.socket?.disconnect();
+          reject(new Error("timeout"));
+        }
+      }, 15000);
 
       this.socket.on("connect", () => {
         console.log(`[MapWebSocket] Connected with ID: ${this.socket?.id}`);
+        console.log(
+          `[MapWebSocket] Transport: ${this.socket?.io.engine.transport.name}`,
+        );
+        clearTimeout(connectionTimeout);
         this.isConnected = true;
         this.reconnectAttempts = 0;
 
         // Join map room for real-time updates
+        console.log("[MapWebSocket] Joining map-updates room...");
         this.socket?.emit("map-join");
+
+        // Set up emergency ping event handlers after connection
+        this.setupEmergencyPingEventHandlers();
+
         resolve();
       });
 
       this.socket.on("connect_error", (error) => {
         console.error("[MapWebSocket] Connection error:", error);
+        clearTimeout(connectionTimeout);
         this.isConnected = false;
         reject(error);
       });
@@ -87,8 +113,12 @@ class MapWebSocket {
         this.handleReconnect();
       });
 
-      // Set up emergency ping event handlers
-      this.setupEmergencyPingEventHandlers();
+      // Log transport upgrades
+      this.socket.on("upgrade", () => {
+        console.log(
+          `[MapWebSocket] Transport upgraded to: ${this.socket?.io.engine.transport.name}`,
+        );
+      });
     });
   }
   private setupEmergencyPingEventHandlers(): void {
