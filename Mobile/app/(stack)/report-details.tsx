@@ -68,7 +68,6 @@ const ReportDetailsScreen = () => {
     setSelectedMedia(media);
     setModalVisible(true);
   };
-
   const closeMediaModal = async () => {
     // Stop audio if playing
     if (audioSound) {
@@ -79,7 +78,9 @@ const ReportDetailsScreen = () => {
     setIsPlaying(false);
     setModalVisible(false);
     setSelectedMedia(null);
-  }; // Handle audio playback
+  };
+
+  // Handle audio playback
   const toggleAudioPlayback = async () => {
     try {
       if (
@@ -685,12 +686,13 @@ const ReportDetailsScreen = () => {
             onPress={closeMediaModal}
           />
           <View style={styles.modalContent}>
+            {" "}
             <TouchableOpacity
               style={styles.closeButton}
               onPress={closeMediaModal}
             >
               <Ionicons name="close" size={30} color="white" />
-            </TouchableOpacity>{" "}
+            </TouchableOpacity>
             {selectedMedia &&
               selectedMedia.media_type === "photo" &&
               (selectedMedia.cloudinary_url ||
