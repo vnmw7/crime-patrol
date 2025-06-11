@@ -1,28 +1,25 @@
-import React, { useState, useEffect } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
   StyleSheet,
-  ActivityIndicator,
+  Text,
+  View,
   TouchableOpacity,
-  Image,
+  ScrollView,
+  ActivityIndicator,
   Modal,
-  Dimensions,
   Alert,
+  Image,
 } from "react-native";
+import React, { useState, useEffect, useRef } from "react"; // Added useRef
+import { Audio, Video, ResizeMode, VideoFullscreenUpdate } from "expo-av"; // Added Video, ResizeMode, VideoFullscreenUpdate
+import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
-import { Audio } from "expo-av";
-import { WebView } from "react-native-webview";
 import {
   reportService,
   CompleteReport,
   MediaItem,
-} from "../../lib/reportService";
-
-const { width, height } = Dimensions.get("window");
+} from "../../lib/reportService"; // Changed to relative path and added CompleteReport, MediaItem
+// import { WebView } from "react-native-webview"; // Removed WebView import
 
 const ReportDetailsScreen = () => {
   const { reportId } = useLocalSearchParams<{ reportId: string }>();
@@ -36,6 +33,7 @@ const ReportDetailsScreen = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioSound, setAudioSound] = useState<Audio.Sound | null>(null);
   const [audioStatus, setAudioStatus] = useState<any>(null);
+  const videoModalRef = useRef<Video>(null); // Added videoModalRef
 
   // This is for showing dynamic content in the modal
   const [urlSelectedMedia, setUrlSelectedMedia] = useState<string>("");
@@ -378,7 +376,6 @@ const ReportDetailsScreen = () => {
             </View>
           )}
         </View>
-
         {/* Description */}
         {report.metadata?.description && (
           <View
@@ -395,7 +392,6 @@ const ReportDetailsScreen = () => {
             </Text>
           </View>
         )}
-
         {/* Location Information */}
         {report.location && (
           <View
@@ -454,7 +450,6 @@ const ReportDetailsScreen = () => {
             )}
           </View>
         )}
-
         {/* Reporter Information */}
         {report.reporter_info && (
           <View
@@ -512,7 +507,6 @@ const ReportDetailsScreen = () => {
             )}
           </View>
         )}
-
         {/* Victims */}
         {report.victims && report.victims.length > 0 && (
           <View
@@ -524,7 +518,7 @@ const ReportDetailsScreen = () => {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Victims ({report.victims.length})
             </Text>
-            {report.victims.map((victim, index) => (
+            {report.victims.map((victim: any, index: any) => (
               <View key={index} style={styles.listItem}>
                 {victim.victim_name && (
                   <Text style={[styles.listItemText, { color: colors.text }]}>
@@ -542,7 +536,6 @@ const ReportDetailsScreen = () => {
             ))}
           </View>
         )}
-
         {/* Suspects */}
         {report.suspects && report.suspects.length > 0 && (
           <View
@@ -554,7 +547,7 @@ const ReportDetailsScreen = () => {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Suspects ({report.suspects.length})
             </Text>
-            {report.suspects.map((suspect, index) => (
+            {report.suspects.map((suspect: any, index: any) => (
               <View key={index} style={styles.listItem}>
                 {suspect.suspect_description && (
                   <Text style={[styles.listItemText, { color: colors.text }]}>
@@ -572,7 +565,6 @@ const ReportDetailsScreen = () => {
             ))}
           </View>
         )}
-
         {/* Witnesses */}
         {report.witnesses && report.witnesses.length > 0 && (
           <View
@@ -584,7 +576,7 @@ const ReportDetailsScreen = () => {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Witnesses ({report.witnesses.length})
             </Text>
-            {report.witnesses.map((witness, index) => (
+            {report.witnesses.map((witness: any, index: any) => (
               <View key={index} style={styles.listItem}>
                 {witness.witness_info && (
                   <Text style={[styles.listItemText, { color: colors.text }]}>
@@ -594,8 +586,7 @@ const ReportDetailsScreen = () => {
               </View>
             ))}
           </View>
-        )}
-
+        )}{" "}
         {/* Media */}
         {report.media && report.media.length > 0 && (
           <View
@@ -604,46 +595,71 @@ const ReportDetailsScreen = () => {
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
           >
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Media ({report.media.length})
+            <View style={styles.cardHeader}>
+              <Ionicons
+                name="images"
+                size={20}
+                color={colors.primary || "#0095F6"}
+              />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Media ({report.media.length})
+              </Text>
+            </View>{" "}
+            <Text style={[styles.cardSubtitle, { color: colors.text }]}>
+              Tap any media item to view in full screen
             </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.mediaScroll}
-            >
-              {report.media.map((media, index) => {
+            <View style={styles.mediaGrid}>
+              {report.media.map((media: any, index: any) => {
                 const mediaUri =
                   media.cloudinary_url || media.secure_url || media.file_url;
 
                 return (
-                  <View key={index} style={styles.mediaItemContainer}>
-                    {media.media_type === "photo" && mediaUri && (
-                      <TouchableOpacity
-                        style={styles.mediaThumbnail}
-                        onPress={() => openMediaModal(media, mediaUri, "photo")}
-                      >
-                        <Image
-                          source={{
-                            uri: generateThumbnailUrl(mediaUri, "photo"),
-                          }}
-                          style={styles.thumbnailImage}
-                          resizeMode="cover"
-                        />
-                      </TouchableOpacity>
-                    )}
-                    {/* Video Thumbnail */}
-                    {media.media_type === "video" && mediaUri && (
-                      <TouchableOpacity
-                        style={styles.mediaThumbnail}
-                        onPress={() => openMediaModal(media, mediaUri, "video")}
-                      >
-                        <View style={styles.videoThumbnailContainer}>
+                  <View
+                    key={index}
+                    style={[
+                      styles.mediaCard,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <View style={styles.mediaContainer}>
+                      {media.media_type === "photo" && mediaUri && (
+                        <TouchableOpacity
+                          style={styles.mediaPreviewContainer}
+                          onPress={() =>
+                            openMediaModal(media, mediaUri, "photo")
+                          }
+                          activeOpacity={0.9}
+                        >
+                          <Image
+                            source={{
+                              uri: generateThumbnailUrl(mediaUri, "photo"),
+                            }}
+                            style={styles.previewMedia}
+                            resizeMode="cover"
+                          />
+                          <View style={styles.mediaOverlay}>
+                            <Ionicons name="expand" size={20} color="white" />
+                          </View>
+                        </TouchableOpacity>
+                      )}
+
+                      {/* Video Thumbnail */}
+                      {media.media_type === "video" && mediaUri && (
+                        <TouchableOpacity
+                          style={styles.mediaPreviewContainer}
+                          onPress={() =>
+                            openMediaModal(media, mediaUri, "video")
+                          }
+                          activeOpacity={0.9}
+                        >
                           <Image
                             source={{
                               uri: generateThumbnailUrl(mediaUri, "video"),
                             }}
-                            style={styles.thumbnailImage}
+                            style={styles.previewMedia}
                             resizeMode="cover"
                             onError={() => {
                               console.log(
@@ -652,58 +668,64 @@ const ReportDetailsScreen = () => {
                               );
                             }}
                           />
-                          <View style={styles.playIconOverlay}>
+                          <View style={styles.mediaOverlay}>
                             <Ionicons
                               name="play-circle"
-                              size={30}
+                              size={24}
                               color="white"
                             />
                           </View>
-                        </View>
-                      </TouchableOpacity>
-                    )}
-                    {/* Audio Thumbnail */}
-                    {media.media_type === "audio" && (
-                      <TouchableOpacity
-                        style={styles.mediaThumbnail}
-                        onPress={() =>
-                          openMediaModal(media, mediaUri || "", "audio")
-                        }
-                      >
-                        <View
-                          style={[styles.thumbnailImage, styles.audioThumbnail]}
+                        </TouchableOpacity>
+                      )}
+
+                      {/* Audio Thumbnail */}
+                      {media.media_type === "audio" && (
+                        <TouchableOpacity
+                          style={styles.mediaPreviewContainer}
+                          onPress={() =>
+                            openMediaModal(media, mediaUri || "", "audio")
+                          }
+                          activeOpacity={0.9}
                         >
-                          <Ionicons
-                            name="musical-notes"
-                            size={40}
-                            color="white"
-                          />
-                        </View>
-                      </TouchableOpacity>
-                    )}
-                    {/* Media Info Text */}
-                    <Text
-                      style={[
-                        styles.mediaType,
-                        { color: colors.text, marginTop: 4 },
-                      ]}
-                    >
-                      {media.media_type}
-                    </Text>
-                    <Text
-                      style={[styles.mediaFileName, { color: colors.text }]}
-                      numberOfLines={1}
-                    >
-                      {media.file_name_original ||
-                        `${media.media_type}_${index + 1}`}
-                    </Text>
+                          <View
+                            style={[styles.previewMedia, styles.audioPreview]}
+                          >
+                            <Ionicons
+                              name="musical-notes"
+                              size={32}
+                              color="white"
+                            />
+                          </View>
+                          <View style={styles.mediaOverlay}>
+                            <Ionicons name="play" size={20} color="white" />
+                          </View>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    {/* Media Info */}
+                    <View style={styles.mediaInfo}>
+                      <Text
+                        style={[
+                          styles.mediaInfoType,
+                          { color: colors.primary || "#0095F6" },
+                        ]}
+                      >
+                        {media.media_type.toUpperCase()}
+                      </Text>
+                      <Text
+                        style={[styles.mediaInfoText, { color: colors.text }]}
+                        numberOfLines={1}
+                      >
+                        {media.file_name_original ||
+                          `${media.media_type}_${index + 1}`}
+                      </Text>
+                    </View>{" "}
                   </View>
                 );
               })}
-            </ScrollView>
+            </View>
           </View>
         )}
-
         {/* Timestamps */}
         {(report.metadata?.created_at || report.metadata?.updated_at) && (
           <View
@@ -785,11 +807,21 @@ const ReportDetailsScreen = () => {
 
             {isVideoModalOpen && selectedMedia && urlSelectedMedia && (
               <View style={styles.fullVideoContainer}>
-                <WebView
-                  style={styles.fullWebView}
+                <Video
+                  ref={videoModalRef}
+                  style={styles.fullScreenImage} // Using fullScreenImage style for consistency
                   source={{ uri: urlSelectedMedia }}
-                  allowsFullscreenVideo
-                  mediaPlaybackRequiresUserAction={false}
+                  resizeMode={ResizeMode.CONTAIN}
+                  useNativeControls
+                  shouldPlay={isVideoModalOpen}
+                  onFullscreenUpdate={(event) => {
+                    if (
+                      event.fullscreenUpdate ===
+                      VideoFullscreenUpdate.PLAYER_WILL_DISMISS
+                    ) {
+                      closeMediaModal();
+                    }
+                  }}
                 />
               </View>
             )}
@@ -888,9 +920,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
-    marginBottom: 12,
+    marginLeft: 8,
+    flex: 1,
   },
   infoRow: {
     flexDirection: "row",
@@ -924,8 +957,75 @@ const styles = StyleSheet.create({
   listItemLabel: {
     fontWeight: "500",
   },
-  mediaScroll: {
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    marginBottom: 16,
+    opacity: 0.7,
+  },
+  mediaGrid: {
     marginTop: 8,
+  },
+  mediaCard: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    width: "100%",
+  },
+  mediaContainer: {
+    position: "relative",
+    borderRadius: 8,
+    overflow: "hidden",
+    aspectRatio: 16 / 9,
+    backgroundColor: "#e0e0e0",
+  },
+  mediaPreviewContainer: {
+    width: "100%",
+    height: "100%",
+    position: "relative",
+  },
+  previewMedia: {
+    width: "100%",
+    height: "100%",
+  },
+  audioPreview: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#666",
+  },
+  mediaOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+  },
+  mediaInfo: {
+    marginTop: 8,
+    alignItems: "center",
+  },
+  mediaInfoType: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  mediaInfoText: {
+    fontSize: 10,
+    textAlign: "center",
+    opacity: 0.8,
   },
   mediaItemContainer: {
     alignItems: "center",
@@ -1013,10 +1113,11 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   modalContent: {
-    width: width * 0.9,
-    height: height * 0.8,
+    width: "100%",
+    height: "100%",
     justifyContent: "center",
     alignItems: "center",
+    position: "relative",
   },
   closeButton: {
     position: "absolute",
@@ -1034,8 +1135,8 @@ const styles = StyleSheet.create({
   },
   fullScreenImage: {
     // Ensure this style is defined for the image modal
-    width: width * 0.9, // Or use modalContent width
-    height: height * 0.8, // Or use modalContent height
+    width: "100%",
+    height: "100%",
   },
   modalScrollView: {
     // Added for image scroll
@@ -1061,7 +1162,7 @@ const styles = StyleSheet.create({
   },
   fullVideo: {
     width: "100%",
-    height: "70%",
+    height: "100%",
   },
   fullAudioContainer: {
     width: "100%",
