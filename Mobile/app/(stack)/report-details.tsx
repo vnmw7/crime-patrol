@@ -37,6 +37,12 @@ const ReportDetailsScreen = () => {
   const [audioSound, setAudioSound] = useState<Audio.Sound | null>(null);
   const [audioStatus, setAudioStatus] = useState<any>(null);
 
+  // This is for showing dynamic content in the modal
+  const [urlSelectedMedia, setUrlSelectedMedia] = useState<string>("");
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
+
   useEffect(() => {
     if (!reportId) {
       setError("No report ID provided");
@@ -63,11 +69,41 @@ const ReportDetailsScreen = () => {
 
     fetchReportDetails();
   }, [reportId]);
-  const openMediaModal = (media: MediaItem) => {
+
+  const openMediaModal = (media: MediaItem, url: string, type: string) => {
     console.log("[report-details.tsx] Opening media modal for:", media);
+    console.log("[report-details.tsx] url:", url);
+    console.log("[report-details.tsx] type:", type);
+
     setSelectedMedia(media);
+    setUrlSelectedMedia(url);
     setModalVisible(true);
+
+    switch (type) {
+      case "photo":
+        setIsImageModalOpen(true);
+        setIsVideoModalOpen(false);
+        setIsAudioModalOpen(false);
+        break;
+      case "video":
+        setIsImageModalOpen(false);
+        setIsVideoModalOpen(true);
+        setIsAudioModalOpen(false);
+        break;
+      case "audio":
+        setIsImageModalOpen(false);
+        setIsVideoModalOpen(false);
+        setIsAudioModalOpen(true);
+        break;
+      default:
+        Alert.alert(
+          "Unsupported media type",
+          "This media type is not supported.",
+        );
+        setModalVisible(false); // Close modal if type is unsupported
+    }
   };
+
   const closeMediaModal = async () => {
     // Stop audio if playing
     if (audioSound) {
@@ -78,6 +114,10 @@ const ReportDetailsScreen = () => {
     setIsPlaying(false);
     setModalVisible(false);
     setSelectedMedia(null);
+    setIsImageModalOpen(false);
+    setIsVideoModalOpen(false);
+    setIsAudioModalOpen(false);
+    setUrlSelectedMedia(""); // Reset the URL
   };
 
   // Handle audio playback
@@ -577,54 +617,77 @@ const ReportDetailsScreen = () => {
                   media.cloudinary_url || media.secure_url || media.file_url;
 
                 return (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.mediaThumbnail}
-                    onPress={() => openMediaModal(media)}
-                  >
+                  <View key={index} style={styles.mediaItemContainer}>
                     {media.media_type === "photo" && mediaUri && (
-                      <Image
-                        source={{
-                          uri: generateThumbnailUrl(mediaUri, "photo"),
-                        }}
-                        style={styles.thumbnailImage}
-                        resizeMode="cover"
-                      />
-                    )}
-                    {media.media_type === "video" && (
-                      <View style={styles.videoThumbnailContainer}>
+                      <TouchableOpacity
+                        style={styles.mediaThumbnail}
+                        onPress={() => openMediaModal(media, mediaUri, "photo")}
+                      >
                         <Image
                           source={{
-                            uri: generateThumbnailUrl(mediaUri || "", "video"),
+                            uri: generateThumbnailUrl(mediaUri, "photo"),
                           }}
                           style={styles.thumbnailImage}
                           resizeMode="cover"
-                          onError={() => {
-                            // Fallback to video icon if thumbnail fails
-                            console.log("Video thumbnail failed to load");
-                          }}
                         />
-                        <View style={styles.playIconOverlay}>
+                      </TouchableOpacity>
+                    )}
+                    {/* Video Thumbnail */}
+                    {media.media_type === "video" && mediaUri && (
+                      <TouchableOpacity
+                        style={styles.mediaThumbnail}
+                        onPress={() => openMediaModal(media, mediaUri, "video")}
+                      >
+                        <View style={styles.videoThumbnailContainer}>
+                          <Image
+                            source={{
+                              uri: generateThumbnailUrl(mediaUri, "video"),
+                            }}
+                            style={styles.thumbnailImage}
+                            resizeMode="cover"
+                            onError={() => {
+                              console.log(
+                                "Video thumbnail failed to load for URI:",
+                                mediaUri,
+                              );
+                            }}
+                          />
+                          <View style={styles.playIconOverlay}>
+                            <Ionicons
+                              name="play-circle"
+                              size={30}
+                              color="white"
+                            />
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                    {/* Audio Thumbnail */}
+                    {media.media_type === "audio" && (
+                      <TouchableOpacity
+                        style={styles.mediaThumbnail}
+                        onPress={() =>
+                          openMediaModal(media, mediaUri || "", "audio")
+                        }
+                      >
+                        <View
+                          style={[styles.thumbnailImage, styles.audioThumbnail]}
+                        >
                           <Ionicons
-                            name="play-circle"
-                            size={30}
+                            name="musical-notes"
+                            size={40}
                             color="white"
                           />
                         </View>
-                      </View>
+                      </TouchableOpacity>
                     )}
-                    {media.media_type === "audio" && (
-                      <View
-                        style={[styles.thumbnailImage, styles.audioThumbnail]}
-                      >
-                        <Ionicons
-                          name="musical-notes"
-                          size={40}
-                          color="white"
-                        />
-                      </View>
-                    )}
-                    <Text style={[styles.mediaType, { color: colors.text }]}>
+                    {/* Media Info Text */}
+                    <Text
+                      style={[
+                        styles.mediaType,
+                        { color: colors.text, marginTop: 4 },
+                      ]}
+                    >
                       {media.media_type}
                     </Text>
                     <Text
@@ -634,7 +697,7 @@ const ReportDetailsScreen = () => {
                       {media.file_name_original ||
                         `${media.media_type}_${index + 1}`}
                     </Text>
-                  </TouchableOpacity>
+                  </View>
                 );
               })}
             </ScrollView>
@@ -679,127 +742,65 @@ const ReportDetailsScreen = () => {
       </ScrollView>
 
       {/* Media Modal */}
-      <Modal visible={modalVisible} transparent animationType="fade">
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeMediaModal}
+      >
         <View style={styles.modalContainer}>
           <TouchableOpacity
             style={styles.modalBackdrop}
             onPress={closeMediaModal}
+            activeOpacity={1}
           />
+
           <View style={styles.modalContent}>
-            {" "}
             <TouchableOpacity
               style={styles.closeButton}
               onPress={closeMediaModal}
+              accessibilityLabel="Close media"
+              accessibilityRole="button"
             >
               <Ionicons name="close" size={30} color="white" />
             </TouchableOpacity>
-            {selectedMedia &&
-              selectedMedia.media_type === "photo" &&
-              (selectedMedia.cloudinary_url ||
-                selectedMedia.secure_url ||
-                selectedMedia.file_url) && (
-                <WebView
-                  source={{
-                    html: `
-                      <!DOCTYPE html>
-                      <html>
-                        <head>
-                          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-                          <style>
-                            body {
-                              margin: 0;
-                              padding: 0;
-                              background: black;
-                              display: flex;
-                              justify-content: center;
-                              align-items: center;
-                              height: 100vh;
-                              overflow: hidden;
-                            }
-                            img {
-                              max-width: 100%;
-                              max-height: 100vh;
-                              object-fit: contain;
-                              cursor: zoom-in;
-                            }
-                            img.zoomed {
-                              cursor: zoom-out;
-                              max-width: none;
-                              max-height: none;
-                              width: auto;
-                              height: auto;
-                            }
-                          </style>
-                        </head>
-                        <body>
-                          <img src="${selectedMedia.cloudinary_url || selectedMedia.secure_url || selectedMedia.file_url}" 
-                               onclick="this.classList.toggle('zoomed')" 
-                               alt="Report media" />
-                        </body>
-                      </html>
-                    `,
-                  }}
-                  style={styles.fullWebView}
-                  scalesPageToFit={true}
-                  bounces={false}
-                  scrollEnabled={true}
-                  showsHorizontalScrollIndicator={false}
-                  showsVerticalScrollIndicator={false}
+
+            {isImageModalOpen && selectedMedia && urlSelectedMedia && (
+              <ScrollView
+                style={styles.modalScrollView}
+                contentContainerStyle={styles.modalScrollContent}
+                showsVerticalScrollIndicator={false}
+                showsHorizontalScrollIndicator={false}
+                maximumZoomScale={3}
+                minimumZoomScale={1}
+                bouncesZoom={true}
+              >
+                <Image
+                  source={{ uri: urlSelectedMedia }}
+                  style={styles.fullScreenImage}
+                  resizeMode="contain"
                 />
-              )}
-            {selectedMedia && selectedMedia.media_type === "video" && (
-              <WebView
-                source={{
-                  html: `
-                    <!DOCTYPE html>
-                    <html>
-                      <head>
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <style>
-                          body {
-                            margin: 0;
-                            padding: 0;
-                            background: black;
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            height: 100vh;
-                          }
-                          video {
-                            width: 100%;
-                            height: 100%;
-                            max-width: 100vw;
-                            max-height: 100vh;
-                            object-fit: contain;
-                          }
-                        </style>
-                      </head>
-                      <body>
-                        <video controls autoplay muted style="width: 100%; height: 100%;">
-                          <source src="${selectedMedia.cloudinary_url || selectedMedia.secure_url || selectedMedia.file_url}" type="video/mp4">
-                          <source src="${selectedMedia.cloudinary_url || selectedMedia.secure_url || selectedMedia.file_url}" type="video/webm">
-                          <source src="${selectedMedia.cloudinary_url || selectedMedia.secure_url || selectedMedia.file_url}" type="video/ogg">
-                          Your browser does not support the video tag.
-                        </video>
-                      </body>
-                    </html>
-                  `,
-                }}
-                style={styles.fullWebView}
-                allowsInlineMediaPlayback={true}
-                mediaPlaybackRequiresUserAction={false}
-                javaScriptEnabled={true}
-                domStorageEnabled={true}
-              />
+              </ScrollView>
             )}
-            {selectedMedia && selectedMedia.media_type === "audio" && (
+
+            {isVideoModalOpen && selectedMedia && urlSelectedMedia && (
+              <View style={styles.fullVideoContainer}>
+                <WebView
+                  style={styles.fullWebView}
+                  source={{ uri: urlSelectedMedia }}
+                  allowsFullscreenVideo
+                  mediaPlaybackRequiresUserAction={false}
+                />
+              </View>
+            )}
+
+            {isAudioModalOpen && selectedMedia && urlSelectedMedia && (
               <View style={styles.fullAudioContainer}>
                 <View style={styles.audioPlayerContainer}>
-                  <Ionicons name="musical-notes" size={80} color="white" />
-                  <Text style={styles.audioFileName}>
-                    {selectedMedia.file_name_original || "Audio File"}
+                  <Ionicons name="musical-notes" size={60} color="white" />
+                  <Text style={styles.audioFileName} numberOfLines={2}>
+                    {selectedMedia.file_name_original || "Audio Track"}
                   </Text>
-
                   <View style={styles.audioControls}>
                     <TouchableOpacity
                       style={styles.audioButton}
@@ -812,20 +813,27 @@ const ReportDetailsScreen = () => {
                       />
                     </TouchableOpacity>
                   </View>
-
                   {audioStatus && audioStatus.isLoaded && (
                     <View style={styles.audioProgress}>
                       <Text style={styles.audioTime}>
-                        {Math.floor((audioStatus.positionMillis || 0) / 1000)}s
-                        / {Math.floor((audioStatus.durationMillis || 0) / 1000)}
-                        s
+                        {new Date(audioStatus.positionMillis || 0)
+                          .toISOString()
+                          .substr(14, 5)}{" "}
+                        /{" "}
+                        {new Date(audioStatus.durationMillis || 0)
+                          .toISOString()
+                          .substr(14, 5)}
                       </Text>
                       <View style={styles.progressBar}>
                         <View
                           style={[
                             styles.progressFill,
                             {
-                              width: `${((audioStatus.positionMillis || 0) / (audioStatus.durationMillis || 1)) * 100}%`,
+                              width: `${
+                                ((audioStatus.positionMillis || 0) /
+                                  (audioStatus.durationMillis || 1)) *
+                                100
+                              }%`,
                             },
                           ]}
                         />
@@ -918,6 +926,10 @@ const styles = StyleSheet.create({
   },
   mediaScroll: {
     marginTop: 8,
+  },
+  mediaItemContainer: {
+    alignItems: "center",
+    marginRight: 12,
   },
   mediaThumbnail: {
     marginRight: 12,
@@ -1016,8 +1028,25 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   fullImage: {
+    // This style might be deprecated if fullScreenImage is used
     width: "100%",
     height: "100%",
+  },
+  fullScreenImage: {
+    // Ensure this style is defined for the image modal
+    width: width * 0.9, // Or use modalContent width
+    height: height * 0.8, // Or use modalContent height
+  },
+  modalScrollView: {
+    // Added for image scroll
+    width: "100%",
+    height: "100%",
+  },
+  modalScrollContent: {
+    // Added for image scroll content
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   fullWebView: {
     width: "100%",

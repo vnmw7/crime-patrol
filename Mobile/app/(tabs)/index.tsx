@@ -1228,6 +1228,24 @@ const HomeScreen = () => {
             </View>
           )}
         </View>
+
+        <TouchableOpacity
+          style={[
+            styles.infoButton,
+            { borderBottomColor: theme.border, marginBottom: 20 },
+          ]}
+          onPress={() => {
+            triggerHaptic();
+            router.push("/test_prvw_image");
+          }}
+          activeOpacity={0.7}
+          accessibilityLabel="About"
+          accessibilityRole="button"
+        >
+          <Text style={[styles.infoButtonText, { color: theme.text }]}>
+            Test Screen
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
