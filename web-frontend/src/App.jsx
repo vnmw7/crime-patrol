@@ -18,6 +18,7 @@ import MapPage from "./components/page/MapPage";
 import DashboardLogin from "./components/login/Login.jsx";
 import DashboardRegister from "./components/register/Register.jsx";
 import Reports from "./components/reports/reports.jsx";
+import Users from "./routes/users.jsx";
 
 // New: Blank placeholder page for dashboard root
 const DashboardBlank = () => (
@@ -51,6 +52,7 @@ function App() {
           <Route path="login" element={<DashboardLogin />} />
           <Route path="register" element={<DashboardRegister />} />
           <Route path="map" element={<MapPage />} />
+          <Route path="users" element={<Users/>} />
         </Route>
 
         {/* Fallback for unknown routes */}
