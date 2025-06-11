@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -9,21 +9,16 @@ import {
   ActivityIndicator,
   Alert,
   useColorScheme,
+  ScrollView,
 } from "react-native";
-import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-// Import police station data from the constants file
-import {
-  policeStations as policeStationsData,
-  emergencyRespondents,
-} from "../constants/policeStationsData";
-import { mapWebSocket, EmergencyPing } from "../../lib/mapWebSocket";
+import { io, Socket } from "socket.io-client";
+import { dictLocationPing } from "../types/types_location";
 
 const themeColors = {
   light: {
@@ -66,139 +61,45 @@ const themeColors = {
 
 const { height } = Dimensions.get("window");
 
-type LocationType = {
+// Define a type for the user location
+interface UserLocation {
   latitude: number;
   longitude: number;
-  latitudeDelta: number;
-  longitudeDelta: number;
-};
+}
 
-type PoliceStationType = {
-  id: string;
-  name: string;
-  location: {
-    latitude: number;
-    longitude: number;
-  };
-  address: string;
-  phone: string;
-};
-
-type IncidentType = {
-  id: string;
-  title: string;
-  description: string;
-  location: {
-    latitude: number;
-    longitude: number;
-  };
-  date: string;
-  type: string;
-  reportedBy: string;
-};
-
-// Mock data for incidents (recent reports)
-const recentIncidents: IncidentType[] = [
-  {
-    id: "1",
-    title: "Theft Report",
-    description: "A smartphone was stolen at a local café.",
-    location: {
-      latitude: 10.6721,
-      longitude: 122.949,
-    },
-    date: "2025-03-23T14:30:00",
-    type: "theft",
-    reportedBy: "Anonymous",
-  },
-  {
-    id: "2",
-    title: "Suspicious Activity",
-    description: "Unknown persons loitering around closed establishments.",
-    location: {
-      latitude: 10.678,
-      longitude: 122.952,
-    },
-    date: "2025-03-24T23:15:00",
-    type: "suspicious",
-    reportedBy: "Community Watch",
-  },
-];
-
-// Type for our report form
-type ReportFormType = {
-  title: string;
-  description: string;
-  type: string;
-  location: {
-    latitude: number;
-    longitude: number;
-  } | null;
-  media: string[]; // This would actually store URIs to media files
-};
-
-// Fix the implicit 'any' type for the 'emergency' parameter
-const showEmergencyDetails = (emergency: {
-  name: string;
-  address: string;
-  contactNumbers: string[];
-}) => {
-  Alert.alert(
-    "Emergency Details",
-    `Name: ${emergency.name}\nAddress: ${emergency.address}\nPhone: ${emergency.contactNumbers[0] || "N/A"}`,
-    [{ text: "OK" }],
-  );
-};
+// Define the interface for an emergency ping
+interface EmergencyPing {
+  id: string; // Unique identifier for the ping
+  latitude: number;
+  longitude: number;
+  description?: string; // Optional description
+  timestamp: number; // When it was received/created
+}
 
 // Main Map component
 const MapScreen = () => {
-  // State declarations
-  const [userLocation, setUserLocation] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-  const [region, setRegion] = useState<LocationType>({
-    latitude: 10.6713,
-    longitude: 122.9511,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-  });
-  const [reportLocation, setReportLocation] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [selectedStation, setSelectedStation] =
-    useState<PoliceStationType | null>(null);
-  const [selectedIncident, setSelectedIncident] = useState<IncidentType | null>(
-    null,
-  );
-  const [reportModalVisible, setReportModalVisible] = useState<boolean>(false);
-  const [detailsModalVisible, setDetailsModalVisible] =
-    useState<boolean>(false);
-  const [reportForm, setReportForm] = useState<ReportFormType>({
-    title: "",
-    description: "",
-    type: "theft", // Default type
-    location: null,
-    media: [],
-  });
-  const [selectedTab, setSelectedTab] = useState<"form" | "media">("form");
-  const [emergencyPings, setEmergencyPings] = useState<EmergencyPing[]>([]);
-  const [isMapWebSocketConnected, setIsMapWebSocketConnected] =
-    useState<boolean>(false);
-  // Real-time tracking refs for location updates (using refs to avoid dependency issues)
-  const lastUpdateTimesRef = useRef<{ [pingId: string]: string }>({});
-  const pingUpdateCountersRef = useRef<{ [pingId: string]: number }>({});
-
-  // Get theme colors based on color scheme
+  const [, setUserLocation] = useState<UserLocation | null>(null); // Mark userLocation as unused
+  const [isConnecting, setIsConnecting] = useState<boolean>(false);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [emergencyPings, setEmergencyPings] = useState<EmergencyPing[]>([]); // State for emergency pings
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // Reference to the map
-  const mapRef = useRef<WebView>(null);
+  const getBackendUrl = () => {
+    if (__DEV__) {
+      if (Platform.OS === "android") {
+        return "http://192.168.254.120:3000";
+      } else {
+        return "http://192.168.254.120:3000";
+      }
+    } else {
+      return "https://your-production-backend.com";
+    }
+  };
 
   // Function to get user's location
   const getUserLocation = useCallback(async () => {
@@ -225,15 +126,15 @@ const MapScreen = () => {
         );
         // No need to set isLoading false here, finally block handles it
         return;
-      }
-
-      // Add a timeout for getCurrentPositionAsync
-      const locationPromise = Location.getCurrentPositionAsync({});
+      } // Add a timeout for getCurrentPositionAsync with more permissive options
+      const locationPromise = Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(
           () =>
-            reject(new Error("Location request timed out after 15 seconds")),
-          15000,
+            reject(new Error("Location request timed out after 30 seconds")),
+          30000,
         ),
       );
 
@@ -258,19 +159,11 @@ const MapScreen = () => {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       };
-
       setUserLocation(userLoc);
-      // Use functional update for setRegion
-      setRegion((prevRegion) => ({
-        ...prevRegion,
-        latitude: userLoc.latitude,
-        longitude: userLoc.longitude,
-      }));
 
-      // Animate to user's location
-      mapRef.current?.injectJavaScript(`
-        map.setView([${userLoc.latitude}, ${userLoc.longitude}], 15);
-      `);
+      console.log(
+        `User location acquired: ${userLoc.latitude}, ${userLoc.longitude}`,
+      );
     } catch (error) {
       console.error("Error getting location:", error);
       // Type check for error message
@@ -282,184 +175,91 @@ const MapScreen = () => {
     } finally {
       setIsLoading(false); // Ensure loading is always stopped
     }
-  }, [mapRef, setUserLocation]); // Keep dependencies minimal
-  // Initialize on component mount
+  }, []);
+
+  const connectToSocket = useCallback(() => {
+    if (isConnecting || isConnected) {
+      return;
+    }
+
+    const backendUrl = getBackendUrl();
+    console.log(`[PanicButton] Connecting to: ${backendUrl}`);
+    setIsConnecting(true);
+
+    const newSocket = io(backendUrl, {
+      timeout: 10000,
+      transports: ["websocket", "polling"],
+    });
+
+    newSocket.on("connect", () => {
+      console.log("[PanicButton] Connected to socket server");
+      setIsConnected(true);
+      setIsConnecting(false);
+
+      newSocket.emit("join-emergency-services");
+    });
+
+    newSocket.on("disconnect", () => {
+      console.log("[PanicButton] Disconnected from socket server");
+      setIsConnected(false);
+      setIsConnecting(false);
+    });
+
+    newSocket.on("connect_error", (error) => {
+      console.error("[PanicButton] Connection error:", error);
+      setIsConnecting(false);
+      setIsConnected(false);
+    });
+    newSocket.on("emergency-alert", (dictLocationData: dictLocationPing) => {
+      console.log("[MapScreen] Emergency alert received:", dictLocationData);
+      // Ensure data is valid and has latitude and longitude
+      if (
+        dictLocationData &&
+        typeof dictLocationData.dblLatitude === "number" &&
+        typeof dictLocationData.dblLongitude === "number"
+      ) {
+        const newPing: EmergencyPing = {
+          id: `ping-${dictLocationData.strReporterId}-${new Date().getTime()}`, // Generate ID using reporter ID
+          latitude: dictLocationData.dblLatitude,
+          longitude: dictLocationData.dblLongitude,
+          description: "", // Not available in dictLocationPing
+          timestamp: new Date().getTime(),
+        };
+        setEmergencyPings((prevPings) => {
+          // Avoid adding duplicate pings by checking if a ping with same coordinates and reporter already exists
+          const isDuplicate = prevPings.find(
+            (p) =>
+              p.latitude === newPing.latitude &&
+              p.longitude === newPing.longitude &&
+              p.id.includes(dictLocationData.strReporterId),
+          );
+          if (isDuplicate) {
+            return prevPings;
+          }
+          return [...prevPings, newPing];
+        });
+      } else {
+        console.warn(
+          "[MapScreen] Received emergency-alert with invalid data structure:",
+          dictLocationData,
+        );
+      }
+    });
+
+    setSocket(newSocket);
+  }, [isConnecting, isConnected]); // Add isConnecting and isConnected to dependencies
   useEffect(() => {
     getUserLocation();
-    // getUserLocation dependency is correct now with its refined dependencies
-  }, [getUserLocation]);
+    connectToSocket();
+  }, [getUserLocation, connectToSocket]);
 
-  // Setup WebSocket connection for real-time emergency pings
   useEffect(() => {
-    const connectWebSocket = async () => {
-      try {
-        await mapWebSocket.connect();
-        setIsMapWebSocketConnected(true); // Set up event handlers for emergency ping updates
-        mapWebSocket.on("emergency-ping-created", (ping: EmergencyPing) => {
-          console.log("[MAP] New emergency ping received:", ping);
-          console.log(`📍 [MAP] Emergency session started: ${ping.id}`);
-          console.log(
-            `   📍 Initial coordinates: ${ping.latitude}, ${ping.longitude}`,
-          );
-          console.log(`   ⏰ Created at: ${ping.timestamp}`);
-
-          setEmergencyPings((prev) => [...prev, ping]);
-
-          // Initialize tracking for this ping
-          lastUpdateTimesRef.current[ping.id] = ping.timestamp;
-          pingUpdateCountersRef.current[ping.id] = 0;
-
-          // Add marker to map
-          if (mapRef.current) {
-            mapRef.current.injectJavaScript(`
-              addEmergencyPingMarker(${JSON.stringify(ping)});
-            `);
-          }
-        });
-
-        mapWebSocket.on("emergency-ping-updated", (ping: EmergencyPing) => {
-          const currentTime = new Date().toISOString();
-
-          setEmergencyPings((prev) => {
-            const existingPing = prev.find((p) => p.id === ping.id);
-            const updatedPings = prev.map((p) => (p.id === ping.id ? ping : p));
-
-            if (existingPing) {
-              // This is a real-time location update for continuous tracking
-              const updateCount =
-                (pingUpdateCountersRef.current[ping.id] || 0) + 1;
-
-              console.log(
-                `🔄 [MAP] Real-time location update #${updateCount} for session ${ping.id}`,
-              );
-              console.log(
-                `   📍 Updated coordinates: ${ping.lastLatitude || ping.latitude}, ${ping.lastLongitude || ping.longitude}`,
-              );
-              console.log(
-                `   ⏰ Last ping: ${ping.lastPing || ping.timestamp}`,
-              );
-              console.log(
-                `   📊 Previous location: ${existingPing.lastLatitude || existingPing.latitude}, ${existingPing.lastLongitude || existingPing.longitude}`,
-              );
-
-              // Calculate distance moved (simple approximation)
-              const prevLat =
-                existingPing.lastLatitude || existingPing.latitude;
-              const prevLng =
-                existingPing.lastLongitude || existingPing.longitude;
-              const newLat = ping.lastLatitude || ping.latitude;
-              const newLng = ping.lastLongitude || ping.longitude;
-
-              const distance = Math.sqrt(
-                Math.pow((newLat - prevLat) * 111000, 2) +
-                  Math.pow(
-                    (newLng - prevLng) *
-                      111000 *
-                      Math.cos((newLat * Math.PI) / 180),
-                    2,
-                  ),
-              );
-
-              console.log(
-                `   📏 Distance moved: ${distance.toFixed(2)} meters`,
-              );
-              console.log(
-                `   🕐 Time since last update: ${new Date(currentTime).getTime() - new Date(lastUpdateTimesRef.current[ping.id] || currentTime).getTime()}ms`,
-              );
-            }
-
-            return updatedPings;
-          });
-
-          // Update tracking
-          lastUpdateTimesRef.current[ping.id] = currentTime;
-          pingUpdateCountersRef.current[ping.id] =
-            (pingUpdateCountersRef.current[ping.id] || 0) + 1;
-
-          // Update marker on map with the latest coordinates
-          if (mapRef.current) {
-            // Use lastLatitude/lastLongitude if available (for continuous updates)
-            const displayPing = {
-              ...ping,
-              latitude: ping.lastLatitude || ping.latitude,
-              longitude: ping.lastLongitude || ping.longitude,
-            };
-
-            mapRef.current.injectJavaScript(`
-              updateEmergencyPingMarker(${JSON.stringify(displayPing)});
-            `);
-          }
-        });
-        mapWebSocket.on("emergency-ping-responded", (ping: EmergencyPing) => {
-          console.log("[MAP] Emergency ping responded:", ping);
-          setEmergencyPings((prev) =>
-            prev.map((p) => (p.id === ping.id ? ping : p)),
-          );
-
-          // Update marker on map to show responded status
-          if (mapRef.current) {
-            mapRef.current.injectJavaScript(`
-              updateEmergencyPingMarker(${JSON.stringify(ping)});
-            `);
-          }
-        }); // Handle emergency ping removal (when they become inactive)
-        mapWebSocket.on("emergency-ping-ended", (pingId: string) => {
-          console.log("[MAP] Emergency ping ended:", pingId);
-
-          // Get final stats before removing
-          setEmergencyPings((prev) => {
-            const endedPing = prev.find((p) => p.id === pingId);
-            if (endedPing) {
-              console.log(`🏁 [MAP] Emergency session ${pingId} completed:`);
-              console.log(
-                `   📍 Final coordinates: ${endedPing.lastLatitude || endedPing.latitude}, ${endedPing.lastLongitude || endedPing.longitude}`,
-              );
-              console.log(
-                `   📊 Total updates received: ${pingUpdateCountersRef.current[pingId] || 0}`,
-              );
-              console.log(
-                `   ⏰ Session duration: ${endedPing.timestamp} to ${lastUpdateTimesRef.current[pingId] || "now"}`,
-              );
-            }
-            return prev.filter((p) => p.id !== pingId);
-          });
-
-          // Clean up tracking state
-          delete lastUpdateTimesRef.current[pingId];
-          delete pingUpdateCountersRef.current[pingId];
-
-          // Remove marker from map
-          if (mapRef.current) {
-            mapRef.current.injectJavaScript(`
-              removeEmergencyPingMarker("${pingId}");
-            `);
-          }
-        });
-
-        // Only join map room for real-time updates - don't request stored pings
-        console.log(
-          "[MAP] WebSocket connected and joined map room for real-time updates",
-        );
-        console.log(
-          "[MAP] Map will only display pings broadcast through real-time events",
-        );
-
-        // Note: Removed requestEmergencyPings() call and refresh interval
-        // Map will only show pings that are actively broadcast through WebSocket events
-      } catch (error) {
-        console.error("[MAP] Failed to connect WebSocket:", error);
-        setIsMapWebSocketConnected(false);
+    return () => {
+      if (socket) {
+        socket.disconnect();
       }
     };
-
-    connectWebSocket();
-
-    // Cleanup on unmount
-    return () => {
-      mapWebSocket.disconnect();
-      setIsMapWebSocketConnected(false);
-    };
-  }, []);
+  }, [socket]); // Add socket to dependencies
 
   // Navigation function
   const navigateToMenu = () => {
@@ -467,64 +267,9 @@ const MapScreen = () => {
     router.push("/menu" as any);
   };
 
-  // Handle opening the report form
-  const handleReportLocation = (event: any) => {
-    const { coordinate } = event.nativeEvent;
+  // Provide haptic feedback
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // Provide haptic feedback
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    setReportLocation(coordinate);
-    setReportForm({
-      ...reportForm,
-      location: coordinate,
-    });
-    setReportModalVisible(true);
-  };
-
-  // Handle submitting a report
-  const handleSubmitReport = () => {
-    // Here you would normally send the data to your backend
-    console.log("Report submitted:", reportForm);
-
-    // For now, just close the modal and reset form
-    setReportModalVisible(false);
-    setReportForm({
-      title: "",
-      description: "",
-      type: "theft",
-      location: null,
-      media: [],
-    });
-    setReportLocation(null);
-
-    // Show success message
-    Alert.alert(
-      "Report Submitted",
-      "Thank you for your report. It will be reviewed by our team.",
-      [{ text: "OK" }],
-    );
-  };
-
-  // Function to show station details
-  const showStationDetails = (station: PoliceStationType) => {
-    setSelectedStation(station);
-    setSelectedIncident(null);
-    setDetailsModalVisible(true);
-  };
-
-  // Function to show incident details
-  const showIncidentDetails = (incident: IncidentType) => {
-    setSelectedIncident(incident);
-    setSelectedStation(null);
-    setDetailsModalVisible(true);
-  };
-
-  // Fix the missing 'phone' property in the police station object
-  const updatedPoliceStations = policeStationsData.map((station) => ({
-    ...station,
-    phone: station.contactNumbers[0] || "N/A",
-  }));
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
@@ -549,123 +294,93 @@ const MapScreen = () => {
             <Ionicons name="menu" size={30} color={theme.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Map</Text>
-          <View style={styles.headerSpacer} />
+          <View style={styles.headerSpacer} />{" "}
         </View>
-      </View>{" "}
-      {/* Extracted Map Component */}
-      <MapComponent
-        mapRef={mapRef}
-        updatedPoliceStations={updatedPoliceStations}
-        emergencyRespondents={emergencyRespondents}
-        recentIncidents={recentIncidents}
-        emergencyPings={emergencyPings}
-        handleReportLocation={handleReportLocation}
-        showStationDetails={showStationDetails}
-        showEmergencyDetails={showEmergencyDetails}
-        showIncidentDetails={showIncidentDetails}
-      />
-      {/* Extracted Controls, Modals, and Other UI */}
-      <MapControls
-        getUserLocation={getUserLocation}
-        userLocation={userLocation}
-        setReportLocation={setReportLocation}
-        setReportForm={setReportForm}
-        setReportModalVisible={setReportModalVisible}
-        reportForm={reportForm}
-        theme={theme}
-      />
-      <Legend theme={theme} />
-      <InfoBanner theme={theme} />
-      {isLoading && <LoadingIndicator theme={theme} />}{" "}
-      {/* Real-time Emergency Ping Status Display */}
-      {(emergencyPings.length > 0 || !isMapWebSocketConnected) && (
-        <View style={[styles.emergencyStatus, { backgroundColor: theme.card }]}>
-          <View style={styles.emergencyStatusHeader}>
-            <Text style={[styles.emergencyStatusTitle, { color: theme.text }]}>
-              🚨 Active Emergency Pings ({emergencyPings.length})
-            </Text>
-            <View style={styles.connectionStatus}>
-              <View
-                style={[
-                  styles.connectionIndicator,
-                  {
-                    backgroundColor: isMapWebSocketConnected
-                      ? "#44ff44"
-                      : "#ff4444",
-                  },
-                ]}
-              />
-              <Text
-                style={[styles.connectionText, { color: theme.textSecondary }]}
-              >
-                {isMapWebSocketConnected ? "Live" : "Offline"}
-              </Text>
-            </View>
-          </View>
-          {emergencyPings.slice(0, 3).map((ping) => {
-            const updateCount = pingUpdateCountersRef.current[ping.id] || 0;
-            const lastUpdate = lastUpdateTimesRef.current[ping.id];
-            const timeSinceUpdate = lastUpdate
-              ? Math.floor((Date.now() - new Date(lastUpdate).getTime()) / 1000)
-              : 0;
+      </View>
+      {/* Map Placeholder */}
+      <View
+        style={[styles.mapContainer, { backgroundColor: theme.background }]}
+      >
+        {/* Location Button */}
+        <View style={styles.mapControls}>
+          <TouchableOpacity
+            style={[
+              styles.mapButton,
+              { backgroundColor: theme.mapControlBackground },
+            ]}
+            onPress={getUserLocation}
+            accessibilityLabel="Get current location"
+            accessibilityRole="button"
+          >
+            <Ionicons
+              name="locate"
+              size={24}
+              color={isLoading ? theme.primary : theme.text}
+            />
+          </TouchableOpacity>
+        </View>
 
-            return (
-              <View key={ping.id} style={styles.emergencyPingItem}>
-                <Text style={[styles.emergencyPingId, { color: theme.text }]}>
-                  📍 {ping.id.slice(-8)}
-                </Text>
-                <Text
-                  style={[
-                    styles.emergencyPingStatus,
-                    { color: theme.textSecondary },
-                  ]}
-                >
-                  Updates: {updateCount} • {timeSinceUpdate}s ago
-                </Text>
-                <Text
-                  style={[
-                    styles.emergencyPingCoords,
-                    { color: theme.textSecondary },
-                  ]}
-                >
-                  {(ping.lastLatitude || ping.latitude).toFixed(6)},{" "}
-                  {(ping.lastLongitude || ping.longitude).toFixed(6)}
-                </Text>
-              </View>
-            );
-          })}
-          {emergencyPings.length > 3 && (
-            <Text
-              style={[
-                styles.emergencyStatusMore,
-                { color: theme.textSecondary },
-              ]}
+        <View style={[styles.mapPlaceholder, { borderColor: theme.border }]}>
+          <Ionicons name="map" size={48} color={theme.textSecondary} />
+          <Text
+            style={[styles.mapPlaceholderText, { color: theme.textSecondary }]}
+          >
+            Map View
+          </Text>
+          <Text style={[styles.mapSubtext, { color: theme.textSecondary }]}>
+            {emergencyPings.length > 0
+              ? `${emergencyPings.length} Emergency Alert${emergencyPings.length !== 1 ? "s" : ""}`
+              : "No emergency alerts"}
+          </Text>
+
+          {/* Emergency Pings List */}
+          {emergencyPings.length > 0 && (
+            <ScrollView
+              style={styles.pingsList}
+              showsVerticalScrollIndicator={false}
             >
-              +{emergencyPings.length - 3} more...
-            </Text>
+              {emergencyPings.map((ping) => (
+                <View
+                  key={ping.id}
+                  style={[
+                    styles.pingItem,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                >
+                  <View style={styles.pingHeader}>
+                    <Ionicons
+                      name="alert-circle"
+                      size={16}
+                      color={theme.secondary}
+                    />
+                    <Text style={[styles.pingId, { color: theme.text }]}>
+                      Alert {ping.id.substring(0, 8)}...
+                    </Text>
+                  </View>
+                  <Text
+                    style={[styles.pingCoords, { color: theme.textSecondary }]}
+                  >
+                    {ping.latitude.toFixed(4)}, {ping.longitude.toFixed(4)}
+                  </Text>
+                  {ping.description && (
+                    <Text
+                      style={[styles.pingDescription, { color: theme.text }]}
+                    >
+                      {ping.description}
+                    </Text>
+                  )}
+                  <Text
+                    style={[styles.pingTime, { color: theme.textSecondary }]}
+                  >
+                    {new Date(ping.timestamp).toLocaleTimeString()}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
           )}
         </View>
-      )}
-      <ReportModal
-        reportModalVisible={reportModalVisible}
-        setReportModalVisible={setReportModalVisible}
-        reportForm={reportForm}
-        setReportForm={setReportForm}
-        handleSubmitReport={handleSubmitReport}
-        selectedTab={selectedTab}
-        setSelectedTab={setSelectedTab}
-        theme={theme}
-      />
-      <DetailsModal
-        detailsModalVisible={detailsModalVisible}
-        setDetailsModalVisible={setDetailsModalVisible}
-        selectedStation={selectedStation}
-        selectedIncident={selectedIncident}
-        setReportLocation={setReportLocation}
-        setReportForm={setReportForm}
-        setReportModalVisible={setReportModalVisible}
-        theme={theme}
-      />
+      </View>
+      {isLoading && <LoadingIndicator theme={theme} />}
     </View>
   );
 };
@@ -706,8 +421,9 @@ const styles = StyleSheet.create({
   mapControls: {
     position: "absolute",
     right: 16,
-    top: 40, // Adjusted to avoid status bar
+    bottom: 16, // Positioned at the bottom of the map container
     backgroundColor: "transparent",
+    zIndex: 1000,
   },
   mapButton: {
     backgroundColor: "white",
@@ -1092,338 +808,68 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
   },
+  mapContainer: {
+    flex: 1,
+  },
+  mapPlaceholder: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    margin: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    padding: 24,
+  },
+  mapPlaceholderText: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 12,
+  },
+  mapSubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: "center",
+  },
+  pingsList: {
+    maxHeight: 200,
+    width: "100%",
+    marginTop: 16,
+  },
+  pingItem: {
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  pingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  pingId: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  pingCoords: {
+    fontSize: 12,
+    fontFamily: "monospace",
+    marginBottom: 4,
+  },
+  pingDescription: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  pingTime: {
+    fontSize: 12,
+    fontStyle: "italic",
+  },
 });
-
-// Define prop types for extracted components
-interface MapComponentProps {
-  mapRef: React.RefObject<WebView>;
-  updatedPoliceStations: PoliceStationType[];
-  emergencyRespondents: any[]; // Replace 'any' with a specific type if available
-  recentIncidents: IncidentType[];
-  emergencyPings: EmergencyPing[];
-  handleReportLocation: (event: any) => void;
-  showStationDetails: (station: PoliceStationType) => void;
-  showEmergencyDetails: (emergency: any) => void; // Replace 'any' with a specific type
-  showIncidentDetails: (incident: IncidentType) => void;
-}
-
-interface MapControlsProps {
-  getUserLocation: () => void;
-  userLocation: { latitude: number; longitude: number } | null;
-  setReportLocation: React.Dispatch<
-    React.SetStateAction<{ latitude: number; longitude: number } | null>
-  >;
-  setReportForm: React.Dispatch<React.SetStateAction<ReportFormType>>;
-  setReportModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
-  reportForm: ReportFormType;
-  theme: any; // Replace 'any' with a specific theme type
-}
-
-interface LegendProps {
-  theme: any; // Replace 'any' with a specific theme type
-}
-
-interface InfoBannerProps {
-  theme: any; // Replace 'any' with a specific theme type
-}
 
 interface LoadingIndicatorProps {
   theme: any; // Replace 'any' with a specific theme type
 }
-
-interface ReportModalProps {
-  reportModalVisible: boolean;
-  setReportModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
-  reportForm: ReportFormType;
-  setReportForm: React.Dispatch<React.SetStateAction<ReportFormType>>;
-  handleSubmitReport: () => void;
-  selectedTab: "form" | "media";
-  setSelectedTab: React.Dispatch<React.SetStateAction<"form" | "media">>;
-  theme: any; // Replace 'any' with a specific theme type
-}
-
-interface DetailsModalProps {
-  detailsModalVisible: boolean;
-  setDetailsModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
-  selectedStation: PoliceStationType | null;
-  selectedIncident: IncidentType | null;
-  setReportLocation: React.Dispatch<
-    React.SetStateAction<{ latitude: number; longitude: number } | null>
-  >;
-  setReportForm: React.Dispatch<React.SetStateAction<ReportFormType>>;
-  setReportModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
-  theme: any; // Replace 'any' with a specific theme type
-}
-
-// Define the missing components
-const MapComponent: React.FC<MapComponentProps> = ({
-  mapRef,
-  updatedPoliceStations,
-  emergencyRespondents,
-  recentIncidents,
-  emergencyPings,
-  handleReportLocation,
-  showStationDetails,
-  showEmergencyDetails,
-  showIncidentDetails,
-}) => {
-  return (
-    <WebView
-      ref={mapRef}
-      style={styles.map}
-      source={{
-        html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-          <style>
-            #map { height: 100%; width: 100%; }
-            html, body { height: 100%; margin: 0; padding: 0; }
-            .emergency-ping-marker {
-              background-color: #ff4444;
-              border: 3px solid #ffffff;
-              border-radius: 50%;
-              animation: pulse 2s infinite;
-            }
-            .emergency-ping-responded {
-              background-color: #44ff44;
-              animation: none;
-            }
-            @keyframes pulse {
-              0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
-              70% { box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); }
-              100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
-            }
-          </style>
-          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        </head>
-        <body>
-          <div id="map"></div>
-          <script>
-            var map = L.map('map').setView([10.6713, 122.9511], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              attribution: '&copy; OpenStreetMap contributors',
-              maxZoom: 19
-            }).addTo(map);
-
-            // Store emergency ping markers
-            var emergencyPingMarkers = {};
-
-            // Custom emergency ping icon
-            var emergencyPingIcon = L.divIcon({
-              className: 'emergency-ping-marker',
-              html: '<div style="background-color: #ff4444; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #ffffff;"></div>',
-              iconSize: [26, 26],
-              iconAnchor: [13, 13]
-            });
-
-            var emergencyPingRespondedIcon = L.divIcon({
-              className: 'emergency-ping-responded',
-              html: '<div style="background-color: #44ff44; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #ffffff;"></div>',
-              iconSize: [26, 26],
-              iconAnchor: [13, 13]
-            });
-
-            // Function to add emergency ping marker
-            function addEmergencyPingMarker(ping) {
-              if (emergencyPingMarkers[ping.id]) {
-                // Update existing marker
-                updateEmergencyPingMarker(ping);
-                return;
-              }
-
-              var icon = ping.status === 'responded' ? emergencyPingRespondedIcon : emergencyPingIcon;
-              var marker = L.marker([ping.latitude, ping.longitude], { icon: icon }).addTo(map);
-              
-              var popupContent = '<div style="min-width: 200px;">';
-              popupContent += '<h3 style="margin: 0 0 10px 0; color: #ff4444;">🚨 Emergency Ping</h3>';
-              popupContent += '<p><strong>Status:</strong> ' + (ping.status || 'Active') + '</p>';
-              popupContent += '<p><strong>Time:</strong> ' + new Date(ping.timestamp).toLocaleString() + '</p>';
-              if (ping.userId) {
-                popupContent += '<p><strong>User:</strong> ' + ping.userId + '</p>';
-              }
-              if (ping.lastPing && ping.lastPing !== ping.timestamp) {
-                popupContent += '<p><strong>Last Update:</strong> ' + new Date(ping.lastPing).toLocaleString() + '</p>';
-              }
-              popupContent += '</div>';
-              
-              marker.bindPopup(popupContent);
-              emergencyPingMarkers[ping.id] = marker;
-            }
-
-            // Function to update emergency ping marker
-            function updateEmergencyPingMarker(ping) {
-              var marker = emergencyPingMarkers[ping.id];
-              if (!marker) {
-                addEmergencyPingMarker(ping);
-                return;
-              }
-
-              // Update position if it changed
-              if (ping.lastLatitude && ping.lastLongitude) {
-                marker.setLatLng([ping.lastLatitude, ping.lastLongitude]);
-              }
-
-              // Update icon based on status
-              var icon = ping.status === 'responded' ? emergencyPingRespondedIcon : emergencyPingIcon;
-              marker.setIcon(icon);
-
-              // Update popup content
-              var popupContent = '<div style="min-width: 200px;">';
-              popupContent += '<h3 style="margin: 0 0 10px 0; color: #ff4444;">🚨 Emergency Ping</h3>';
-              popupContent += '<p><strong>Status:</strong> ' + (ping.status || 'Active') + '</p>';
-              popupContent += '<p><strong>Time:</strong> ' + new Date(ping.timestamp).toLocaleString() + '</p>';
-              if (ping.userId) {
-                popupContent += '<p><strong>User:</strong> ' + ping.userId + '</p>';
-              }
-              if (ping.lastPing && ping.lastPing !== ping.timestamp) {
-                popupContent += '<p><strong>Last Update:</strong> ' + new Date(ping.lastPing).toLocaleString() + '</p>';
-              }
-              popupContent += '</div>';
-              
-              marker.setPopupContent(popupContent);
-            }
-
-            // Function to remove emergency ping marker
-            function removeEmergencyPingMarker(pingId) {
-              var marker = emergencyPingMarkers[pingId];
-              if (marker) {
-                map.removeLayer(marker);
-                delete emergencyPingMarkers[pingId];
-              }
-            }
-
-            // Initialize emergency pings from props
-            var initialPings = ${JSON.stringify(emergencyPings)};
-            initialPings.forEach(function(ping) {
-              addEmergencyPingMarker(ping);
-            });
-
-            // Long press handler for reporting
-            var longPressTimer;
-            map.on('mousedown', function(e) {
-              longPressTimer = setTimeout(function() {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'long_press',
-                  latLng: e.latlng
-                }));
-              }, 800);
-            });
-
-            map.on('mouseup', function() {
-              clearTimeout(longPressTimer);
-            });
-
-            map.on('mousemove', function() {
-              clearTimeout(longPressTimer);
-            });
-          </script>
-        </body>
-        </html>
-        `,
-      }}
-      javaScriptEnabled={true}
-      domStorageEnabled={true}
-      onMessage={(event) => {
-        try {
-          const data = JSON.parse(event.nativeEvent.data);
-          if (data.type === "station_selected") {
-            const station = updatedPoliceStations.find(
-              (s: PoliceStationType) => s.id === data.id,
-            );
-            if (station) {
-              showStationDetails(station);
-            }
-          } else if (data.type === "emergency_selected") {
-            // Add type for emergency respondent if available
-            const emergency = emergencyRespondents.find(
-              (e: any) => e.id === data.id,
-            );
-            if (emergency) {
-              showEmergencyDetails(emergency);
-            }
-          } else if (data.type === "incident_selected") {
-            const incident = recentIncidents.find(
-              (i: IncidentType) => i.id === data.id,
-            );
-            if (incident) {
-              showIncidentDetails(incident);
-            }
-          } else if (data.type === "long_press") {
-            handleReportLocation({
-              nativeEvent: {
-                coordinate: data.latLng,
-              },
-            });
-          }
-        } catch (e) {
-          console.error("Error parsing WebView message:", e);
-        }
-      }}
-    />
-  );
-};
-
-const MapControls: React.FC<MapControlsProps> = ({
-  getUserLocation,
-  userLocation,
-  setReportLocation,
-  setReportForm,
-  setReportModalVisible,
-  reportForm,
-  theme,
-}) => {
-  return (
-    <View style={styles.mapControls}>
-      <TouchableOpacity
-        style={[
-          styles.mapButton,
-          { backgroundColor: theme.mapControlBackground },
-        ]}
-        onPress={getUserLocation}
-      >
-        <Ionicons name="locate" size={24} color={theme.text} />
-      </TouchableOpacity>
-    </View>
-  );
-};
-
-const Legend: React.FC<LegendProps> = ({ theme }) => {
-  return (
-    <View style={styles.legend}>
-      <View style={styles.legendItem}>
-        <View style={[styles.legendColor, { backgroundColor: "blue" }]} />
-        <Text style={[styles.legendText, { color: theme.text }]}>
-          Police Station
-        </Text>
-      </View>
-      <View style={styles.legendItem}>
-        <View style={[styles.legendColor, { backgroundColor: "#ff4444" }]} />
-        <Text style={[styles.legendText, { color: theme.text }]}>
-          Emergency Ping
-        </Text>
-      </View>
-      <View style={styles.legendItem}>
-        <View style={[styles.legendColor, { backgroundColor: "#44ff44" }]} />
-        <Text style={[styles.legendText, { color: theme.text }]}>
-          Responded
-        </Text>
-      </View>
-    </View>
-  );
-};
-
-const InfoBanner: React.FC<InfoBannerProps> = ({ theme }) => {
-  return (
-    <View style={styles.infoBanner}>
-      <Text style={styles.infoText}>
-        Press and hold on the map to report an incident at that location
-      </Text>
-    </View>
-  );
-};
 
 const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({ theme }) => {
   return (
@@ -1434,30 +880,4 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({ theme }) => {
       </Text>
     </View>
   );
-};
-
-const ReportModal: React.FC<ReportModalProps> = ({
-  reportModalVisible,
-  setReportModalVisible,
-  reportForm,
-  setReportForm,
-  handleSubmitReport,
-  selectedTab,
-  setSelectedTab,
-  theme,
-}) => {
-  return null; // Placeholder for the modal implementation
-};
-
-const DetailsModal: React.FC<DetailsModalProps> = ({
-  detailsModalVisible,
-  setDetailsModalVisible,
-  selectedStation,
-  selectedIncident,
-  setReportLocation,
-  setReportForm,
-  setReportModalVisible,
-  theme,
-}) => {
-  return null; // Placeholder for the modal implementation
 };
