@@ -78,10 +78,8 @@ const MapScreen = () => {
   } | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [emergencyPings, setEmergencyPings] = useState<dictLocationPing[]>([]); // Ensure dictLocationPing is defined
-  const [isWebViewLoaded, setIsWebViewLoaded] = useState(false);
+  const [emergencyPings, setEmergencyPings] = useState<dictLocationPing[]>([]);
 
-  // New state variables for socket connection
   const [isSocketConnected, setIsSocketConnected] = useState(false);
   const [isSocketConnecting, setIsSocketConnecting] = useState(false);
 
@@ -95,7 +93,7 @@ const MapScreen = () => {
     } else {
       return "https://your-production-backend.com";
     }
-  }, []); // Added dependency array for useCallback
+  }, []);
 
   const connectEmergencyServices = useCallback(() => {
     if (isSocketConnecting || isSocketConnected) {
@@ -109,7 +107,6 @@ const MapScreen = () => {
     setIsSocketConnecting(true);
 
     const newSocketInstance = io(getBackendUrl() as string, {
-      // Changed backendUrl to getBackendUrl()
       timeout: 10000,
       transports: ["websocket", "polling"],
       reconnectionAttempts: 3,
@@ -120,6 +117,8 @@ const MapScreen = () => {
       setSocket(newSocketInstance);
       setIsSocketConnected(true);
       setIsSocketConnecting(false);
+
+      newSocketInstance.emit("join-emergency-services"); // Changed from socket?.emit
     });
 
     newSocketInstance.on("disconnect", (reason) => {
@@ -145,9 +144,6 @@ const MapScreen = () => {
       },
     );
 
-    // Set socket instance here to allow immediate disconnect if user toggles quickly,
-    // but actual connected state is set on 'connect' event.
-    // If connection fails, 'connect_error' and 'disconnect' will nullify it.
     setSocket(newSocketInstance);
   }, [
     getBackendUrl,
