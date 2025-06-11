@@ -2,105 +2,90 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  useMemo,
   useRef,
+  useMemo,
 } from "react";
 import {
-  StyleSheet,
   View,
   Text,
   TouchableOpacity,
-  Dimensions,
+  StyleSheet,
   Platform,
-  ActivityIndicator,
   Alert,
-  useColorScheme,
-  ScrollView,
+  useColorScheme, // Added useColorScheme
+  Dimensions, // Added Dimensions
 } from "react-native";
-import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
+import { WebView, WebViewMessageEvent } from "react-native-webview"; // Added WebViewMessageEvent
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { io, Socket } from "socket.io-client";
-import { dictLocationPing } from "../types/types_location";
-import WebView, { WebViewMessageEvent } from "react-native-webview";
+import { useRouter } from "expo-router"; // Added useRouter
+import { useSafeAreaInsets } from "react-native-safe-area-context"; // Added useSafeAreaInsets
+import * as Location from "expo-location"; // Assuming Location is used in getUserLocation
+
+// Define dictLocationPing
+type dictLocationPing = {
+  lat: number;
+  lng: number;
+  emergency_type: string;
+  description: string;
+  timestamp: string;
+  // Add any other relevant properties for a ping
+  id?: string;
+  status?: string;
+};
 
 const themeColors = {
   light: {
-    primary: "#0095F6", // Instagram blue as primary color
-    secondary: "#FF3B30", // Red for danger/emergency
-    tertiary: "#007AFF", // Blue for secondary actions
-    background: "#FAFAFA", // Light background
-    card: "#FFFFFF", // White card background
-    text: "#262626", // Dark text
-    textSecondary: "#8E8E8E", // Gray secondary text
-    border: "#DBDBDB", // Light gray border
-    inactiveTab: "#8E8E8E", // Inactive tab color
-    inputBackground: "#F2F2F2",
-    buttonBackground: "#F5F5F5",
-    calloutBackground: "#FFFFFF",
-    calloutBorder: "#E1E1E1",
-    legendBackground: "#FFFFFF",
-    overlay: "rgba(255, 255, 255, 0.7)",
-    mapControlBackground: "#FFFFFF",
+    primary: "#0095F6",
+    secondary: "#FF3B30",
+    tertiary: "#007AFF",
+    background: "#FAFAFA",
+    card: "#FFFFFF",
+    text: "#262626",
+    textSecondary: "#8E8E8E",
+    border: "#DBDBDB",
+    inactiveTab: "#8E8E8E",
   },
   dark: {
-    primary: "#0095F6", // Keep Instagram blue as primary
-    secondary: "#FF453A", // Slightly adjusted red for dark mode
-    tertiary: "#0A84FF", // Adjusted blue for dark mode
-    background: "#121212", // Dark background
-    card: "#1E1E1E", // Dark card background
-    text: "#FFFFFF", // White text
-    textSecondary: "#ABABAB", // Light gray secondary text
-    border: "#2C2C2C", // Dark gray border
-    inactiveTab: "#6E6E6E", // Inactive tab color for dark mode
-    inputBackground: "#2C2C2C",
-    buttonBackground: "#2C2C2C",
-    calloutBackground: "#1E1E1E",
-    calloutBorder: "#2C2C2C",
-    legendBackground: "#1E1E1E",
-    overlay: "rgba(0, 0, 0, 0.7)",
-    mapControlBackground: "#1E1E1E",
+    primary: "#0095F6",
+    secondary: "#FF453A",
+    tertiary: "#0A84FF",
+    background: "#121212",
+    card: "#1E1E1E",
+    text: "#FFFFFF",
+    textSecondary: "#ABABAB",
+    border: "#2C2C2C",
+    inactiveTab: "#6E6E6E",
   },
 };
 
-const { height } = Dimensions.get("window");
-
-// Define a type for the user location
-interface UserLocation {
-  latitude: number;
-  longitude: number;
-}
-
-// Define the interface for an emergency ping
-interface EmergencyPing {
-  id: string; // Unique identifier for the ping
-  latitude: number;
-  longitude: number;
-  description?: string; // Optional description
-  timestamp: number; // When it was received/created
-}
-
-// Main Map component
 const MapScreen = () => {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [, setUserLocation] = useState<UserLocation | null>(null); // Mark userLocation as unused
-  const [isConnecting, setIsConnecting] = useState<boolean>(false);
-  const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const webViewRef = useRef<WebView>(null);
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
+  const webViewRef = useRef<WebView>(null);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [mapCenter] = useState({
-    lat: 10.67587960052236,
-    lng: 122.95247794951611,
-  });
 
-  const getBackendUrl = () => {
+  const [mapCenter, setMapCenter] = useState({
+    latitude: 10.67587960052236,
+    longitude: 122.95247794951611,
+  });
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [emergencyPings, setEmergencyPings] = useState<dictLocationPing[]>([]); // Ensure dictLocationPing is defined
+  const [isWebViewLoaded, setIsWebViewLoaded] = useState(false);
+
+  // New state variables for socket connection
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
+  const [isSocketConnecting, setIsSocketConnecting] = useState(false);
+
+  const getBackendUrl = useCallback(() => {
     if (__DEV__) {
       if (Platform.OS === "android") {
         return "http://192.168.254.120:3000";
@@ -110,10 +95,106 @@ const MapScreen = () => {
     } else {
       return "https://your-production-backend.com";
     }
+  }, []); // Added dependency array for useCallback
+
+  const connectEmergencyServices = useCallback(() => {
+    if (isSocketConnecting || isSocketConnected) {
+      console.log(
+        "Socket connection attempt skipped: already connecting or connected.",
+      );
+      return;
+    }
+
+    console.log("Attempting to connect to emergency services via socket...");
+    setIsSocketConnecting(true);
+
+    const newSocketInstance = io(getBackendUrl() as string, {
+      // Changed backendUrl to getBackendUrl()
+      timeout: 10000,
+      transports: ["websocket", "polling"],
+      reconnectionAttempts: 3,
+    });
+
+    newSocketInstance.on("connect", () => {
+      console.log("Socket connected successfully.");
+      setSocket(newSocketInstance);
+      setIsSocketConnected(true);
+      setIsSocketConnecting(false);
+    });
+
+    newSocketInstance.on("disconnect", (reason) => {
+      console.log("Socket disconnected:", reason);
+      setSocket(null);
+      setIsSocketConnected(false);
+      setIsSocketConnecting(false);
+    });
+
+    newSocketInstance.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+      setSocket(null);
+      setIsSocketConnected(false);
+      setIsSocketConnecting(false);
+    });
+
+    newSocketInstance.on(
+      "emergency-alert",
+      (dictLocationData: dictLocationPing) => {
+        console.log("Received emergency alert:", dictLocationData);
+        setEmergencyPings((prevPings) => [...prevPings, dictLocationData]);
+        // TODO: Update map with this ping
+      },
+    );
+
+    // Set socket instance here to allow immediate disconnect if user toggles quickly,
+    // but actual connected state is set on 'connect' event.
+    // If connection fails, 'connect_error' and 'disconnect' will nullify it.
+    setSocket(newSocketInstance);
+  }, [
+    getBackendUrl,
+    setSocket,
+    setIsSocketConnected,
+    setIsSocketConnecting,
+    setEmergencyPings,
+    isSocketConnecting,
+    isSocketConnected,
+  ]); // Added isSocketConnecting, isSocketConnected to deps because they are checked at the start
+
+  const disconnectEmergencyServices = useCallback(() => {
+    if (socket) {
+      console.log("Disconnecting socket...");
+      socket.disconnect();
+      // State updates (setSocket(null), setIsSocketConnected(false), setIsSocketConnecting(false))
+      // will be handled by the 'disconnect' event listener.
+    } else {
+      console.log("No active socket to disconnect.");
+    }
+  }, [socket]);
+
+  useEffect(() => {
+    // Cleanup on component unmount
+    return () => {
+      if (socket) {
+        console.log("MapScreen unmounting, disconnecting socket.");
+        socket.disconnect();
+        setSocket(null);
+        setIsSocketConnected(false);
+        setIsSocketConnecting(false);
+      }
+    };
+  }, [socket]); // Keep original dependency
+
+  const handleSocketToggle = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (isSocketConnected) {
+      disconnectEmergencyServices();
+    } else if (!isSocketConnecting) {
+      // Only attempt to connect if not already trying
+      connectEmergencyServices();
+    }
   };
 
-  // Function to get user's location
   const getUserLocation = useCallback(async () => {
+    setIsLoadingLocation(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
 
@@ -170,6 +251,7 @@ const MapScreen = () => {
         longitude: location.coords.longitude,
       };
       setUserLocation(userLoc);
+      setMapCenter(userLoc);
 
       console.log(
         `User location acquired: ${userLoc.latitude}, ${userLoc.longitude}`,
@@ -183,83 +265,9 @@ const MapScreen = () => {
           : "Failed to get your location. Please try again.";
       Alert.alert("Error", message);
     } finally {
+      setIsLoadingLocation(false);
     }
-  }, []);
-
-  const connectToSocket = useCallback(() => {
-    if (isConnecting || isConnected) {
-      return;
-    }
-
-    const backendUrl = getBackendUrl();
-    console.log(`[PanicButton] Connecting to: ${backendUrl}`);
-    setIsConnecting(true);
-
-    const newSocket = io(backendUrl, {
-      timeout: 10000,
-      transports: ["websocket", "polling"],
-    });
-
-    newSocket.on("connect", () => {
-      console.log("[PanicButton] Connected to socket server");
-      setIsConnected(true);
-      setIsConnecting(false);
-
-      newSocket.emit("join-emergency-services");
-    });
-
-    newSocket.on("disconnect", () => {
-      console.log("[PanicButton] Disconnected from socket server");
-      setIsConnected(false);
-      setIsConnecting(false);
-    });
-
-    newSocket.on("connect_error", (error) => {
-      console.error("[PanicButton] Connection error:", error);
-      setIsConnecting(false);
-      setIsConnected(false);
-    });
-    newSocket.on("emergency-alert", (dictLocationData: dictLocationPing) => {
-      console.log("[MapScreen] Emergency alert received:", dictLocationData);
-      // Ensure data is valid and has latitude and longitude
-      if (
-        dictLocationData &&
-        typeof dictLocationData.dblLatitude === "number" &&
-        typeof dictLocationData.dblLongitude === "number"
-      ) {
-        const newPing: EmergencyPing = {
-          id: `ping-${dictLocationData.strReporterId}-${new Date().getTime()}`, // Generate ID using reporter ID
-          latitude: dictLocationData.dblLatitude,
-          longitude: dictLocationData.dblLongitude,
-          description: "", // Not available in dictLocationPing
-          timestamp: new Date().getTime(),
-        };
-        setEmergencyPings((prevPings) => {
-          // Avoid adding duplicate pings by checking if a ping with same coordinates and reporter already exists
-          const isDuplicate = prevPings.find(
-            (p) =>
-              p.latitude === newPing.latitude &&
-              p.longitude === newPing.longitude &&
-              p.id.includes(dictLocationData.strReporterId),
-          );
-          if (isDuplicate) {
-            return prevPings;
-          }
-          return [...prevPings, newPing];
-        });
-      } else {
-        console.warn(
-          "[MapScreen] Received emergency-alert with invalid data structure:",
-          dictLocationData,
-        );
-      }
-    });
-
-    setSocket(newSocket);
-  }, [isConnecting, isConnected]);
-  useEffect(() => {
-    connectToSocket();
-  }, [connectToSocket]);
+  }, [setIsLoadingLocation]);
 
   useEffect(() => {
     return () => {
@@ -274,23 +282,16 @@ const MapScreen = () => {
     router.push("/menu" as any);
   };
 
-  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
     const data = JSON.parse(event.nativeEvent.data);
     if (data.type === "webViewLoaded") {
       console.log("WebView content loaded");
-      // You can now send initial data to the WebView if needed
     } else if (data.type === "webViewLog" || data.type === "webViewError") {
       console.log(`${data.message}`);
     }
-    // Handle other messages from WebView if needed
   };
 
-  // Create HTML for the map - MEMOIZED
   const mapHTML = useMemo(() => {
-    console.log("[TestMapScreen] Generating map HTML (should happen rarely)"); // For debugging
-
     return `
       <!DOCTYPE html>
       <html>
@@ -356,8 +357,8 @@ const MapScreen = () => {
               var markers = []; // To store Leaflet marker instances
       
               try {
-                  map = L.map('map').setView([${mapCenter.lat}, ${mapCenter.lng}], 13);
-                  console.log('Map initialized successfully at [${mapCenter.lat}, ${mapCenter.lng}].');
+                  map = L.map('map').setView([${mapCenter.latitude}, ${mapCenter.longitude}], 13);
+                  console.log('Map initialized successfully at [${mapCenter.latitude}, ${mapCenter.longitude}].');
               } catch(e) {
                   console.error('Error initializing map:', e.toString(), e.stack);
               }
@@ -489,13 +490,37 @@ const MapScreen = () => {
             allowsInlineMediaPlayback={true}
           />
         </View>
+
+        {/* Connect Socket Button */}
+        <View style={styles.mapControls}>
+          <TouchableOpacity
+            style={[styles.socketButton]}
+            onPress={handleSocketToggle} // Updated onPress handler
+            accessibilityLabel={
+              isSocketConnected
+                ? "Disconnect from emergency services"
+                : "Get Pings From emergency services"
+            }
+            accessibilityRole="button"
+          >
+            <Ionicons
+              name={
+                isSocketConnected
+                  ? "close-outline"
+                  : isSocketConnecting
+                    ? "sync-outline"
+                    : "wifi-outline"
+              } // Updated icon name
+              size={24}
+              color={isSocketConnecting ? theme.primary : theme.text} // Updated icon color
+            />
+          </TouchableOpacity>
+        </View>
+
         {/* Location Button */}
         <View style={styles.mapControls}>
           <TouchableOpacity
-            style={[
-              styles.mapButton,
-              { backgroundColor: theme.mapControlBackground },
-            ]}
+            style={[styles.mapButton]}
             onPress={getUserLocation}
             accessibilityLabel="Get current location"
             accessibilityRole="button"
@@ -503,12 +528,12 @@ const MapScreen = () => {
             <Ionicons
               name="locate"
               size={24}
-              color={isLoading ? theme.primary : theme.text}
+              color={isLoadingLocation ? theme.primary : theme.text} // Changed isLoading to isLoadingLocation
             />
           </TouchableOpacity>
         </View>
       </View>
-      {isLoading && <LoadingIndicator theme={theme} />}
+      {isLoadingLocation && <LoadingIndicator theme={theme} />}
     </View>
   );
 };
@@ -552,6 +577,20 @@ const styles = StyleSheet.create({
     bottom: 16, // Positioned at the bottom of the map container
     backgroundColor: "transparent",
     zIndex: 1000,
+  },
+  socketButton: {
+    backgroundColor: "white",
+    borderRadius: 50,
+    width: 48,
+    height: 48,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 72,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   mapButton: {
     backgroundColor: "white",
@@ -641,7 +680,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: Platform.OS === "ios" ? 40 : 20, // Extra padding for iOS
-    height: height * 0.8, // 80% of screen height
+    height: Dimensions.get("window").height * 0.8, // 80% of screen height, using Dimensions
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.1,
@@ -1009,7 +1048,6 @@ interface LoadingIndicatorProps {
 const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({ theme }) => {
   return (
     <View style={[styles.loadingContainer, { backgroundColor: theme.overlay }]}>
-      <ActivityIndicator size="large" color={theme.primary} />
       <Text style={[styles.loadingText, { color: theme.text }]}>
         Getting your location...
       </Text>
