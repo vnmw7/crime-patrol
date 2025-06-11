@@ -430,9 +430,7 @@ export const submitNormalizedReport = async (formData: any) => {
           witnessData,
         );
       }
-    }
-
-    // 8. Create media documents
+    } // 8. Create media documents
     if (formData.media && formData.media.length > 0) {
       for (const mediaItem of formData.media) {
         const mediaData = {
@@ -441,6 +439,8 @@ export const submitNormalizedReport = async (formData: any) => {
           media_type: mediaItem.media_type || "",
           file_name_original: mediaItem.file_name_original || "",
           display_order: mediaItem.display_order || 0,
+          // Include Cloudinary URL fields if available
+          file_url: mediaItem.secure_url || mediaItem.cloudinary_url || "",
         };
 
         await databases.createDocument(

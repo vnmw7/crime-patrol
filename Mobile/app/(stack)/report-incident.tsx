@@ -662,7 +662,6 @@ const ReportScreen = () => {
           secure_url: uploadResponse.secure_url,
           public_id: uploadResponse.public_id,
           cloudinary_url: uploadResponse.url,
-          file_size: uploadResponse.bytes,
           format: uploadResponse.format,
           isUploaded: true,
         };

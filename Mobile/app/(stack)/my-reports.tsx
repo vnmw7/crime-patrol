@@ -9,60 +9,35 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from "react-native";
-import { Databases, Models } from "appwrite"; // Import Models, remove Query
-import {
-  client,
-  APPWRITE_DATABASE_ID,
-  REPORTS_MAIN_COLLECTION_ID,
-} from "../../lib/appwrite"; // Use the main reports collection
 import { useRouter } from "expo-router";
-import { useTheme } from "@react-navigation/native"; // Or your custom theme hook
+import { useTheme } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-
-// Define an interface for the report data structure from Appwrite (reports_main collection)
-// Ensure this matches your Appwrite collection attributes
-interface Report extends Models.Document {
-  // Extend Models.Document
-  incident_type: string;
-  incident_date: string; // Assuming date is stored as ISO string
-  reported_by: string;
-  status?: string; // Optional status field
-  // Add other fields as necessary from your normalized database structure
-  [key: string]: any; // Allow other properties
-}
+import { reportService, ReportListItem } from "../../lib/reportService";
+import { getCurrentUser } from "../../lib/appwrite";
 
 const MyReportsScreen = () => {
   const router = useRouter();
-  const { colors } = useTheme(); // Using react-navigation theme, adapt if using a custom one
-  const [reports, setReports] = useState<Report[]>([]);
+  const { colors } = useTheme();
+  const [reports, setReports] = useState<ReportListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const fetchReports = useCallback(async () => {
-    if (!APPWRITE_DATABASE_ID || !REPORTS_MAIN_COLLECTION_ID) {
-      setError("Appwrite database or collection ID is not configured.");
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
 
+  const fetchReports = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const databases = new Databases(client);
-      const response = await databases.listDocuments<Report>(
-        APPWRITE_DATABASE_ID,
-        REPORTS_MAIN_COLLECTION_ID,
-        // Add queries if needed, e.g., to filter by user or sort by date
-        // [Query.orderDesc('incident_date')] // Example: order by most recent
-      );
-      setReports(response.documents);
+      // Get current user to filter reports
+      const currentUser = await getCurrentUser();
+      const userId = currentUser?.$id;
+
+      // Fetch reports using the new service
+      const fetchedReports = await reportService.fetchReportsForList(userId);
+      setReports(fetchedReports);
     } catch (e: any) {
       console.error("Failed to fetch reports:", e);
       setError(e.message || "Failed to fetch reports. Please try again.");
-      // It might be useful to show some mock data or a specific error message
-      // For example, if (e.code === 401) setError("Unauthorized. Please log in.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -78,12 +53,12 @@ const MyReportsScreen = () => {
     fetchReports();
   }, [fetchReports]);
 
-  const handleReportPress = (report: Report) => {
-    // Navigate to a detailed report view, passing report ID or full object
+  const handleReportPress = (report: ReportListItem) => {
+    // Navigate to a detailed report view, passing report ID
     router.push(`/report-details?reportId=${report.$id}`);
   };
 
-  const renderReportItem = ({ item }: { item: Report }) => (
+  const renderReportItem = ({ item }: { item: ReportListItem }) => (
     <TouchableOpacity
       onPress={() => handleReportPress(item)}
       style={[
@@ -91,7 +66,6 @@ const MyReportsScreen = () => {
         { backgroundColor: colors.card, borderColor: colors.border },
       ]}
     >
-      {" "}
       <View style={styles.reportHeader}>
         <Text style={[styles.reportTitle, { color: colors.text }]}>
           {item.incident_type || "N/A"}
@@ -102,29 +76,39 @@ const MyReportsScreen = () => {
             : "N/A"}
         </Text>
       </View>
-      <Text
-        style={[styles.reportDescription, { color: colors.text }]}
-        numberOfLines={2}
-      >
-        {/* Note: Description is now in report_metadata collection, not available in main reports */}
-        Report details available in full view
-      </Text>
-      <Text style={[styles.reportLocation, { color: colors.primary }]}>
-        {/* Note: Location is now in report_locations collection, not available in main reports */}
-        Location details in full view
-      </Text>
-      {item.status && (
+
+      {item.description && (
+        <Text
+          style={[styles.reportDescription, { color: colors.text }]}
+          numberOfLines={2}
+        >
+          {item.description}
+        </Text>
+      )}
+
+      {item.location_address && (
+        <Text style={[styles.reportLocation, { color: colors.primary }]}>
+          📍 {item.location_address}
+        </Text>
+      )}
+
+      <View style={styles.reportFooter}>
         <Text
           style={[
             styles.reportStatus,
             {
-              color: item.status === "Resolved" ? "green" : colors.notification,
+              color: item.status === "resolved" ? "green" : colors.notification,
             },
           ]}
         >
           Status: {item.status}
         </Text>
-      )}
+        {item.priority_level && (
+          <Text style={[styles.reportPriority, { color: colors.text }]}>
+            Priority: {item.priority_level}
+          </Text>
+        )}
+      </View>
     </TouchableOpacity>
   );
 
@@ -249,21 +233,33 @@ const styles = StyleSheet.create({
   reportTitle: {
     fontSize: 17,
     fontWeight: "600",
+    flex: 1,
   },
   reportDate: {
     fontSize: 13,
+    marginLeft: 8,
   },
   reportDescription: {
     fontSize: 14,
     marginBottom: 8,
+    lineHeight: 20,
   },
   reportLocation: {
     fontSize: 13,
     fontWeight: "500",
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  reportFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   reportStatus: {
     fontSize: 13,
+    fontWeight: "500",
+  },
+  reportPriority: {
+    fontSize: 12,
     fontStyle: "italic",
   },
   errorText: {

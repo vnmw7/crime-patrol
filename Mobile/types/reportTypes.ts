@@ -45,7 +45,6 @@ export interface MediaInfo {
   cloudinary_url?: string; // Cloudinary URL
   appwrite_bucket_id?: string; // Legacy Appwrite field
   isUploading?: boolean; // For UI loading state
-  file_size?: number; // File size in bytes
   format?: string; // File format from Cloudinary
   localUri?: string; // Local file URI for preview before upload
   mimeType?: string; // MIME type of the file

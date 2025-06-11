@@ -136,9 +136,7 @@ async function createCompleteReport(reportData) {
         );
         createdData.witnesses.push(createdWitness);
       }
-    }
-
-    // 7. Create media data if provided
+    } // 7. Create media data if provided
     if (reportData.media && reportData.media.length > 0) {
       createdData.media = [];
       for (const mediaItem of reportData.media) {
@@ -148,6 +146,9 @@ async function createCompleteReport(reportData) {
           media_type: mediaItem.media_type, // "photo", "audio", "video"
           file_name_original: mediaItem.file_name_original || "",
           display_order: mediaItem.display_order || 0,
+          // Include Cloudinary URL fields if available
+          file_url: mediaItem.secure_url || mediaItem.cloudinary_url || "",
+          file_size: mediaItem.file_size || 0,
         };
 
         const createdMedia = await databases.createDocument(

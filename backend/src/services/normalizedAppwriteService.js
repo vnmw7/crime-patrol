@@ -479,6 +479,13 @@ async function setupNormalizedCollections() {
       255,
       false
     );
+    await databases.createStringAttribute(
+      DATABASE_ID,
+      NORMALIZED_COLLECTIONS.REPORT_MEDIA.id,
+      "file_url",
+      500,
+      false
+    );
     await databases.createIntegerAttribute(
       DATABASE_ID,
       NORMALIZED_COLLECTIONS.REPORT_MEDIA.id,
@@ -711,9 +718,7 @@ async function createCompleteReport(reportData) {
         );
         result.relatedData.witnesses.push(witnessData);
       }
-    }
-
-    // 7. Create media files
+    } // 7. Create media files
     if (mediaFiles.length > 0) {
       result.relatedData.media = [];
       for (let i = 0; i < mediaFiles.length; i++) {
@@ -724,11 +729,19 @@ async function createCompleteReport(reportData) {
           ID.unique(),
           {
             report_id: reportId,
-            File_ID: media.fileId,
-            Media_Type: media.type, // "photo", "audio", "video"
-            File_Name_Original: media.originalName || "",
-            File_Size: media.size || null,
+            File_ID: media.fileId || media.file_id,
+            Media_Type: media.type || media.media_type, // "photo", "audio", "video"
+            File_Name_Original:
+              media.originalName || media.file_name_original || "",
+            File_Size: media.size || media.file_size || null,
             Display_Order: i,
+            // Include Cloudinary URL fields if available
+            file_url:
+              media.secureUrl ||
+              media.secure_url ||
+              media.cloudinaryUrl ||
+              media.cloudinary_url ||
+              "",
           }
         );
         result.relatedData.media.push(mediaData);
