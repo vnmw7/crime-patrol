@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "cd web-frontend && npm ci --omit=optional && npm run build",
+  "buildCommand": "npm ci --omit=optional && npm run build",
   "outputDirectory": "web-frontend/dist",
-  "installCommand": "cd web-frontend && npm ci --omit=optional",
+  "installCommand": "npm ci --omit=optional",
   "framework": null,
   "cleanUrls": true,
   "trailingSlash": false,
