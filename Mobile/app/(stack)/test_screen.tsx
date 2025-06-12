@@ -14,28 +14,57 @@ import {
 const { CustomCaller } = NativeModules;
 
 const TestScreen = () => {
-  const phoneNumber = "09668306841"; // Replace with the desired phone number
-
+  const phoneNumber = "09668306841";
   const requestCallPermissions = async () => {
     if (Platform.OS === "android") {
       try {
+        // First check if permissions are already granted
+        const callPermission = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.CALL_PHONE,
+        );
+        const readPhonePermission = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+        );
+
+        if (callPermission && readPhonePermission) {
+          console.log("All permissions already granted");
+          return true;
+        }
+
+        // Request permissions
         const grants = await PermissionsAndroid.requestMultiple([
           PermissionsAndroid.PERMISSIONS.CALL_PHONE,
           PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
         ]);
-        if (
+
+        const callGranted =
           grants[PermissionsAndroid.PERMISSIONS.CALL_PHONE] ===
-            PermissionsAndroid.RESULTS.GRANTED &&
+          PermissionsAndroid.RESULTS.GRANTED;
+        const readPhoneGranted =
           grants[PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE] ===
-            PermissionsAndroid.RESULTS.GRANTED
-        ) {
+          PermissionsAndroid.RESULTS.GRANTED;
+
+        if (callGranted && readPhoneGranted) {
           console.log("Phone and Read Phone State permissions granted");
           return true;
         } else {
           console.log("Permissions denied");
+          console.log("CALL_PHONE granted:", callGranted);
+          console.log("READ_PHONE_STATE granted:", readPhoneGranted);
+
           Alert.alert(
-            "Permissions Denied",
-            "Cannot make calls without required permissions.",
+            "Permissions Required",
+            "This app needs phone call and phone state permissions to select SIM cards for emergency calls. Please grant these permissions in your device settings.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Open Settings",
+                onPress: () => {
+                  // This will open the app settings where user can manually grant permissions
+                  Linking.openSettings();
+                },
+              },
+            ],
           );
           return false;
         }
@@ -51,7 +80,7 @@ const TestScreen = () => {
   const handleImmediateCustomCall = async (simPreference = "default") => {
     if (Platform.OS !== "android") {
       Alert.alert("Not Supported", "Custom SIM selection is only for Android.");
-      handleNormalPhoneCall(); // Fallback for iOS
+      handleNormalPhoneCall();
       return;
     }
 
@@ -103,9 +132,34 @@ const TestScreen = () => {
       })
       .catch((err) => console.log(err));
   };
+
+  const testModuleAvailability = () => {
+    if (CustomCaller) {
+      console.log("CustomCaller module is available");
+      console.log("Available methods:", Object.keys(CustomCaller));
+      Alert.alert(
+        "Module Status",
+        `CustomCaller module is available!\nMethods: ${Object.keys(CustomCaller).join(", ")}`,
+      );
+    } else {
+      console.log("CustomCaller module is NOT available");
+      Alert.alert(
+        "Module Status",
+        "CustomCaller module is NOT available. Make sure you rebuilt the app after adding the native module.",
+      );
+    }
+  };
   return (
     <View style={styles.container}>
       <Text style={styles.phoneText}>Target Number: {phoneNumber}</Text>
+
+      <Button
+        title="Test Module Availability"
+        onPress={testModuleAvailability}
+        color="#007AFF"
+      />
+      <View style={styles.spacer} />
+
       <Button
         title="Call Immediately (Default SIM)"
         onPress={() => handleImmediateCustomCall("default")}

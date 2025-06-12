@@ -6,9 +6,14 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
+  NativeModules,
+  PermissionsAndroid,
+  Linking,
 } from "react-native";
 import { io, Socket } from "socket.io-client";
 import * as Location from "expo-location";
+
+const { CustomCaller } = NativeModules;
 
 interface PanicButtonProps {
   onPanicStart?: () => void;
@@ -213,6 +218,125 @@ const BttnEmergencyPing: React.FC<PanicButtonProps> = ({
     return styles.buttonText;
   };
 
+  const phoneNumber = "09668306841";
+  const requestCallPermissions = async () => {
+    if (Platform.OS === "android") {
+      try {
+        // First check if permissions are already granted
+        const callPermission = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.CALL_PHONE,
+        );
+        const readPhonePermission = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+        );
+
+        if (callPermission && readPhonePermission) {
+          console.log("All permissions already granted");
+          return true;
+        }
+
+        // Request permissions
+        const grants = await PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.CALL_PHONE,
+          PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+        ]);
+
+        const callGranted =
+          grants[PermissionsAndroid.PERMISSIONS.CALL_PHONE] ===
+          PermissionsAndroid.RESULTS.GRANTED;
+        const readPhoneGranted =
+          grants[PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE] ===
+          PermissionsAndroid.RESULTS.GRANTED;
+
+        if (callGranted && readPhoneGranted) {
+          console.log("Phone and Read Phone State permissions granted");
+          return true;
+        } else {
+          console.log("Permissions denied");
+          console.log("CALL_PHONE granted:", callGranted);
+          console.log("READ_PHONE_STATE granted:", readPhoneGranted);
+
+          Alert.alert(
+            "Permissions Required",
+            "This app needs phone call and phone state permissions to select SIM cards for emergency calls. Please grant these permissions in your device settings.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Open Settings",
+                onPress: () => {
+                  // This will open the app settings where user can manually grant permissions
+                  Linking.openSettings();
+                },
+              },
+            ],
+          );
+          return false;
+        }
+      } catch (err) {
+        console.warn("Permission request error:", err);
+        Alert.alert("Permission Error", "Could not request permissions.");
+        return false;
+      }
+    }
+    return true; // For iOS or if permissions already granted
+  };
+
+  const handleImmediateCustomCall = async (simPreference = "default") => {
+    if (Platform.OS !== "android") {
+      Alert.alert("Not Supported", "Custom SIM selection is only for Android.");
+      handleNormalPhoneCall();
+      return;
+    }
+
+    const hasPermissions = await requestCallPermissions();
+    if (!hasPermissions) {
+      return;
+    }
+    if (CustomCaller && CustomCaller.callWithSim) {
+      try {
+        console.log(
+          `Attempting call to ${phoneNumber} with SIM preference: ${simPreference}`,
+        );
+        const result = await CustomCaller.callWithSim(
+          phoneNumber,
+          simPreference,
+        );
+        console.log("Call initiated successfully (from JS):", result);
+        // Note: The promise resolves when startActivity is called.
+        // It doesn't mean the call connected, just that the intent was launched.
+      } catch (error: any) {
+        console.error("CustomCall Error:", error);
+        Alert.alert(
+          "Call Failed",
+          `Code: ${error.code || "Unknown"}, Message: ${error.message || "Unknown error"}`,
+        );
+      }
+    } else {
+      Alert.alert(
+        "Module Not Found",
+        "CustomCaller module is not available. Did you rebuild the app?",
+      );
+    }
+  };
+
+  const handleNormalPhoneCall = () => {
+    let dialerUrl = "";
+    if (Platform.OS === "android") {
+      dialerUrl = `tel:${phoneNumber}`;
+    } else {
+      dialerUrl = `telprompt:${phoneNumber}`;
+    }
+    Linking.canOpenURL(dialerUrl)
+      .then((supported) => {
+        if (!supported) {
+          Alert.alert("Phone number is not available");
+        } else {
+          return Linking.openURL(dialerUrl);
+        }
+      })
+      .catch((err) => console.log(err));
+  };
+
   return (
     <View style={styles.container}>
       <TouchableOpacity
@@ -223,6 +347,18 @@ const BttnEmergencyPing: React.FC<PanicButtonProps> = ({
       >
         <Text style={getTextStyle()}>{getButtonText()}</Text>
         {isPanicOn && <Text style={styles.intervalText}>Pinging every 5s</Text>}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={getButtonStyle()}
+        onPress={() => handleImmediateCustomCall("default")}
+        disabled={isConnecting}
+        activeOpacity={0.8}
+      >
+        <Text style={getTextStyle()}>
+          {" "}
+          <Text style={getTextStyle()}> PANIC (call version) </Text>
+        </Text>
       </TouchableOpacity>
 
       {!isConnected && !isConnecting && (
