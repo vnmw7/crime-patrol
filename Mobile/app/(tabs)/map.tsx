@@ -23,6 +23,7 @@ import { io, Socket } from "socket.io-client";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
+import { getBackendUrl } from "../constants/backend";
 
 // Define dictLocationPing
 type dictLocationPing = {
@@ -89,19 +90,8 @@ const MapScreen = () => {
   const [emergencyPings, setEmergencyPings] = useState<dictLocationPing[]>([]);
   const [isSocketConnected, setIsSocketConnected] = useState(false);
   const [isSocketConnecting, setIsSocketConnecting] = useState(false);
-
   const [isWebViewReady, setIsWebViewReady] = useState(false);
   const messageQueueRef = useRef<string[]>([]);
-
-  const getBackendUrl = useCallback(() => {
-    if (__DEV__) {
-      return Platform.OS === "android"
-        ? "http://192.168.254.120:3000" // Replace with your dev IP
-        : "http://192.168.254.120:3000"; // Replace with your dev IP
-    } else {
-      return "https://your-production-backend.com"; // Replace with your production URL
-    }
-  }, []);
 
   const postMessageToWebView = useCallback(
     (messageObject: object) => {
@@ -210,12 +200,7 @@ const MapScreen = () => {
         }
       },
     );
-  }, [
-    getBackendUrl,
-    isSocketConnecting,
-    isSocketConnected,
-    postMessageToWebView,
-  ]);
+  }, [isSocketConnecting, isSocketConnected, postMessageToWebView]);
 
   const disconnectEmergencyServices = useCallback(() => {
     if (socket) {

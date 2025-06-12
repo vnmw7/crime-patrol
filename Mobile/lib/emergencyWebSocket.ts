@@ -1,20 +1,5 @@
 import { io, Socket } from "socket.io-client";
-import { Platform } from "react-native";
-
-// Backend URL configuration for different environments
-const getBackendWsUrl = () => {
-  if (__DEV__) {
-    // Development mode
-    if (Platform.OS === "android") {
-      // For Android emulator, try localhost first as we're on the same machine
-      return "http://localhost:3000";
-    } else {
-      return "http://localhost:3000"; // iOS simulator and web
-    }
-  } else {
-    return "https://your-production-backend.com"; // Production URL
-  }
-};
+import { getBackendUrl } from "../app/constants/backend";
 
 export interface LocationData {
   latitude: number;
@@ -45,7 +30,7 @@ class EmergencyWebSocket {
   private maxReconnectAttempts: number = 5;
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const backendUrl = getBackendWsUrl();
+      const backendUrl = getBackendUrl();
       console.log(`[EmergencyWebSocket] Connecting to: ${backendUrl}`);
 
       this.socket = io(backendUrl, {

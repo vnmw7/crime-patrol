@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { io, Socket } from "socket.io-client";
 import * as Location from "expo-location";
+import { getBackendUrl } from "../constants/backend";
 
 const { CustomCaller } = NativeModules;
 
@@ -20,18 +21,6 @@ interface PanicButtonProps {
   onPanicStop?: () => void;
   onConnectionChange?: (isConnected: boolean) => void;
 }
-
-const getBackendUrl = () => {
-  if (__DEV__) {
-    if (Platform.OS === "android") {
-      return "http://192.168.254.120:3000";
-    } else {
-      return "http://192.168.254.120:3000";
-    }
-  } else {
-    return "https://your-production-backend.com";
-  }
-};
 
 export const getCurrentLocation = async (): Promise<{
   dblLatitude: number;

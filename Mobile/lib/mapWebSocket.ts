@@ -1,22 +1,5 @@
 import { io, Socket } from "socket.io-client";
-import { Platform } from "react-native";
-
-// Backend URL configuration for different environments
-const getBackendWsUrl = () => {
-  if (__DEV__) {
-    // Development mode
-    if (Platform.OS === "android") {
-      // For Android emulator, try localhost first as we're on the same machine
-      return "http://localhost:3000";
-    } else if (Platform.OS === "ios") {
-      return "http://localhost:3000"; // iOS simulator
-    } else {
-      return "http://localhost:3000"; // Web or other platforms
-    }
-  } else {
-    return "https://your-production-backend.com"; // Production URL
-  }
-};
+import { getBackendUrl } from "../app/constants/backend";
 
 export interface EmergencyPing {
   $id: string;
@@ -51,7 +34,7 @@ class MapWebSocket {
   private listeners: { [event: string]: Function[] } = {};
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const backendUrl = getBackendWsUrl();
+      const backendUrl = getBackendUrl();
       console.log(`[MapWebSocket] Connecting to: ${backendUrl}`);
 
       this.socket = io(backendUrl, {
