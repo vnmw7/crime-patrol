@@ -16,12 +16,25 @@ import {
 import { useMemo } from "react";
 
 export default function DashboardOverview() {
-  const primaryStats = [
-    { title: "Total Incidents", value: 1234, change: 5, changeType: "positive" },
-    { title: "Active Cases", value: 56, change: -2, changeType: "negative" },
-    { title: "Reports Filed", value: 789, change: 10, changeType: "positive" },
-    { title: "Stations Nearby", value: 3, change: 0, changeType: "neutral" },
-  ];
+  const primaryStats = useMemo(
+    () => [
+      {
+        title: "Total Incidents",
+        value: 1234,
+        change: 5,
+        changeType: "positive",
+      },
+      { title: "Active Cases", value: 56, change: -2, changeType: "negative" },
+      {
+        title: "Reports Filed",
+        value: 789,
+        change: 10,
+        changeType: "positive",
+      },
+      { title: "Stations Nearby", value: 3, change: 0, changeType: "neutral" },
+    ],
+    []
+  );
 
   const secondaryStats = [
     { title: "Total Arrests", value: 217 },
@@ -45,7 +58,6 @@ export default function DashboardOverview() {
     { name: "Curfew Violations", value: 9 },
     { name: "Noise Complaints", value: 31 },
   ];
-
   const chartDataPrimary = useMemo(() => {
     return primaryStats.map((stat) => ({
       name: stat.title,
@@ -53,7 +65,7 @@ export default function DashboardOverview() {
       change: stat.change,
       changeType: stat.changeType,
     }));
-  }, []);
+  }, [primaryStats]);
 
   const pieColors = ["#4ade80", "#f87171", "#60a5fa", "#facc15"];
   const lawColors = ["#60a5fa", "#4ade80", "#facc15", "#f87171", "#a78bfa"];
@@ -61,8 +73,9 @@ export default function DashboardOverview() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Overview</h1>
-
+      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
+        Overview
+      </h1>
       {/* Primary Bar Chart */}
       <div className="w-full h-[300px] bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
         <ResponsiveContainer width="100%" height="100%">
@@ -75,10 +88,23 @@ export default function DashboardOverview() {
                 const value = chartDataPrimary[index].value;
                 return (
                   <g transform={`translate(${x},${y})`}>
-                    <text x={0} y={10} textAnchor="middle" fill="#d1d5db" fontSize={12}>
+                    <text
+                      x={0}
+                      y={10}
+                      textAnchor="middle"
+                      fill="#d1d5db"
+                      fontSize={12}
+                    >
                       {payload.value}
                     </text>
-                    <text x={0} y={30} textAnchor="middle" fill="#fff" fontSize={14} fontWeight="bold">
+                    <text
+                      x={0}
+                      y={30}
+                      textAnchor="middle"
+                      fill="#fff"
+                      fontSize={14}
+                      fontWeight="bold"
+                    >
                       {value}
                     </text>
                   </g>
@@ -103,7 +129,6 @@ export default function DashboardOverview() {
           </BarChart>
         </ResponsiveContainer>
       </div>
-
       {/* Patrol & Arrest Overview */}
       <div className="w-full bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -115,9 +140,13 @@ export default function DashboardOverview() {
               <div key={index} className="flex items-center space-x-2 text-sm">
                 <span
                   className="w-3 h-3 rounded-full inline-block"
-                  style={{ backgroundColor: pieColors[index % pieColors.length] }}
+                  style={{
+                    backgroundColor: pieColors[index % pieColors.length],
+                  }}
                 ></span>
-                <span className="text-gray-700 dark:text-gray-300">{entry.title}</span>
+                <span className="text-gray-700 dark:text-gray-300">
+                  {entry.title}
+                </span>
               </div>
             ))}
           </div>
@@ -133,9 +162,17 @@ export default function DashboardOverview() {
                   cy="50%"
                   outerRadius={110}
                   labelLine={false}
-                  label={({ cx, cy, midAngle, innerRadius, outerRadius, index }) => {
+                  label={({
+                    cx,
+                    cy,
+                    midAngle,
+                    innerRadius,
+                    outerRadius,
+                    index,
+                  }) => {
                     const RADIAN = Math.PI / 180;
-                    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                    const radius =
+                      innerRadius + (outerRadius - innerRadius) * 0.5;
                     const x = cx + radius * Math.cos(-midAngle * RADIAN);
                     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
@@ -155,20 +192,39 @@ export default function DashboardOverview() {
                   }}
                 >
                   {secondaryStats.map((entry, index) => (
-                    <Cell key={index} fill={pieColors[index % pieColors.length]} />
+                    <Cell
+                      key={index}
+                      fill={pieColors[index % pieColors.length]}
+                    />
                   ))}
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
-
+      </div>{" "}
       {/* Crime Trends - Line Chart */}
       <div className="w-full h-[350px] bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Crime Trends
         </h2>
+        <div className="flex flex-col lg:flex-row items-start gap-4 mb-4">
+          <div className="flex flex-wrap gap-2">
+            {crimeTrendStats.map((entry, index) => (
+              <div key={index} className="flex items-center space-x-2 text-sm">
+                <span
+                  className="w-3 h-3 rounded-full inline-block"
+                  style={{
+                    backgroundColor: crimeColors[index % crimeColors.length],
+                  }}
+                ></span>
+                <span className="text-gray-700 dark:text-gray-300">
+                  {entry.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={crimeTrendStats}
@@ -187,13 +243,28 @@ export default function DashboardOverview() {
               domain={[0, "auto"]}
               allowDecimals={false}
             />
-            <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "none", color: "#fff" }} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "#1f2937",
+                border: "none",
+                color: "#fff",
+              }}
+            />{" "}
             <Line
               type="monotone"
               dataKey="value"
               stroke="#3b82f6"
               strokeWidth={2}
-              dot={{ stroke: "#fff", strokeWidth: 2, r: 4, fill: "#3b82f6" }}
+              dot={({ cx, cy, index }) => (
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={4}
+                  fill={crimeColors[index % crimeColors.length]}
+                  stroke="#fff"
+                  strokeWidth={2}
+                />
+              )}
               activeDot={false}
               isAnimationActive={false}
             />
@@ -207,7 +278,6 @@ export default function DashboardOverview() {
           </LineChart>
         </ResponsiveContainer>
       </div>
-
       {/* Law Enforcement & Response */}
       <div className="w-full h-[320px] bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -250,7 +320,6 @@ export default function DashboardOverview() {
           </BarChart>
         </ResponsiveContainer>
       </div>
-
       {/* Recent Activity */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">

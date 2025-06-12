@@ -21,6 +21,7 @@ const Reports = () => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMap, setStatusMap] = useState({});
+  const [reportsPerPage] = useState(10);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -81,12 +82,18 @@ const Reports = () => {
     if (!confirm("Are you sure you want to delete this report?")) return;
 
     try {
-      await databases.deleteDocument(DATABASE_ID, COLLECTIONS.REPORTS, reportId);
+      await databases.deleteDocument(
+        DATABASE_ID,
+        COLLECTIONS.REPORTS,
+        reportId
+      );
 
       const deleteRelated = async (collectionId) => {
-        const relatedDocs = await databases.listDocuments(DATABASE_ID, collectionId, [
-          Query.equal("report_id", reportId),
-        ]);
+        const relatedDocs = await databases.listDocuments(
+          DATABASE_ID,
+          collectionId,
+          [Query.equal("report_id", reportId)]
+        );
 
         await Promise.all(
           relatedDocs.documents.map((doc) =>
@@ -120,9 +127,14 @@ const Reports = () => {
 
   const updateStatus = async (reportId, newStatus) => {
     try {
-      await databases.updateDocument(DATABASE_ID, COLLECTIONS.REPORTS, reportId, {
-        status: newStatus,
-      });
+      await databases.updateDocument(
+        DATABASE_ID,
+        COLLECTIONS.REPORTS,
+        reportId,
+        {
+          status: newStatus,
+        }
+      );
 
       setStatusMap((prevMap) => ({
         ...prevMap,
@@ -158,9 +170,28 @@ const Reports = () => {
     setSelectedReport(null);
     setCurrentPage(1);
   };
-
   const goToReportSection = (section) => {
     navigate(`/dashboard/reports/${section}`);
+  };
+
+  // Pagination logic
+  const indexOfLastReport = currentPage * reportsPerPage;
+  const indexOfFirstReport = indexOfLastReport - reportsPerPage;
+  const currentReports = reports.slice(indexOfFirstReport, indexOfLastReport);
+  const totalPages = Math.ceil(reports.length / reportsPerPage);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
   };
 
   return (
@@ -235,75 +266,144 @@ const Reports = () => {
                 Actions
               </th>
             </tr>
-          </thead>
+          </thead>{" "}
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-  {reports.length === 0 ? (
-    <tr>
-      <td
-        colSpan="6"
-        className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-300"
-      >
-        No reports found.
-      </td>
-    </tr>
-  ) : (
-    reports.map((report) => {
-      const displayStatus =
-        statusMap[report.$id] || report.status || "Pending";
-      return (
-        <tr
-          key={report.$id}
-          className="hover:bg-gray-50 dark:hover:bg-gray-700"
-        >
-          <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
-            {report.incident_type || "Untitled"}
-          </td>
-          <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">
-            {report.incident_date || "N/A"}
-          </td>
-          <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">
-            {report.reported_by || "N/A"}
-          </td>
-          <td className="px-6 py-4 text-sm">
-            <span className={getStatusBadge(displayStatus)}>
-              {displayStatus}
-            </span>
-          </td>
-          <td className="px-6 py-4 text-sm space-x-2">
-            <button
-              onClick={() => updateStatus(report.$id, "Accepted")}
-              className="px-2 py-1 text-green-700 bg-green-100 rounded hover:bg-green-200 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800"
-              title="Accept Report"
-              disabled={displayStatus === "Accepted"}
-            >
-              <Check size={16} />
-            </button>
+            {currentReports.length === 0 ? (
+              <tr>
+                <td
+                  colSpan="6"
+                  className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-300"
+                >
+                  No reports found.
+                </td>
+              </tr>
+            ) : (
+              currentReports.map((report) => {
+                const displayStatus =
+                  statusMap[report.$id] || report.status || "Pending";
+                return (
+                  <tr
+                    key={report.$id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                      {report.incident_type || "Untitled"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">
+                      {report.incident_date || "N/A"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">
+                      {report.reported_by || "N/A"}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className={getStatusBadge(displayStatus)}>
+                        {displayStatus}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm space-x-2">
+                      <button
+                        onClick={() => updateStatus(report.$id, "Accepted")}
+                        className="px-2 py-1 text-green-700 bg-green-100 rounded hover:bg-green-200 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800"
+                        title="Accept Report"
+                        disabled={displayStatus === "Accepted"}
+                      >
+                        <Check size={16} />
+                      </button>
 
-            <button
-              onClick={() => updateStatus(report.$id, "Rejected")}
-              className="px-2 py-1 text-red-700 bg-red-100 rounded hover:bg-red-200 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800"
-              title="Reject Report"
-              disabled={displayStatus === "Rejected"}
-            >
-              <X size={16} />
-            </button>
+                      <button
+                        onClick={() => updateStatus(report.$id, "Rejected")}
+                        className="px-2 py-1 text-red-700 bg-red-100 rounded hover:bg-red-200 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800"
+                        title="Reject Report"
+                        disabled={displayStatus === "Rejected"}
+                      >
+                        <X size={16} />
+                      </button>
 
-            <button
-              onClick={() => handleDelete(report.$id)}
-              className="text-red-600 hover:text-red-900 dark:hover:text-red-400"
-              title="Delete Report"
-            >
-              <Trash size={16} />
-            </button>
-          </td>
-        </tr>
-      );
-    })
-  )}
-</tbody>
-
+                      <button
+                        onClick={() => handleDelete(report.$id)}
+                        className="text-red-600 hover:text-red-900 dark:hover:text-red-400"
+                        title="Delete Report"
+                      >
+                        <Trash size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>{" "}
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {reports.length > reportsPerPage && (
+        <div className="mt-6 flex items-center justify-between bg-white dark:bg-gray-800 px-4 py-3 sm:px-6 rounded-lg shadow">
+          <div className="flex-1 flex justify-between sm:hidden">
+            <button
+              onClick={prevPage}
+              disabled={currentPage === 1}
+              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <button
+              onClick={nextPage}
+              disabled={currentPage === totalPages}
+              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                Showing{" "}
+                <span className="font-medium">{indexOfFirstReport + 1}</span> to{" "}
+                <span className="font-medium">
+                  {Math.min(indexOfLastReport, reports.length)}
+                </span>{" "}
+                of <span className="font-medium">{reports.length}</span> results
+              </p>
+            </div>
+            <div>
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                <button
+                  onClick={prevPage}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+                >
+                  Previous
+                </button>
+
+                {/* Page numbers */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (number) => (
+                    <button
+                      key={number}
+                      onClick={() => paginate(number)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        currentPage === number
+                          ? "z-10 bg-blue-50 border-blue-500 text-blue-600 dark:bg-blue-900 dark:border-blue-400 dark:text-blue-300"
+                          : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
+                      }`}
+                    >
+                      {number}
+                    </button>
+                  )
+                )}
+
+                <button
+                  onClick={nextPage}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+                >
+                  Next
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedReport && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
