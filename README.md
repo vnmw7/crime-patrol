@@ -59,4 +59,6 @@
     }
     }
 
-- cd androd && gradlew app:bundleRelease
+- cd android && ./gradlew assembleRelease
+  or
+- cd android && gradlew app:bundleRelease
