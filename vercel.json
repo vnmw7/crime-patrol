@@ -1,11 +1,15 @@
 {
-  "buildCommand": "cd web-frontend && npm ci && npm run build",
+  "version": 2,
+  "buildCommand": "cd web-frontend && npm ci --omit=optional && npm run build",
   "outputDirectory": "web-frontend/dist",
   "installCommand": "cd web-frontend && npm ci --omit=optional",
-  "functions": {
-    "app/api/**/*.js": {
-      "runtime": "nodejs20.x"
+  "framework": null,
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
-  },
-  "framework": null
+  ]
 }
