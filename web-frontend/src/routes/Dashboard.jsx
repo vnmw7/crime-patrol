@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 
 export default function Dashboard() {
   const location = useLocation();
@@ -107,6 +107,7 @@ export default function Dashboard() {
                 { path: "stations", label: "Police Stations", icon: "map-pin" },
                 { path: "chat", label: "AI Assistant", icon: "chat" },
                 { path: "map", label: "Map View", icon: "map" },
+                { path: "internal-users", label: "Internal Users", icon: "internal-users" },
                 { path: "settings", label: "Settings", icon: "settings" },
               ].map(({ path, label }, i) => (
                 <Link
