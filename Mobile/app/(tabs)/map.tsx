@@ -137,10 +137,55 @@ const MapScreen = () => {
 
     newSocketInstance.on(
       "emergency-alert",
-      (dictLocationData: dictLocationPing) => {
+      (dictLocationData: dictLocationPing | dictLocationPing[]) => {
+        // Allow single or array
         console.log("Received emergency alert:", dictLocationData);
-        setEmergencyPings((prevPings) => [...prevPings, dictLocationData]);
-        // TODO: Update map with this ping
+        const pingsToAdd = Array.isArray(dictLocationData)
+          ? dictLocationData
+          : [dictLocationData];
+        setEmergencyPings((prevPings) => [...prevPings, ...pingsToAdd]);
+
+        const currentWebView = webViewRef.current;
+        if (currentWebView) {
+          pingsToAdd.forEach((ping) => {
+            const lat =
+              typeof ping.lat === "number"
+                ? ping.lat
+                : (ping as any).dblLatitude;
+            const lng =
+              typeof ping.lng === "number"
+                ? ping.lng
+                : (ping as any).dblLongitude;
+            const reporterId =
+              (ping as any).strReporterId || `Emergency-${Date.now()}`; // Use strReporterId or generate one
+
+            if (typeof lat === "number" && typeof lng === "number") {
+              currentWebView.postMessage(
+                // Use the local variable here
+                JSON.stringify({
+                  type: "addEmergencyPing",
+                  ping: {
+                    lat: lat,
+                    lng: lng,
+                    id: ping.id || reporterId, // Use existing id or reporterId
+                    emergency_type: ping.emergency_type || "Unknown Emergency",
+                    description:
+                      ping.description ||
+                      "Emergency reported at this location.",
+                    timestamp: ping.timestamp || new Date().toISOString(),
+                  },
+                }),
+              );
+            } else {
+              console.error(
+                "Invalid ping data received, missing coordinates:",
+                ping,
+              );
+            }
+          });
+        } else {
+          console.warn("WebViewRef not available to post emergency pings.");
+        }
       },
     );
 
@@ -153,7 +198,7 @@ const MapScreen = () => {
     setEmergencyPings,
     isSocketConnecting,
     isSocketConnected,
-  ]); // Added isSocketConnecting, isSocketConnected to deps because they are checked at the start
+  ]);
 
   const disconnectEmergencyServices = useCallback(() => {
     if (socket) {
@@ -351,7 +396,8 @@ const MapScreen = () => {
               var map = null;
               var userMarker = null;
               var markers = []; // To store Leaflet marker instances
-      
+              var emergencyPingMarkers = {}; // To store emergency ping markers by ID
+
               try {
                   map = L.map('map').setView([${mapCenter.latitude}, ${mapCenter.longitude}], 13);
                   console.log('Map initialized successfully at [${mapCenter.latitude}, ${mapCenter.longitude}].');
@@ -385,7 +431,7 @@ const MapScreen = () => {
                           console.error('Map not initialized, cannot process message:', data.type);
                           return;
                       }
-      
+
                       if (data.type === 'centerOnUser') {
                           console.log('Processing centerOnUser. Lat:', data.lat, 'Lng:', data.lng);
                           if (typeof map.setView === 'function') {
@@ -426,6 +472,43 @@ const MapScreen = () => {
                               console.error('fitToMarkers: No markers to fit.');
                           } else {
                               console.error('map.fitBounds is not a function or no markers.');
+                          }
+                      } else if (data.type === 'addEmergencyPing') {
+                          console.log('Processing addEmergencyPing:', data.ping);
+                          var ping = data.ping;
+                          if (ping && typeof ping.lat === 'number' && typeof ping.lng === 'number') {
+                              // Remove existing marker for this ping ID if it exists
+                              if (emergencyPingMarkers[ping.id]) {
+                                  map.removeLayer(emergencyPingMarkers[ping.id]);
+                                  console.log('Removed existing emergency marker for ID:', ping.id);
+                              }
+
+                              var popupContent = \`
+                                  <div class="custom-popup">
+                                      <div class="marker-title">\${ping.emergency_type || 'Emergency'}</div>
+                                      <div class="marker-description">\${ping.description || 'Details not available.'}</div>
+                                      <div class="marker-type">ID: \${ping.id}</div>
+                                      <div class="marker-type">Time: \${new Date(ping.timestamp).toLocaleString()}</div>
+                                  </div>
+                              \`;
+
+                              var emergencyMarker = L.marker([ping.lat, ping.lng], {
+                                  icon: L.divIcon({
+                                      className: 'emergency-ping-icon',
+                                      html: '<div style="background-color: #FF3B30; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.5);"></div>',
+                                      iconSize: [22, 22], iconAnchor: [11, 11]
+                                  })
+                              })
+                              .addTo(map)
+                              .bindPopup(popupContent);
+                              emergencyPingMarkers[ping.id] = emergencyMarker; // Store the marker
+                              console.log('Emergency ping marker added for ID:', ping.id, 'at [', ping.lat, ',', ping.lng, '].');
+
+                              // Optionally, add to the general markers array if you want fitToMarkers to include them
+                              // markers.push(emergencyMarker); 
+                              // If you do this, consider how fitToMarkers should behave with many emergency pings.
+                          } else {
+                              console.error('Invalid emergency ping data:', ping);
                           }
                       } else {
                           console.log('Received unhandled message type from RN:', data.type);
