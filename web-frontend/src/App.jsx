@@ -31,7 +31,7 @@ import Media from "./components/reports/Media.jsx";
 import Metadata from "./components/reports/Metadata.jsx";
 import ReporterInfo from "./components/reports/ReporterInfo.jsx";
 import Suspect from "./components/reports/Suspects.jsx";
-import Victims from "./components/reports/victims.jsx";
+import Victims from "./components/reports/Victims.jsx";
 import Witness from "./components/reports/Witness.jsx";
 
 // Internal user management components
