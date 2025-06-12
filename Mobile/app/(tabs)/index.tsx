@@ -8,6 +8,10 @@ import {
   Animated,
   Platform,
   useColorScheme,
+  Modal,
+  Alert,
+  Linking,
+  PermissionsAndroid,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -69,14 +73,115 @@ const HomeScreen = () => {
     dblLongitude: number;
   }>({ dblLatitude: 0, dblLongitude: 0 });
 
+  // Call permission modal state
+  const [showCallPermissionModal, setShowCallPermissionModal] = useState(false);
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
   useEffect(() => {
     posthog.capture("Home Screen Viewed");
+
+    // Check CALL_PHONE permission on screen load
+    const checkInitialPermissions = async () => {
+      const hasCallPermission = await checkCallPermission();
+      if (!hasCallPermission) {
+        setShowCallPermissionModal(true);
+      }
+    };
+
+    checkInitialPermissions();
   }, [posthog]);
 
-  const reportButtonScale = useRef(new Animated.Value(1)).current;
+  // Re-check permission when app comes to foreground or modal is visible
+  useEffect(() => {
+    if (showCallPermissionModal) {
+      const recheckPermission = async () => {
+        const hasCallPermission = await checkCallPermission();
+        if (hasCallPermission) {
+          setShowCallPermissionModal(false);
+        }
+      };
 
+      // Check immediately
+      recheckPermission();
+
+      // Set up an interval to check periodically while modal is visible
+      const interval = setInterval(recheckPermission, 2000);
+
+      return () => clearInterval(interval);
+    }
+  }, [showCallPermissionModal]);
+
+  const reportButtonScale = useRef(new Animated.Value(1)).current;
   const triggerHaptic = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  // Function to check CALL_PHONE permission
+  const checkCallPermission = async () => {
+    if (Platform.OS !== "android") {
+      return true; // iOS doesn't need explicit CALL_PHONE permission
+    }
+
+    try {
+      const hasPermission = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.CALL_PHONE,
+      );
+      return hasPermission;
+    } catch (error) {
+      console.error("Error checking CALL_PHONE permission:", error);
+      return false;
+    }
+  };
+
+  // Function to request CALL_PHONE permission
+  const requestCallPermission = async () => {
+    if (Platform.OS !== "android") {
+      return true;
+    }
+
+    setIsCheckingPermissions(true);
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.CALL_PHONE,
+        {
+          title: "Phone Call Permission",
+          message:
+            "Crime Patrol needs phone call permission to enable emergency calling features",
+          buttonNeutral: "Ask Me Later",
+          buttonNegative: "Cancel",
+          buttonPositive: "Grant Permission",
+        },
+      );
+
+      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        console.log("CALL_PHONE permission granted");
+        setShowCallPermissionModal(false);
+        return true;
+      } else {
+        console.log("CALL_PHONE permission denied");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error requesting CALL_PHONE permission:", error);
+      return false;
+    } finally {
+      setIsCheckingPermissions(false);
+    }
+  };
+
+  // Function to open app settings
+  const openAppSettings = () => {
+    triggerHaptic();
+    Alert.alert(
+      "Permission Required",
+      "Please enable phone call permission in your device settings to use emergency calling features.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Open Settings",
+          onPress: () => Linking.openSettings(),
+        },
+      ],
+    );
   };
 
   const navigateToMenu = () => {
@@ -554,9 +659,76 @@ const HomeScreen = () => {
         >
           <Text style={[styles.infoButtonText, { color: theme.text }]}>
             Test Screen
-          </Text>
+          </Text>{" "}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Call Permission Modal */}
+      <Modal
+        visible={showCallPermissionModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {}} // Prevent closing via back button
+      >
+        <View style={styles.modalContainer}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <View style={styles.modalHeader}>
+              <MaterialCommunityIcons
+                name="phone-alert"
+                size={48}
+                color={theme.secondary}
+              />
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Phone Permission Required
+              </Text>
+            </View>
+
+            <Text
+              style={[styles.modalDescription, { color: theme.textSecondary }]}
+            >
+              Crime Patrol needs phone call permission to enable emergency
+              calling features. This permission is essential for the safety
+              features of the app.
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  styles.secondaryButton,
+                  { borderColor: theme.border },
+                ]}
+                onPress={openAppSettings}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.modalButtonText,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  Open Settings
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  styles.primaryButton,
+                  { backgroundColor: theme.primary },
+                ]}
+                onPress={requestCallPermission}
+                disabled={isCheckingPermissions}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalPrimaryButtonText}>
+                  {isCheckingPermissions ? "Requesting..." : "Grant Permission"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -795,6 +967,73 @@ const styles = StyleSheet.create({
   pingResultTime: {
     fontSize: 10,
     fontStyle: "italic",
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  modalContent: {
+    borderRadius: 12,
+    padding: 24,
+    minWidth: 300,
+    maxWidth: 400,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  modalHeader: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginTop: 12,
+    textAlign: "center",
+  },
+  modalDescription: {
+    fontSize: 16,
+    lineHeight: 22,
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  modalButtons: {
+    gap: 12,
+  },
+  modalButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  primaryButton: {
+    // backgroundColor will be set dynamically
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    backgroundColor: "transparent",
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  modalPrimaryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 
