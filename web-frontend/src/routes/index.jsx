@@ -38,14 +38,15 @@ export default function Index() {
           <p className="text-lg text-gray-300 max-w-5xl mx-auto mb-10">
             Report incidents, track activity, and stay connected with
             authorities through our community-driven platform.
-          </p>
+          </p>{" "}
           <div className="flex justify-center gap-4 flex-wrap">
-            <Link
-              to="/dashboard"
+            <a
+              href="/apk/crime-patrol-v0.2.0.apk"
+              download="crime-patrol-v0.2.0.apk"
               className="bg-white text-gray-800 px-6 py-3 rounded-md text-lg hover:bg-gray-100"
             >
               Download App
-            </Link>
+            </a>
           </div>
         </div>
       </section>
