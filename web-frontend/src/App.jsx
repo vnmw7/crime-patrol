@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+import { ThemeProvider } from "./contexts/ThemeContext.jsx";
 
 // Import layout and pages
 import Dashboard from "./routes/Dashboard.jsx";
@@ -50,45 +51,50 @@ const DashboardBlank = () => (
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Public landing page */}
-        <Route path="/" element={<Index />} />
-        {/* Standalone auth pages */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        {/* Dashboard layout with nested routes */}{" "}
-        <Route path="/dashboard" element={<Dashboard />}>
-          <Route index element={<DashboardBlank />} />
-          <Route path="overview" element={<DashboardOverview />} />
-          <Route path="reports" element={<Reports />} />
+    <ThemeProvider>
+      <Router>
+        <Routes>
+          {/* Public landing page */}
+          <Route path="/" element={<Index />} />
+          {/* Standalone auth pages */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          {/* Dashboard layout with nested routes */}{" "}
+          <Route path="/dashboard" element={<Dashboard />}>
+            <Route index element={<DashboardBlank />} />
+            <Route path="overview" element={<DashboardOverview />} />
+            <Route path="reports" element={<Reports />} />
 
-          {/* Nested report routes */}
-          <Route path="reports/victims" element={<Victims />} />
-          <Route path="reports/locations" element={<Locations />} />
-          <Route path="reports/witness" element={<Witness />} />
-          <Route path="reports/suspect" element={<Suspect />} />
-          <Route path="reports/reporter-info" element={<ReporterInfo />} />
-          <Route path="reports/media" element={<Media />} />
-          <Route path="reports/metadata" element={<Metadata />} />
+            {/* Nested report routes */}
+            <Route path="reports/victims" element={<Victims />} />
+            <Route path="reports/locations" element={<Locations />} />
+            <Route path="reports/witness" element={<Witness />} />
+            <Route path="reports/suspect" element={<Suspect />} />
+            <Route path="reports/reporter-info" element={<ReporterInfo />} />
+            <Route path="reports/media" element={<Media />} />
+            <Route path="reports/metadata" element={<Metadata />} />
 
-          <Route path="settings" element={<DashboardSettings />} />
-          <Route path="chat" element={<DashboardChat />} />
-          <Route path="stations" element={<DashboardStations />} />
-          <Route path="login" element={<DashboardLogin />} />
-          <Route path="register" element={<DashboardRegister />} />
-          <Route path="map" element={<MapPage />} />
-          <Route path="users" element={<Users />} />
+            <Route path="settings" element={<DashboardSettings />} />
+            <Route path="chat" element={<DashboardChat />} />
+            <Route path="stations" element={<DashboardStations />} />
+            <Route path="login" element={<DashboardLogin />} />
+            <Route path="register" element={<DashboardRegister />} />
+            <Route path="map" element={<MapPage />} />
+            <Route path="users" element={<Users />} />
 
-          {/* Internal user management routes */}
-          <Route path="internal-users" element={<InternalUserManagement />} />
-          <Route path="internal-users/documents" element={<UserDocuments />} />
-          <Route path="internal-users/contacts" element={<UserContacts />} />
-        </Route>
-        {/* Fallback for unknown routes */}
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </Router>
+            {/* Internal user management routes */}
+            <Route path="internal-users" element={<InternalUserManagement />} />
+            <Route
+              path="internal-users/documents"
+              element={<UserDocuments />}
+            />
+            <Route path="internal-users/contacts" element={<UserContacts />} />
+          </Route>
+          {/* Fallback for unknown routes */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
 
