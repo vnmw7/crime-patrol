@@ -1,5 +1,5 @@
 import React from "react";
-import { useTheme } from "../contexts/ThemeContext";
+import { useTheme } from "../hooks/useTheme";
 
 // Sun icon for light mode
 const SunIcon = () => (
