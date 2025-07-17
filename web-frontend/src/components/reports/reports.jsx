@@ -448,7 +448,7 @@ const Reports = () => {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600 dark:text-gray-300">Loading reports...</p>
+          <p className="text-gray-600 text-gray-300">Loading reports...</p>
         </div>
       </div>
     );
@@ -459,9 +459,7 @@ const Reports = () => {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-600" />
-          <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Error: {error}
-          </p>
+          <p className="text-gray-600 text-gray-300 mb-4">Error: {error}</p>
           <button
             onClick={() => fetchReports()}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -478,10 +476,10 @@ const Reports = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold text-gray-900 text-white">
             All Reports
           </h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">
+          <p className="text-gray-600 text-gray-300 mt-1">
             {reports.length} reports found
           </p>
         </div>
@@ -505,7 +503,7 @@ const Reports = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-700 border-gray-600 text-white"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
@@ -520,7 +518,7 @@ const Reports = () => {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-700 border-gray-600 text-white"
           >
             <option value="all">All Priority</option>
             <option value="high">High</option>
@@ -533,43 +531,43 @@ const Reports = () => {
       <div className="mb-6 flex flex-wrap gap-3">
         <button
           onClick={() => navigate("/dashboard/reports/victims")}
-          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 border-gray-600 text-gray-300 hover:bg-gray-700"
         >
           Victims
         </button>
         <button
           onClick={() => navigate("/dashboard/reports/locations")}
-          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 border-gray-600 text-gray-300 hover:bg-gray-700"
         >
           Locations
         </button>
         <button
           onClick={() => navigate("/dashboard/reports/witness")}
-          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 border-gray-600 text-gray-300 hover:bg-gray-700"
         >
           Witness
         </button>
         <button
           onClick={() => navigate("/dashboard/reports/suspect")}
-          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 border-gray-600 text-gray-300 hover:bg-gray-700"
         >
           Suspect
         </button>
         <button
           onClick={() => navigate("/dashboard/reports/reporter-info")}
-          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 border-gray-600 text-gray-300 hover:bg-gray-700"
         >
           Reporter Info
         </button>
         <button
           onClick={() => navigate("/dashboard/reports/media")}
-          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 border-gray-600 text-gray-300 hover:bg-gray-700"
         >
           Media
         </button>
         <button
           onClick={() => navigate("/dashboard/reports/metadata")}
-          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 border-gray-600 text-gray-300 hover:bg-gray-700"
         >
           Metadata
         </button>
@@ -578,7 +576,7 @@ const Reports = () => {
       {currentReports.length === 0 ? (
         <div className="text-center py-12">
           <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-          <p className="text-gray-600 dark:text-gray-300 text-lg">
+          <p className="text-gray-600 text-gray-300 text-lg">
             No reports found.
           </p>
         </div>
@@ -587,13 +585,13 @@ const Reports = () => {
           {currentReports.map((report) => (
             <div
               key={report.$id}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-white bg-gray-800 rounded-lg shadow-sm border border-gray-200 border-gray-700 hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => handleReportPress(report)}
             >
               <div className="p-6">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
+                  <h3 className="font-semibold text-gray-900 text-white text-lg">
                     {report.incident_type || "N/A"}
                   </h3>
                   <span
@@ -606,21 +604,21 @@ const Reports = () => {
                 </div>
 
                 {/* Date */}
-                <div className="flex items-center text-sm text-gray-600 dark:text-gray-300 mb-3">
+                <div className="flex items-center text-sm text-gray-600 text-gray-300 mb-3">
                   <Calendar className="w-4 h-4 mr-2" />
                   {formatDate(report.incident_date)}
                 </div>
 
                 {/* Description */}
                 {report.description && (
-                  <p className="text-gray-700 dark:text-gray-300 text-sm mb-3 line-clamp-2">
+                  <p className="text-gray-700 text-gray-300 text-sm mb-3 line-clamp-2">
                     {report.description}
                   </p>
                 )}
 
                 {/* Location */}
                 {report.location_address && (
-                  <div className="flex items-center text-sm text-blue-600 dark:text-blue-400 mb-3">
+                  <div className="flex items-center text-sm text-blue-600 text-blue-400 mb-3">
                     <MapPin className="w-4 h-4 mr-2" />
                     <span className="truncate">{report.location_address}</span>
                   </div>
@@ -628,14 +626,14 @@ const Reports = () => {
 
                 {/* Reporter */}
                 {report.reporter_name && (
-                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-300 mb-3">
+                  <div className="flex items-center text-sm text-gray-600 text-gray-300 mb-3">
                     <User className="w-4 h-4 mr-2" />
                     {report.reporter_name}
                   </div>
                 )}
 
                 {/* Footer */}
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between pt-4 border-t border-gray-200 border-gray-700">
                   {report.priority_level && (
                     <span
                       className={`text-sm font-medium ${getPriorityColor(
@@ -683,7 +681,7 @@ const Reports = () => {
       )}{" "}
       {/* Pagination Controls */}
       {reports.length > reportsPerPage && (
-        <div className="mt-8 flex items-center justify-between bg-white dark:bg-gray-800 px-6 py-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="mt-8 flex items-center justify-between bg-white bg-gray-800 px-6 py-4 rounded-lg shadow-sm border border-gray-200 border-gray-700">
           <div className="flex-1 flex justify-between sm:hidden">
             <button
               onClick={prevPage}
@@ -702,7 +700,7 @@ const Reports = () => {
           </div>
           <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-gray-700 dark:text-gray-300">
+              <p className="text-sm text-gray-700 text-gray-300">
                 Showing{" "}
                 <span className="font-medium">{indexOfFirstReport + 1}</span> to{" "}
                 <span className="font-medium">
@@ -716,7 +714,7 @@ const Reports = () => {
                 <button
                   onClick={prevPage}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-700 border-gray-600 text-gray-300"
                 >
                   Previous
                 </button>
@@ -729,8 +727,8 @@ const Reports = () => {
                       onClick={() => paginate(number)}
                       className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                         currentPage === number
-                          ? "z-10 bg-blue-50 border-blue-500 text-blue-600 dark:bg-blue-900 dark:border-blue-400 dark:text-blue-300"
-                          : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
+                          ? "z-10 bg-blue-50 border-blue-500 text-blue-600 bg-blue-900 border-blue-400 text-blue-300"
+                          : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50 bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
                       }`}
                     >
                       {number}
@@ -741,7 +739,7 @@ const Reports = () => {
                 <button
                   onClick={nextPage}
                   disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-700 border-gray-600 text-gray-300"
                 >
                   Next
                 </button>
@@ -754,12 +752,12 @@ const Reports = () => {
       {(selectedReport || modalLoading) && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div className="inline-block align-bottom bg-white bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
               {modalLoading ? (
                 <div className="px-6 py-8">
                   <div className="text-center">
                     <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-                    <p className="text-gray-600 dark:text-gray-300">
+                    <p className="text-gray-600 text-gray-300">
                       Loading report details...
                     </p>
                   </div>
@@ -768,21 +766,21 @@ const Reports = () => {
                 selectedReport && (
                   <div>
                     {/* Modal Header */}
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 border-gray-700">
                       <div className="flex items-center">
                         <FileText className="w-6 h-6 text-blue-600 mr-3" />
                         <div>
-                          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                          <h3 className="text-lg font-medium text-gray-900 text-white">
                             Report Details
                           </h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <p className="text-sm text-gray-500 text-gray-400">
                             {selectedReport.incident_type}
                           </p>
                         </div>
                       </div>
                       <button
                         onClick={resetModal}
-                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:text-gray-300"
                       >
                         <X className="w-6 h-6" />
                       </button>
@@ -792,29 +790,29 @@ const Reports = () => {
                     <div className="px-6 py-4 max-h-96 overflow-y-auto">
                       <div className="space-y-6">
                         {/* Basic Information */}
-                        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        <div className="bg-gray-50 bg-gray-700 rounded-lg p-4">
+                          <h4 className="text-lg font-semibold text-gray-900 text-white mb-4">
                             Incident Information
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              <label className="block text-sm font-medium text-gray-700 text-gray-300">
                                 Type:
                               </label>
-                              <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                              <p className="mt-1 text-sm text-gray-900 text-white">
                                 {selectedReport.incident_type}
                               </p>
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              <label className="block text-sm font-medium text-gray-700 text-gray-300">
                                 Date:
                               </label>
-                              <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                              <p className="mt-1 text-sm text-gray-900 text-white">
                                 {formatDate(selectedReport.incident_date)}
                               </p>
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              <label className="block text-sm font-medium text-gray-700 text-gray-300">
                                 Status:
                               </label>
                               <div className="mt-1">
@@ -827,7 +825,7 @@ const Reports = () => {
                                       e.target.value
                                     )
                                   }
-                                  className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-600 dark:border-gray-500 dark:text-white"
+                                  className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-600 border-gray-500 text-white"
                                 >
                                   <option value="pending">Pending</option>
                                   <option value="rejected">Rejected</option>
@@ -841,7 +839,7 @@ const Reports = () => {
                             </div>
                             {selectedReport.metadata?.priority_level && (
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label className="block text-sm font-medium text-gray-700 text-gray-300">
                                   Priority:
                                 </label>
                                 <p
@@ -858,11 +856,11 @@ const Reports = () => {
 
                         {/* Description */}
                         {selectedReport.metadata?.description && (
-                          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                          <div className="bg-gray-50 bg-gray-700 rounded-lg p-4">
+                            <h4 className="text-lg font-semibold text-gray-900 text-white mb-3">
                               Description
                             </h4>
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                            <p className="text-sm text-gray-700 text-gray-300">
                               {selectedReport.metadata.description}
                             </p>
                           </div>
@@ -870,37 +868,37 @@ const Reports = () => {
 
                         {/* Location Information */}
                         {selectedReport.location && (
-                          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                          <div className="bg-gray-50 bg-gray-700 rounded-lg p-4">
+                            <h4 className="text-lg font-semibold text-gray-900 text-white mb-3">
                               Location
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {selectedReport.location.location_address && (
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  <label className="block text-sm font-medium text-gray-700 text-gray-300">
                                     Address:
                                   </label>
-                                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                                  <p className="mt-1 text-sm text-gray-900 text-white">
                                     {selectedReport.location.location_address}
                                   </p>
                                 </div>
                               )}
                               {selectedReport.location.location_type && (
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  <label className="block text-sm font-medium text-gray-700 text-gray-300">
                                     Type:
                                   </label>
-                                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                                  <p className="mt-1 text-sm text-gray-900 text-white">
                                     {selectedReport.location.location_type}
                                   </p>
                                 </div>
                               )}
                               {selectedReport.location.location_details && (
                                 <div className="col-span-2">
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  <label className="block text-sm font-medium text-gray-700 text-gray-300">
                                     Details:
                                   </label>
-                                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                                  <p className="mt-1 text-sm text-gray-900 text-white">
                                     {selectedReport.location.location_details}
                                   </p>
                                 </div>
@@ -911,27 +909,27 @@ const Reports = () => {
 
                         {/* Reporter Information */}
                         {selectedReport.reporter_info && (
-                          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                          <div className="bg-gray-50 bg-gray-700 rounded-lg p-4">
+                            <h4 className="text-lg font-semibold text-gray-900 text-white mb-3">
                               Reporter Information
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {selectedReport.reporter_info.reporter_name && (
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  <label className="block text-sm font-medium text-gray-700 text-gray-300">
                                     Name:
                                   </label>
-                                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                                  <p className="mt-1 text-sm text-gray-900 text-white">
                                     {selectedReport.reporter_info.reporter_name}
                                   </p>
                                 </div>
                               )}
                               {selectedReport.reporter_info.reporter_phone && (
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  <label className="block text-sm font-medium text-gray-700 text-gray-300">
                                     Phone:
                                   </label>
-                                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                                  <p className="mt-1 text-sm text-gray-900 text-white">
                                     {
                                       selectedReport.reporter_info
                                         .reporter_phone
@@ -941,10 +939,10 @@ const Reports = () => {
                               )}
                               {selectedReport.reporter_info.reporter_email && (
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  <label className="block text-sm font-medium text-gray-700 text-gray-300">
                                     Email:
                                   </label>
-                                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                                  <p className="mt-1 text-sm text-gray-900 text-white">
                                     {
                                       selectedReport.reporter_info
                                         .reporter_email
@@ -959,18 +957,18 @@ const Reports = () => {
                         {/* Victims */}
                         {selectedReport.victims &&
                           selectedReport.victims.length > 0 && (
-                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                            <div className="bg-gray-50 bg-gray-700 rounded-lg p-4">
+                              <h4 className="text-lg font-semibold text-gray-900 text-white mb-3">
                                 Victims ({selectedReport.victims.length})
                               </h4>
                               <div className="space-y-3">
                                 {selectedReport.victims.map((victim, index) => (
                                   <div
                                     key={index}
-                                    className="bg-white dark:bg-gray-600 rounded p-3"
+                                    className="bg-white bg-gray-600 rounded p-3"
                                   >
                                     {victim.victim_name && (
-                                      <p className="text-sm text-gray-900 dark:text-white">
+                                      <p className="text-sm text-gray-900 text-white">
                                         <span className="font-medium">
                                           Name:
                                         </span>{" "}
@@ -978,7 +976,7 @@ const Reports = () => {
                                       </p>
                                     )}
                                     {victim.victim_contact && (
-                                      <p className="text-sm text-gray-900 dark:text-white">
+                                      <p className="text-sm text-gray-900 text-white">
                                         <span className="font-medium">
                                           Contact:
                                         </span>{" "}
@@ -994,8 +992,8 @@ const Reports = () => {
                         {/* Suspects */}
                         {selectedReport.suspects &&
                           selectedReport.suspects.length > 0 && (
-                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                            <div className="bg-gray-50 bg-gray-700 rounded-lg p-4">
+                              <h4 className="text-lg font-semibold text-gray-900 text-white mb-3">
                                 Suspects ({selectedReport.suspects.length})
                               </h4>
                               <div className="space-y-3">
@@ -1003,10 +1001,10 @@ const Reports = () => {
                                   (suspect, index) => (
                                     <div
                                       key={index}
-                                      className="bg-white dark:bg-gray-600 rounded p-3"
+                                      className="bg-white bg-gray-600 rounded p-3"
                                     >
                                       {suspect.suspect_description && (
-                                        <p className="text-sm text-gray-900 dark:text-white">
+                                        <p className="text-sm text-gray-900 text-white">
                                           <span className="font-medium">
                                             Description:
                                           </span>{" "}
@@ -1014,7 +1012,7 @@ const Reports = () => {
                                         </p>
                                       )}
                                       {suspect.suspect_vehicle && (
-                                        <p className="text-sm text-gray-900 dark:text-white">
+                                        <p className="text-sm text-gray-900 text-white">
                                           <span className="font-medium">
                                             Vehicle:
                                           </span>{" "}
@@ -1031,8 +1029,8 @@ const Reports = () => {
                         {/* Witnesses */}
                         {selectedReport.witnesses &&
                           selectedReport.witnesses.length > 0 && (
-                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                            <div className="bg-gray-50 bg-gray-700 rounded-lg p-4">
+                              <h4 className="text-lg font-semibold text-gray-900 text-white mb-3">
                                 Witnesses ({selectedReport.witnesses.length})
                               </h4>
                               <div className="space-y-3">
@@ -1040,9 +1038,9 @@ const Reports = () => {
                                   (witness, index) => (
                                     <div
                                       key={index}
-                                      className="bg-white dark:bg-gray-600 rounded p-3"
+                                      className="bg-white bg-gray-600 rounded p-3"
                                     >
-                                      <p className="text-sm text-gray-900 dark:text-white">
+                                      <p className="text-sm text-gray-900 text-white">
                                         {witness.witness_info}
                                       </p>
                                     </div>
@@ -1055,15 +1053,15 @@ const Reports = () => {
                         {/* Media */}
                         {selectedReport.media &&
                           selectedReport.media.length > 0 && (
-                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                            <div className="bg-gray-50 bg-gray-700 rounded-lg p-4">
+                              <h4 className="text-lg font-semibold text-gray-900 text-white mb-3">
                                 Media ({selectedReport.media.length})
                               </h4>
                               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {selectedReport.media.map((media, index) => (
                                   <div
                                     key={index}
-                                    className="bg-white dark:bg-gray-600 rounded-lg p-3 text-center"
+                                    className="bg-white bg-gray-600 rounded-lg p-3 text-center"
                                   >
                                     <div className="flex justify-center mb-2">
                                       {media.media_type === "photo" && (
@@ -1076,10 +1074,10 @@ const Reports = () => {
                                         <Music className="w-8 h-8 text-purple-500" />
                                       )}
                                     </div>
-                                    <p className="text-xs text-gray-700 dark:text-gray-300 truncate">
+                                    <p className="text-xs text-gray-700 text-gray-300 truncate">
                                       {media.file_name_original}
                                     </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    <p className="text-xs text-gray-500 text-gray-400 mt-1">
                                       {media.media_type}
                                     </p>
                                     {(media.cloudinary_url ||
@@ -1108,9 +1106,9 @@ const Reports = () => {
                     </div>
 
                     {/* Modal Footer */}
-                    <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+                    <div className="px-6 py-4 bg-gray-50 bg-gray-700 border-t border-gray-200 border-gray-600">
                       <div className="flex items-center justify-between">
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                        <div className="text-sm text-gray-500 text-gray-400">
                           Report ID: {selectedReport.$id}
                         </div>{" "}
                         <div className="flex space-x-3">

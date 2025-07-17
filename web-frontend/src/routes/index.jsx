@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import ThemeToggle from "../components/ThemeToggle.jsx";
 
 // Icons
 const DownloadIcon = () => (
@@ -118,19 +117,19 @@ export default function Index() {
   }, []);
 
   return (
-    <div className="min-h-screen w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-sans transition-colors duration-300">
+    <div className="min-h-screen w-full bg-white bg-gray-900 text-gray-900 text-white font-sans transition-colors duration-300">
       {/* Header */}
       <header
         className={`w-full px-4 sm:px-6 lg:px-10 py-4 fixed top-0 left-0 z-50 transition-all duration-300 ${
           scrolled
-            ? "bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-700/60 shadow-sm"
+            ? "bg-white/90 bg-gray-900/90 backdrop-blur-md border-b border-gray-200 border-gray-700/60 shadow-sm"
             : "bg-transparent"
         }`}
       >
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <Link
             to="/"
-            className="text-2xl font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors duration-300"
+            className="text-2xl font-bold text-primary-600 text-primary-400 hover:text-primary-700 hover:text-primary-300 transition-colors duration-300"
           >
             CrimePatrol
           </Link>
@@ -139,19 +138,19 @@ export default function Index() {
           <nav className="hidden lg:flex gap-8 items-center">
             <a
               href="#features"
-              className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300"
+              className="text-gray-600 text-gray-300 hover:text-gray-900 hover:text-white transition-colors duration-300"
             >
               Features
             </a>
             <a
               href="#about"
-              className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300"
+              className="text-gray-600 text-gray-300 hover:text-gray-900 hover:text-white transition-colors duration-300"
             >
               About
             </a>
             <a
               href="#download"
-              className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300"
+              className="text-gray-600 text-gray-300 hover:text-gray-900 hover:text-white transition-colors duration-300"
             >
               Download
             </a>
@@ -159,11 +158,10 @@ export default function Index() {
 
           {/* Right side buttons */}
           <div className="flex items-center gap-3">
-            <ThemeToggle />
             <div className="hidden sm:flex items-center gap-3">
               <Link
                 to="/login"
-                className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300 px-3 py-2"
+                className="text-gray-600 text-gray-300 hover:text-gray-900 hover:text-white transition-colors duration-300 px-3 py-2"
               >
                 Log in
               </Link>
@@ -178,7 +176,7 @@ export default function Index() {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300"
+              className="lg:hidden p-2 text-gray-600 text-gray-300 hover:text-gray-900 hover:text-white transition-colors duration-300"
             >
               {mobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
             </button>
@@ -187,33 +185,33 @@ export default function Index() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="lg:hidden absolute top-full left-0 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-lg">
+          <div className="lg:hidden absolute top-full left-0 w-full bg-white bg-gray-900 border-b border-gray-200 border-gray-700 shadow-lg">
             <nav className="px-4 py-4 space-y-4">
               <a
                 href="#features"
-                className="block text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300"
+                className="block text-gray-600 text-gray-300 hover:text-gray-900 hover:text-white transition-colors duration-300"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Features
               </a>
               <a
                 href="#about"
-                className="block text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300"
+                className="block text-gray-600 text-gray-300 hover:text-gray-900 hover:text-white transition-colors duration-300"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 About
               </a>
               <a
                 href="#download"
-                className="block text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300"
+                className="block text-gray-600 text-gray-300 hover:text-gray-900 hover:text-white transition-colors duration-300"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Download
               </a>
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
+              <div className="pt-4 border-t border-gray-200 border-gray-700 space-y-3">
                 <Link
                   to="/login"
-                  className="block text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300"
+                  className="block text-gray-600 text-gray-300 hover:text-gray-900 hover:text-white transition-colors duration-300"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Log in
@@ -236,11 +234,11 @@ export default function Index() {
         <div className="max-w-5xl mx-auto animate-fade-in">
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extrabold mb-6 leading-tight">
             Keep your community <br className="hidden sm:block" />
-            <span className="text-primary-600 dark:text-primary-400 animate-bounce-gentle">
+            <span className="text-primary-600 text-primary-400 animate-bounce-gentle">
               safe and informed
             </span>
           </h1>
-          <p className="text-lg sm:text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-10 font-light animate-slide-up">
+          <p className="text-lg sm:text-xl md:text-2xl text-gray-600 text-gray-300 max-w-3xl mx-auto mb-10 font-light animate-slide-up">
             Report incidents, track activity, and stay connected with
             authorities through our community-driven platform.
           </p>
@@ -258,30 +256,30 @@ export default function Index() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full px-4 sm:px-6 lg:px-10 py-12 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+      <footer className="w-full px-4 sm:px-6 lg:px-10 py-12 bg-white bg-gray-900 border-t border-gray-200 border-gray-700">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="md:col-span-2">
               <Link
                 to="/"
-                className="text-2xl font-bold text-primary-600 dark:text-primary-400 mb-4 block"
+                className="text-2xl font-bold text-primary-600 text-primary-400 mb-4 block"
               >
                 CrimePatrol
               </Link>
-              <p className="text-gray-600 dark:text-gray-300 max-w-md">
+              <p className="text-gray-600 text-gray-300 max-w-md">
                 Empowering communities to stay safe and informed through
                 technology and collaboration.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+              <h3 className="font-semibold text-gray-900 text-white mb-4">
                 Quick Links
               </h3>
               <ul className="space-y-2">
                 <li>
                   <a
                     href="#features"
-                    className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors duration-300"
+                    className="text-gray-600 text-gray-300 hover:text-primary-600 hover:text-primary-400 transition-colors duration-300"
                   >
                     Features
                   </a>
@@ -289,7 +287,7 @@ export default function Index() {
                 <li>
                   <a
                     href="#about"
-                    className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors duration-300"
+                    className="text-gray-600 text-gray-300 hover:text-primary-600 hover:text-primary-400 transition-colors duration-300"
                   >
                     About
                   </a>
@@ -297,7 +295,7 @@ export default function Index() {
                 <li>
                   <a
                     href="#download"
-                    className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors duration-300"
+                    className="text-gray-600 text-gray-300 hover:text-primary-600 hover:text-primary-400 transition-colors duration-300"
                   >
                     Download
                   </a>
@@ -305,7 +303,7 @@ export default function Index() {
                 <li>
                   <Link
                     to="/dashboard"
-                    className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors duration-300"
+                    className="text-gray-600 text-gray-300 hover:text-primary-600 hover:text-primary-400 transition-colors duration-300"
                   >
                     Dashboard
                   </Link>
@@ -313,14 +311,14 @@ export default function Index() {
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+              <h3 className="font-semibold text-gray-900 text-white mb-4">
                 Legal
               </h3>
               <ul className="space-y-2">
                 <li>
                   <Link
                     to="/privacy"
-                    className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors duration-300"
+                    className="text-gray-600 text-gray-300 hover:text-primary-600 hover:text-primary-400 transition-colors duration-300"
                   >
                     Privacy Policy
                   </Link>
@@ -328,7 +326,7 @@ export default function Index() {
                 <li>
                   <Link
                     to="/terms"
-                    className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors duration-300"
+                    className="text-gray-600 text-gray-300 hover:text-primary-600 hover:text-primary-400 transition-colors duration-300"
                   >
                     Terms of Service
                   </Link>
@@ -336,7 +334,7 @@ export default function Index() {
                 <li>
                   <Link
                     to="/contact"
-                    className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors duration-300"
+                    className="text-gray-600 text-gray-300 hover:text-primary-600 hover:text-primary-400 transition-colors duration-300"
                   >
                     Contact Us
                   </Link>
@@ -344,8 +342,8 @@ export default function Index() {
               </ul>
             </div>
           </div>
-          <div className="pt-8 border-t border-gray-200 dark:border-gray-700 text-center">
-            <p className="text-gray-500 dark:text-gray-400 text-sm">
+          <div className="pt-8 border-t border-gray-200 border-gray-700 text-center">
+            <p className="text-gray-500 text-gray-400 text-sm">
               © {new Date().getFullYear()} CrimePatrol. All rights reserved.
             </p>
           </div>

@@ -41,15 +41,15 @@ const COLLECTIONS = {
 const LoadingSpinner = () => (
   <div className="flex justify-center items-center h-full min-h-[200px]">
     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-    <p className="ml-3 text-gray-500 dark:text-gray-400">Loading data...</p>
+    <p className="ml-3 text-gray-500 text-gray-400">Loading data...</p>
   </div>
 );
 
 const ErrorMessage = ({ message }) => (
   <div className="flex justify-center items-center h-full min-h-[200px]">
-    <div className="text-center p-6 bg-red-50 dark:bg-red-900/20 rounded-lg">
-      <p className="text-red-600 dark:text-red-400 font-medium">{message}</p>
-      <p className="text-sm text-red-500 dark:text-red-300 mt-2">
+    <div className="text-center p-6 bg-red-50 bg-red-900/20 rounded-lg">
+      <p className="text-red-600 text-red-400 font-medium">{message}</p>
+      <p className="text-sm text-red-500 text-red-300 mt-2">
         Please check your connection and try again
       </p>
     </div>
@@ -58,8 +58,8 @@ const ErrorMessage = ({ message }) => (
 
 const NoDataMessage = ({ message = "No data available" }) => (
   <div className="flex justify-center items-center h-full min-h-[200px]">
-    <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
-      <p className="text-gray-500 dark:text-gray-400">{message}</p>
+    <div className="text-center p-6 bg-gray-50 bg-gray-800 rounded-lg">
+      <p className="text-gray-500 text-gray-400">{message}</p>
     </div>
   </div>
 );
@@ -521,7 +521,7 @@ export default function DashboardOverview() {
   if (loading) {
     return (
       <div className="p-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 text-white mb-8">
           Dashboard Overview
         </h1>
         <LoadingSpinner />
@@ -532,7 +532,7 @@ export default function DashboardOverview() {
   if (error) {
     return (
       <div className="p-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 text-white mb-8">
           Dashboard Overview
         </h1>
         <ErrorMessage message={error} />
@@ -541,14 +541,14 @@ export default function DashboardOverview() {
   }
 
   return (
-    <div className="p-4 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 space-y-6 bg-gray-50 bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-3xl font-bold text-gray-900 text-white">
           Dashboard Overview
         </h1>
         {currentUser && (
-          <div className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="text-sm text-gray-600 text-gray-400">
             Welcome back, {currentUser.name || currentUser.email}
           </div>
         )}
@@ -559,18 +559,18 @@ export default function DashboardOverview() {
         {dashboardData.primaryStats.map((stat, index) => (
           <div
             key={index}
-            className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700"
+            className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                <p className="text-sm font-medium text-gray-600 text-gray-400">
                   {stat.title}
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-bold text-gray-900 text-white">
                   {stat.value.toLocaleString()}
                 </p>
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-sm text-gray-500 text-gray-400">
                 {stat.trend > 0 && <span className="text-green-600">↗</span>}
                 {stat.trend < 0 && <span className="text-red-600">↘</span>}
                 {stat.trend === 0 && <span className="text-gray-400">→</span>}
@@ -581,8 +581,8 @@ export default function DashboardOverview() {
       </div>
 
       {/* Primary Statistics Bar Chart */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+      <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
+        <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
           Key Metrics Overview
         </h2>
         <div className="h-80">
@@ -621,8 +621,8 @@ export default function DashboardOverview() {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Incident Types Distribution */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
             Incident Types
           </h2>
           {dashboardData.incidentTypes.length > 0 ? (
@@ -662,8 +662,8 @@ export default function DashboardOverview() {
         </div>
 
         {/* Status Distribution */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
             Case Status Distribution
           </h2>
           {dashboardData.statusDistribution.length > 0 ? (
@@ -701,8 +701,8 @@ export default function DashboardOverview() {
       </div>
 
       {/* Timeline Chart */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+      <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
+        <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
           Reports Timeline (Last 30 Days)
         </h2>
         {dashboardData.timelineData.length > 0 ? (
@@ -757,8 +757,8 @@ export default function DashboardOverview() {
       </div>
 
       {/* Crime Trends - Line Chart */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+      <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
+        <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
           Crime Trends
         </h2>
         {dashboardData.incidentTypes.length > 0 ? (
@@ -778,7 +778,7 @@ export default function DashboardOverview() {
                         ],
                     }}
                   ></span>
-                  <span className="text-gray-700 dark:text-gray-300">
+                  <span className="text-gray-700 text-gray-300">
                     {entry.name}
                   </span>
                 </div>
@@ -856,8 +856,8 @@ export default function DashboardOverview() {
       </div>
 
       {/* Law Enforcement & Response */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+      <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
+        <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
           Law Enforcement & Response
         </h2>
         {dashboardData.lawEnforcementStats.length > 0 ? (
@@ -925,22 +925,22 @@ export default function DashboardOverview() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {" "}
         {/* Incident Locations Map */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
             Incident Locations Map
           </h2>
           <div className="mb-3">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-600 text-gray-400">
               Showing {dashboardData.locationsWithIncidents.length} incident
               locations
             </p>
             {dashboardData.locationsWithIncidents.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
-                <span className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 px-2 py-1 rounded">
+                <span className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-800 bg-red-900 text-red-200 px-2 py-1 rounded">
                   <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                   Crime Incidents
                 </span>
-                <span className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded">
+                <span className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-800 bg-blue-900 text-blue-200 px-2 py-1 rounded">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                   City Center
                 </span>
@@ -950,8 +950,8 @@ export default function DashboardOverview() {
           <IncidentMiniMap locations={dashboardData.locationsWithIncidents} />
         </div>
         {/* User Statistics */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
             User Statistics
           </h2>
           {dashboardData.userStats.length > 0 ? (
@@ -982,8 +982,8 @@ export default function DashboardOverview() {
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+      <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
+        <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
           Recent Activity
         </h2>
         {dashboardData.recentActivity.length > 0 ? (
@@ -991,7 +991,7 @@ export default function DashboardOverview() {
             {dashboardData.recentActivity.map((activity, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                className="flex items-center justify-between p-4 bg-gray-50 bg-gray-700 rounded-lg"
               >
                 <div className="flex items-center space-x-4">
                   <div
@@ -1006,10 +1006,10 @@ export default function DashboardOverview() {
                     }`}
                   ></div>
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
+                    <p className="font-medium text-gray-900 text-white">
                       {activity.type}
                     </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-gray-600 text-gray-400">
                       {activity.location}
                     </p>
                   </div>
@@ -1018,17 +1018,17 @@ export default function DashboardOverview() {
                   <p
                     className={`text-xs font-medium px-2 py-1 rounded-full ${
                       activity.status === "resolved"
-                        ? "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
+                        ? "bg-green-100 text-green-800 bg-green-800 text-green-100"
                         : activity.status === "in_progress"
-                        ? "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
+                        ? "bg-blue-100 text-blue-800 bg-blue-800 text-blue-100"
                         : activity.status === "pending"
-                        ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100"
-                        : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+                        ? "bg-yellow-100 text-yellow-800 bg-yellow-800 text-yellow-100"
+                        : "bg-gray-100 text-gray-800 bg-gray-800 text-gray-100"
                     }`}
                   >
                     {activity.status}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-gray-500 text-gray-400 mt-1">
                     {new Date(activity.date).toLocaleDateString()}
                   </p>
                 </div>
