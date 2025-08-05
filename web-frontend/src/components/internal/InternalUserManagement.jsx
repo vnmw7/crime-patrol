@@ -2,10 +2,8 @@ import { useEffect, useState } from "react";
 import { account, databases, Query } from "../../lib/appwrite";
 
 const USERS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_USERS_COLLECTION_ID;
-const CONTACTS_COLLECTION_ID = import.meta.env
-  .VITE_APPWRITE_USER_CONTACTS_COLLECTION_ID;
-const DOCUMENTS_COLLECTION_ID = import.meta.env
-  .VITE_APPWRITE_USER_DOCUMENTS_COLLECTION_ID;
+const CONTACTS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_USER_CONTACTS_COLLECTION_ID;
+const DOCUMENTS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_USER_DOCUMENTS_COLLECTION_ID;
 const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
 
 const ROLES = ["Moderator", "Investigator", "Read-Only Analyst"];
