@@ -1,45 +1,88 @@
 // Report form types and interfaces
 
-// Define types for form fields and form data
+// Location information interface
+export interface LocationInfo {
+  address: string;
+  type: string;
+  details?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+// Reporter information interface
+export interface ReporterInfo {
+  name: string;
+  phone: string;
+  email?: string;
+}
+
+// Victim information interface
+export interface VictimInfo {
+  name: string;
+  contact?: string;
+}
+
+// Suspect information interface
+export interface SuspectInfo {
+  description: string;
+  vehicle?: string;
+}
+
+// Witness information interface
+export interface WitnessInfo {
+  info: string;
+}
+
+// Media attachment interface for normalized structure
+export interface MediaInfo {
+  file_id: string; // For Cloudinary, this will be the public_id
+  media_type: "photo" | "audio" | "video";
+  file_name_original: string;
+  display_order: number;
+  url?: string; // For preview purposes
+  secure_url?: string; // Cloudinary secure URL
+  public_id?: string; // Cloudinary public ID
+  cloudinary_url?: string; // Cloudinary URL
+  appwrite_bucket_id?: string; // Legacy Appwrite field
+  isUploading?: boolean; // For UI loading state
+  format?: string; // File format from Cloudinary
+  localUri?: string; // Local file URI for preview before upload
+  mimeType?: string; // MIME type of the file
+  isUploaded?: boolean; // Whether the file has been uploaded to cloud
+}
+
+// Updated FormData interface to match normalized database structure
 export interface FormData {
   // Incident Information
-  Incident_Type: string;
-  Incident_Date: Date;
-  Incident_Time: Date;
-  Is_In_Progress: boolean;
-  Description: string;
+  incident_type: string;
+  incident_date: Date;
+  incident_time: Date;
+  is_in_progress: boolean;
+  description: string;
 
-  // Location Information
-  Location: string; // Consider using a more structured location type
-  Location_Type: string;
-  Location_Details?: string;
+  // Location Information (structured object)
+  location?: LocationInfo;
 
-  // People Involved
-  Reporter_Name: string;
-  Reporter_Phone: string;
-  Reporter_Email?: string;
-  Is_Victim_Reporter: boolean;
-  Victim_Name?: string;
-  Victim_Contact?: string;
-  Suspect_Description?: string;
-  Suspect_Vehicle?: string;
-  Witness_Info?: string;
-  Media_Attached?: boolean;
-  Media_Attachments?: {
-    url: string; // Changed from uri to url
-    type: string;
-    name: string;
-    appwrite_file_id?: string;
-    appwrite_bucket_id?: string;
-  }[];
+  // Reporter Information
+  reporter_info?: ReporterInfo;
+  is_victim_reporter: boolean;
 
+  // People Involved (arrays to support multiple entries)
+  victims?: VictimInfo[];
+  suspects?: SuspectInfo[];
+  witnesses?: WitnessInfo[];
+
+  // Media attachments
+  media?: MediaInfo[];
+
+  // Metadata
   reported_by?: string;
+  status?: string;
 }
 
 export interface ReportDocument extends FormData {
   Report_ID: string;
-  Report_Status: string;
-  Created_At: Date;
-  Updated_At: Date;
-  reported_by?: string;
+  status: string;
+  created_at: Date;
+  updated_at: Date;
 }

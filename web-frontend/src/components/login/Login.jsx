@@ -43,9 +43,9 @@ const Login = () => {
             </h1>
           </Link>
           <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
-          <p className="text-gray-300 mt-2">
-            Sign in to your account to continue
-          </p>
+          <p className="login-subtext">
+          Sign in to your account to continue
+        </p>
         </div>
 
         {/* Login Form */}
@@ -130,7 +130,7 @@ const Login = () => {
 
           {/* Sign up link */}
           <div className="mt-6 text-center">
-            <p className="text-gray-400">
+            <p className="login-subtext">
               Don't have an account?{" "}
               <Link
                 to="/signup"

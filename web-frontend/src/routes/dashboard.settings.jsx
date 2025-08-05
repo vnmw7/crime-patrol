@@ -1,21 +1,21 @@
 export default function DashboardSettings() {
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
+      <h1 className="text-2xl font-semibold text-gray-900 text-white mb-6">
         Settings
       </h1>
 
-      <div className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+      <div className="space-y-6 bg-white bg-gray-800 p-6 rounded-lg shadow">
         {/* Profile Settings */}
         <div>
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+          <h2 className="text-lg font-medium text-gray-900 text-black">
             Profile
           </h2>
           <div className="mt-4 space-y-4">
             <div>
               <label
                 htmlFor="name"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                className="block text-sm font-medium text-gray-700 text-gray-300"
               >
                 Name
               </label>
@@ -23,13 +23,13 @@ export default function DashboardSettings() {
                 type="text"
                 id="name"
                 placeholder="John Doe"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-700 text-white"
               />
             </div>
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                className="block text-sm font-medium text-gray-700 text-gray-300"
               >
                 Email
               </label>
@@ -37,7 +37,7 @@ export default function DashboardSettings() {
                 type="email"
                 id="email"
                 placeholder="john.doe@example.com"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-700 text-white"
               />
             </div>
             <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
@@ -48,7 +48,7 @@ export default function DashboardSettings() {
 
         {/* Notification Settings */}
         <div>
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+          <h2 className="text-lg font-medium text-gray-900 text-black">
             Notifications
           </h2>
           <div className="mt-4 space-y-2">
@@ -61,7 +61,7 @@ export default function DashboardSettings() {
               />
               <label
                 htmlFor="email-notifications"
-                className="ml-2 block text-sm text-gray-900 dark:text-gray-300"
+                className="ml-2 block text-sm text-gray-900 text-gray-300"
               >
                 Email Notifications
               </label>
@@ -74,7 +74,7 @@ export default function DashboardSettings() {
               />
               <label
                 htmlFor="push-notifications"
-                className="ml-2 block text-sm text-gray-900 dark:text-gray-300"
+                className="ml-2 block text-sm text-gray-900 text-gray-300"
               >
                 Push Notifications
               </label>
@@ -84,11 +84,11 @@ export default function DashboardSettings() {
 
         {/* Theme Settings */}
         <div>
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+          <h2 className="text-lg font-medium text-gray-900 text-black">
             Theme
           </h2>
           <div className="mt-4">
-            <select className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white">
+            <select className="block w-full px-3 py-2 border border-gray-300 border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-700 text-white">
               <option>System Default</option>
               <option>Light Mode</option>
               <option>Dark Mode</option>

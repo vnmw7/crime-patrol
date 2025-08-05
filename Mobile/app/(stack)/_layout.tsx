@@ -15,6 +15,10 @@ const _layout = () => {
       <Stack.Screen name="(verification)" options={{ title: "Verification" }} />
       <Stack.Screen name="menu" options={{ title: "Menu" }} />
       <Stack.Screen name="my-reports" options={{ title: "My Reports" }} />
+      <Stack.Screen
+        name="report-details"
+        options={{ title: "Reort Details" }}
+      />
     </Stack>
   );
 };

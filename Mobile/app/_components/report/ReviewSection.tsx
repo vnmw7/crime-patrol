@@ -30,27 +30,29 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
           <Text style={[styles.reviewLabel, { color: theme.textSecondary }]}>
             Type:
           </Text>
+          <Text> </Text>
           <Text style={[styles.reviewValue, { color: theme.text }]}>
-            {formData.Incident_Type}
+            {formData.incident_type}
           </Text>
           <Text style={[styles.reviewLabel, { color: theme.textSecondary }]}>
             Date & Time:
           </Text>
           <Text style={[styles.reviewValue, { color: theme.text }]}>
-            {formData.Incident_Date.toLocaleDateString()} at{" "}
-            {formData.Incident_Time.toLocaleTimeString([], {
+            {formData.incident_date.toLocaleDateString()} at
+            <Text> </Text>
+            {formData.incident_time.toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             })}
           </Text>
           <Text style={[styles.reviewLabel, { color: theme.textSecondary }]}>
             Description:
-          </Text>{" "}
+          </Text>
           <Text style={[styles.reviewValue, { color: theme.text }]}>
-            {formData.Description}
+            {formData.description}
           </Text>
         </View>
-
+        <Text> </Text>
         <View style={styles.reviewSection}>
           <Text style={[styles.reviewSectionTitle, { color: theme.primary }]}>
             Location
@@ -59,23 +61,24 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
             Address:
           </Text>
           <Text style={[styles.reviewValue, { color: theme.text }]}>
-            {formData.Location}
+            {formData.location?.address || "No address provided"}
           </Text>
 
-          {formData.Location_Type && (
+          {formData.location?.type && (
             <>
               <Text
                 style={[styles.reviewLabel, { color: theme.textSecondary }]}
               >
                 Type:
               </Text>
+              <Text> </Text>
               <Text style={[styles.reviewValue, { color: theme.text }]}>
-                {formData.Location_Type}
+                {formData.location.type}
               </Text>
             </>
           )}
 
-          {formData.Location_Details && (
+          {formData.location?.details && (
             <>
               <Text
                 style={[styles.reviewLabel, { color: theme.textSecondary }]}
@@ -83,12 +86,12 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
                 Details:
               </Text>
               <Text style={[styles.reviewValue, { color: theme.text }]}>
-                {formData.Location_Details}
+                {formData.location.details}
               </Text>
             </>
           )}
         </View>
-
+        <Text> </Text>
         <View style={styles.reviewSection}>
           <Text style={[styles.reviewSectionTitle, { color: theme.primary }]}>
             People Involved
@@ -97,65 +100,90 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
             Reporter:
           </Text>
           <Text style={[styles.reviewValue, { color: theme.text }]}>
-            {formData.Reporter_Name} | {formData.Reporter_Name}
-            {formData.Reporter_Phone ? ` | ${formData.Reporter_Phone}` : ""}
+            {formData.reporter_info?.name || "No name provided"}
+            {formData.reporter_info?.phone
+              ? ` | ${formData.reporter_info.phone}`
+              : ""}
           </Text>
 
-          {!formData.Is_Victim_Reporter && formData.Is_Victim_Reporter && (
+          {formData.reporter_info?.email && (
             <>
               <Text
                 style={[styles.reviewLabel, { color: theme.textSecondary }]}
               >
-                Victim:
+                Email:
               </Text>
               <Text style={[styles.reviewValue, { color: theme.text }]}>
-                {formData.Victim_Name}
-                {formData.Victim_Contact ? ` | ${formData.Victim_Contact}` : ""}
+                {formData.reporter_info.email}
               </Text>
             </>
           )}
 
-          {formData.Suspect_Description && (
+          {!formData.is_victim_reporter &&
+            formData.victims &&
+            formData.victims.length > 0 && (
+              <>
+                <Text
+                  style={[styles.reviewLabel, { color: theme.textSecondary }]}
+                >
+                  Victims:
+                </Text>
+                {formData.victims.map((victim, index) => (
+                  <Text
+                    key={index}
+                    style={[styles.reviewValue, { color: theme.text }]}
+                  >
+                    {victim.name || `Victim ${index + 1}`}
+                    {victim.contact ? ` | ${victim.contact}` : ""}
+                  </Text>
+                ))}
+              </>
+            )}
+
+          {formData.suspects && formData.suspects.length > 0 && (
             <>
               <Text
                 style={[styles.reviewLabel, { color: theme.textSecondary }]}
               >
-                Suspect:
+                Suspects:
               </Text>
-              <Text style={[styles.reviewValue, { color: theme.text }]}>
-                {formData.Suspect_Description}
-              </Text>
+              {formData.suspects.map((suspect, index) => (
+                <View key={index}>
+                  {suspect.description && (
+                    <Text style={[styles.reviewValue, { color: theme.text }]}>
+                      Description: {suspect.description}
+                    </Text>
+                  )}
+                  {suspect.vehicle && (
+                    <Text style={[styles.reviewValue, { color: theme.text }]}>
+                      Vehicle: {suspect.vehicle}
+                    </Text>
+                  )}
+                </View>
+              ))}
             </>
           )}
 
-          {formData.Suspect_Vehicle && (
-            <>
-              <Text
-                style={[styles.reviewLabel, { color: theme.textSecondary }]}
-              >
-                Suspect Vehicle:
-              </Text>
-              <Text style={[styles.reviewValue, { color: theme.text }]}>
-                {formData.Suspect_Vehicle}
-              </Text>
-            </>
-          )}
-
-          {formData.Witness_Info && (
+          {formData.witnesses && formData.witnesses.length > 0 && (
             <>
               <Text
                 style={[styles.reviewLabel, { color: theme.textSecondary }]}
               >
                 Witnesses:
               </Text>
-              <Text style={[styles.reviewValue, { color: theme.text }]}>
-                {formData.Witness_Info}
-              </Text>
+              {formData.witnesses.map((witness, index) => (
+                <Text
+                  key={index}
+                  style={[styles.reviewValue, { color: theme.text }]}
+                >
+                  {witness.info || `Witness ${index + 1}`}
+                </Text>
+              ))}
             </>
           )}
         </View>
-
-        {formData.Media_Attached && (
+        <Text> </Text>{" "}
+        {formData.media && formData.media.length > 0 && (
           <View style={styles.reviewSection}>
             <Text style={[styles.reviewSectionTitle, { color: theme.primary }]}>
               Evidence and Media
@@ -164,8 +192,57 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({
               Media Attached:
             </Text>
             <Text style={[styles.reviewValue, { color: theme.text }]}>
-              Yes (1 item)
+              Yes ({formData.media.length} item
+              {formData.media.length !== 1 ? "s" : ""})
             </Text>
+            {formData.media.map((item, index) => (
+              <View key={index} style={styles.mediaReviewItem}>
+                <Text
+                  style={[
+                    styles.reviewValue,
+                    { color: theme.text, marginLeft: 12 },
+                  ]}
+                >
+                  • {item.file_name_original} ({item.media_type})
+                </Text>
+                {item.isUploaded === false && (
+                  <Text
+                    style={[
+                      styles.uploadStatusText,
+                      { color: theme.textSecondary, marginLeft: 12 },
+                    ]}
+                  >
+                    Ready to upload on submission
+                  </Text>
+                )}
+              </View>
+            ))}
+            {formData.media.some((item) => item.isUploaded === false) && (
+              <View
+                style={[
+                  styles.uploadNoticeBox,
+                  {
+                    backgroundColor: theme.progressBackground,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <MaterialIcons
+                  name="cloud-upload"
+                  size={16}
+                  color={theme.primary}
+                />
+                <Text
+                  style={[
+                    styles.uploadNoticeText,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  Media files will be uploaded securely when you submit this
+                  report
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -235,6 +312,28 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 13,
     lineHeight: 18,
+  },
+  mediaReviewItem: {
+    marginBottom: 8,
+  },
+  uploadStatusText: {
+    fontSize: 12,
+    fontStyle: "italic",
+    marginTop: 2,
+  },
+  uploadNoticeBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  uploadNoticeText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 12,
+    lineHeight: 16,
   },
 });
 

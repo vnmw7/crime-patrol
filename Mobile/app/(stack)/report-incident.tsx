@@ -18,17 +18,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { submitReport } from "../../lib/appwrite";
+import * as Location from "expo-location";
+import {
+  submitNormalizedReport,
+  getCurrentUser,
+  APPWRITE_CRIME_PATROL_BUCKET_ID,
+} from "../../lib/appwrite";
+import { uploadToCloudinary } from "../../lib/cloudinary"; // Import Cloudinary upload function
+import { testAppwriteConnection } from "../../lib/testConnection"; // Add connection test
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
-import { Asset } from "expo-asset";
-import { Storage, ID } from "appwrite"; // Changed: Removed InputFile
-import {
-  client as appwriteClient,
-  APPWRITE_BUCKET_ID,
-  createInputFileFromUrl, // Corrected import
-} from "../../lib/appwrite"; // Import appwrite client and bucket ID
 
 // Import theme
 import { themeColors } from "../theme/colors";
@@ -52,39 +52,45 @@ const ReportScreen = () => {
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
 
   // Section navigation state
-  const [currentSection, setCurrentSection] = useState(0); // State for report form data - comprehensive crime report fields  const [formData, setFormData] = useState<FormData>({
+  const [currentSection, setCurrentSection] = useState(0);
 
+  // State for report form data - comprehensive crime report fields
   const [formData, setFormData] = useState<FormData>({
     // Incident Information
-    Incident_Type: "",
-    Incident_Date: new Date(),
-    Incident_Time: new Date(),
-    Is_In_Progress: false,
-    Description: "",
+    incident_type: "",
+    incident_date: new Date(),
+    incident_time: new Date(),
+    is_in_progress: false,
+    description: "",
 
-    // Location Information
-    Location: MOCK_LOCATION,
-    Location_Type: "",
-    Location_Details: "",
+    location: {
+      address: MOCK_LOCATION,
+      type: "",
+      details: "",
+      latitude: undefined,
+      longitude: undefined,
+    },
 
-    // People Involved
-    Reporter_Name: "",
-    Reporter_Phone: "",
-    Reporter_Email: "",
-    Is_Victim_Reporter: true,
-    Victim_Name: "",
-    Victim_Contact: "",
-    Suspect_Description: "",
-    Suspect_Vehicle: "",
-    Witness_Info: "",
-    Media_Attachments: [],
+    reporter_info: {
+      name: "",
+      phone: "",
+      email: "",
+    },
+    is_victim_reporter: true,
+
+    // People Involved (arrays to support multiple entries)
+    victims: [],
+    suspects: [],
+    witnesses: [], // Media attachments
+    media: [],
   });
 
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // const [audio, setAudio] = useState<string | null>(null); // Removed, using formData.Media_Attachments
+  const [isLoadingGPS, setIsLoadingGPS] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  // const [sound, setSound] = useState<Audio.Sound | null>(null); // Commented out as loadAndPlaySound is not currently used
 
   // Animation values for interaction feedback
   const selectorScale = useRef(new Animated.Value(1)).current;
@@ -98,13 +104,13 @@ const ReportScreen = () => {
       [field]: value,
     }));
   };
-
   useEffect(() => {
     (async () => {
       const cameraRollStatus =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
       const audioRecordingStatus = await Audio.requestPermissionsAsync();
+      const locationStatus = await Location.requestForegroundPermissionsAsync(); // Added location permission
 
       if (cameraRollStatus.status !== "granted") {
         Alert.alert(
@@ -124,70 +130,204 @@ const ReportScreen = () => {
           "Sorry, we need microphone permissions for audio recording!",
         );
       }
+      if (locationStatus.status !== "granted") {
+        // Added check for location permission
+        Alert.alert(
+          "Permissions Denied",
+          "Permission to access location was denied. You can enable it in settings.",
+        );
+      }
+
+      // Test Appwrite connection
+      console.log("Testing Appwrite connection...");
+      const connectionResult = await testAppwriteConnection();
+      if (!connectionResult.success) {
+        console.error(
+          "Appwrite connection test failed:",
+          connectionResult.error,
+        );
+      }
     })();
   }, []);
 
+  // Fetch current user's email and populate it in the form
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (currentUser && currentUser.email) {
+          updateFormData("reporter_info", {
+            name: "",
+            phone: "",
+            email: currentUser.email,
+          });
+        }
+      } catch (error) {
+        console.log("Could not fetch user email:", error);
+        // Don't show an alert, just continue without email
+      }
+    };
+
+    fetchUserEmail();
+  }, []);
+
+  const fetchAndSetCurrentLocation = async () => {
+    triggerHaptic();
+    let { status } = await Location.requestForegroundPermissionsAsync(); // Re-check/request if needed
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Denied",
+        "Permission to access location was denied. Please enable it in settings to use this feature.",
+      );
+      return;
+    }
+
+    try {
+      // Use dedicated GPS loading state
+      setIsLoadingGPS(true);
+      Alert.alert(
+        "Fetching Location",
+        "Getting your current GPS coordinates...",
+      );
+      let locationData = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High, // Request high accuracy
+      });
+      updateFormData("location", {
+        ...formData.location,
+        latitude: locationData.coords.latitude,
+        longitude: locationData.coords.longitude,
+      });
+      // Optionally, you could try to reverse geocode here to also update the address field
+      // For now, just alerting that coordinates are set.
+      Alert.alert(
+        "Location Updated",
+        `Latitude: ${locationData.coords.latitude.toFixed(5)}, Longitude: ${locationData.coords.longitude.toFixed(5)} has been set. You may still want to verify the street address.`,
+      );
+    } catch (error: any) {
+      console.error("Error getting location", error);
+      let errorMessage = "Failed to get current location.";
+      if (error.message.includes("Location services are disabled")) {
+        errorMessage =
+          "Location services are disabled. Please enable them in your device settings.";
+      } else if (
+        error.message.includes("Permission to access location was denied")
+      ) {
+        errorMessage =
+          "Permission to access location was denied. Please enable it in app settings.";
+      }
+      Alert.alert("Location Error", errorMessage);
+    } finally {
+      setIsLoadingGPS(false);
+    }
+  };
   const pickImageFromGallery = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images" as MediaType], // Use string literal cast to MediaType
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.7, // Reduced for better performance
+      base64: false, // Don't include base64 data
     });
 
     if (!result.canceled && result.assets) {
-      await uploadMedia(
-        result.assets[0].uri,
-        result.assets[0].mimeType || "image/jpeg",
-      );
+      // Store local file for preview - upload will happen on submission
+      const localAttachment = {
+        file_id: `local_${Date.now()}`,
+        media_type: "photo" as const,
+        file_name_original:
+          result.assets[0].uri.split("/").pop() || "image.jpg",
+        display_order: formData.media?.length || 0,
+        url: result.assets[0].uri,
+        localUri: result.assets[0].uri, // Store local URI
+        mimeType: result.assets[0].mimeType || "image/jpeg",
+        appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
+        isUploaded: false, // Not uploaded yet
+      };
+
+      // Add to media for preview
+      updateFormData("media", [...(formData.media || []), localAttachment]);
     }
   };
-
   const takePhotoWithCamera = async () => {
     let result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images" as MediaType], // Use string literal cast to MediaType
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.7, // Reduced for better performance
+      base64: false, // Don't include base64 data
     });
 
     if (!result.canceled && result.assets) {
-      await uploadMedia(
-        result.assets[0].uri,
-        result.assets[0].mimeType || "image/jpeg",
-      );
+      // Store local file for preview - upload will happen on submission
+      const localAttachment = {
+        file_id: `local_${Date.now()}`,
+        media_type: "photo" as const,
+        file_name_original:
+          result.assets[0].uri.split("/").pop() || "photo.jpg",
+        display_order: formData.media?.length || 0,
+        url: result.assets[0].uri,
+        localUri: result.assets[0].uri,
+        mimeType: result.assets[0].mimeType || "image/jpeg",
+        appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
+        isUploaded: false,
+      };
+
+      updateFormData("media", [...(formData.media || []), localAttachment]);
     }
   };
-
   const pickVideoFromGallery = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["videos" as MediaType], // Use string literal cast to MediaType
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
       allowsEditing: true,
       aspect: [16, 9],
-      quality: 1,
+      quality: ImagePicker.UIImagePickerControllerQualityType.Medium, // Better for file size
+      videoMaxDuration: 60, // Limit to 60 seconds
     });
 
     if (!result.canceled && result.assets) {
-      await uploadMedia(
-        result.assets[0].uri,
-        result.assets[0].mimeType || "video/mp4",
-      );
+      // Store local file for preview - upload will happen on submission
+      const localAttachment = {
+        file_id: `local_${Date.now()}`,
+        media_type: "video" as const,
+        file_name_original:
+          result.assets[0].uri.split("/").pop() || "video.mp4",
+        display_order: formData.media?.length || 0,
+        url: result.assets[0].uri,
+        localUri: result.assets[0].uri,
+        mimeType: result.assets[0].mimeType || "video/mp4",
+        appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
+        isUploaded: false,
+      };
+
+      updateFormData("media", [...(formData.media || []), localAttachment]);
     }
   };
-
   const recordVideoWithCamera = async () => {
     let result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["videos" as MediaType], // Use string literal cast to MediaType
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
       allowsEditing: true,
       aspect: [16, 9],
-      quality: 1,
+      quality: ImagePicker.UIImagePickerControllerQualityType.Medium, // Better for file size
+      videoMaxDuration: 60, // Limit to 60 seconds
     });
 
     if (!result.canceled && result.assets) {
-      uploadMedia(result.assets[0].uri, result.assets[0].mimeType);
+      // Store local file for preview - upload will happen on submission
+      const localAttachment = {
+        file_id: `local_${Date.now()}`,
+        media_type: "video" as const,
+        file_name_original:
+          result.assets[0].uri.split("/").pop() || "video.mp4",
+        display_order: formData.media?.length || 0,
+        url: result.assets[0].uri,
+        localUri: result.assets[0].uri,
+        mimeType: result.assets[0].mimeType || "video/mp4",
+        appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
+        isUploaded: false,
+      };
+      updateFormData("media", [...(formData.media || []), localAttachment]);
     }
   };
-
   const pickAudioFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -200,10 +340,20 @@ const ReportScreen = () => {
         result.assets &&
         result.assets.length > 0
       ) {
-        await uploadMedia(
-          result.assets[0].uri,
-          result.assets[0].mimeType || "audio/mpeg",
-        );
+        // Store local file for preview - upload will happen on submission
+        const localAttachment = {
+          file_id: `local_${Date.now()}`,
+          media_type: "audio" as const,
+          file_name_original: result.assets[0].name || "audio.mp3",
+          display_order: formData.media?.length || 0,
+          url: result.assets[0].uri,
+          localUri: result.assets[0].uri,
+          mimeType: result.assets[0].mimeType || "audio/mpeg",
+          appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
+          isUploaded: false,
+        };
+
+        updateFormData("media", [...(formData.media || []), localAttachment]);
       }
     } catch (err: any) {
       Alert.alert(
@@ -245,11 +395,20 @@ const ReportScreen = () => {
         allowsRecordingIOS: false,
       });
       if (uri) {
-        // setAudio(uri); // Removed
-        // setImage(null); // Removed
-        // setVideo(null); // Removed
-        // await loadAndPlaySound(uri); // Playback can be optional
-        await uploadMedia(uri, "audio/m4a"); // Adjust mime type if needed
+        // Store recorded audio for preview - upload will happen on submission
+        const localAttachment = {
+          file_id: `local_${Date.now()}`,
+          media_type: "audio" as const,
+          file_name_original: `recording_${Date.now()}.m4a`,
+          display_order: formData.media?.length || 0,
+          url: uri,
+          localUri: uri,
+          mimeType: "audio/m4a",
+          appwrite_bucket_id: APPWRITE_CRIME_PATROL_BUCKET_ID,
+          isUploaded: false,
+        };
+
+        updateFormData("media", [...(formData.media || []), localAttachment]);
       }
     } catch (err: any) {
       Alert.alert(
@@ -278,94 +437,12 @@ const ReportScreen = () => {
   //   }
   // }
 
-  // useEffect(() => { // Commented out as sound state is not currently used
-  //   return sound
+  // useEffect(() => { // Commented out as sound state is not currently used  //   return sound
   //     ? () => {
   //         sound.unloadAsync();
   //       }
   //     : undefined;
   // }, [sound]);
-
-  const uploadMedia = async (fileUri: string, fileType?: string) => {
-    if (!fileUri) {
-      Alert.alert("Error", "No file URI provided for upload.");
-      return;
-    }
-    setIsSubmitting(true); // Indicate loading state
-    try {
-      const asset = Asset.fromURI(fileUri);
-      await asset.downloadAsync();
-
-      if (!asset.localUri) {
-        Alert.alert("Error", "Failed to get local URI for upload.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      const actualFileType =
-        fileType || asset.type || "application/octet-stream";
-      const fileName =
-        asset.name || `upload.${asset.localUri.split(".").pop()}`;
-
-      // Appwrite upload logic
-      if (!APPWRITE_BUCKET_ID) {
-        Alert.alert(
-          "Error",
-          "Appwrite Bucket ID is not configured. Cannot upload file.",
-        );
-        console.error(
-          "Appwrite Bucket ID is missing in appwrite.ts or environment variables.",
-        );
-        setIsSubmitting(false);
-        return;
-      }
-      const storage = new Storage(appwriteClient);
-
-      Alert.alert("Uploading...", `Uploading ${fileName}...`);
-
-      // console.log("Verifying InputFile import:", InputFile); // Commented out or removed
-
-      const fileToUpload = await createInputFileFromUrl(
-        asset.localUri,
-        fileName,
-        actualFileType,
-      ); // Corrected function call
-
-      const response = await storage.createFile(
-        APPWRITE_BUCKET_ID,
-        ID.unique(),
-        fileToUpload,
-      );
-
-      console.log("Appwrite upload response:", response);
-      Alert.alert(
-        "Upload Successful",
-        `${fileName} has been uploaded successfully! File ID: ${response.$id}`,
-      );
-
-      const newAttachment = {
-        url: asset.localUri, // Changed from uri to url
-        type: actualFileType,
-        name: fileName,
-        appwrite_file_id: response.$id,
-        appwrite_bucket_id: APPWRITE_BUCKET_ID,
-      };
-
-      updateFormData("Media_Attachments", [
-        ...(formData.Media_Attachments || []),
-        newAttachment,
-      ]);
-    } catch (error: any) {
-      console.error("Upload error:", error);
-      Alert.alert(
-        "Error",
-        "Upload failed: " + (error.message || "Unknown error"),
-      );
-    } finally {
-      setIsSubmitting(false); // Reset loading state
-    }
-  };
-
   // Navigation between sections
   const goToNextSection = () => {
     if (validateCurrentSection()) {
@@ -383,10 +460,8 @@ const ReportScreen = () => {
           duration: 100,
           useNativeDriver: true,
         }),
-      ]).start();
-
-      // If this is the emergency section and incident is in progress
-      if (currentSection === 0 && formData.Is_In_Progress) {
+      ]).start(); // If this is the emergency section and incident is in progress
+      if (currentSection === 0 && formData.is_in_progress) {
         Alert.alert(
           "Emergency Alert",
           "If this incident is happening now and requires immediate attention, please call emergency services.",
@@ -438,43 +513,44 @@ const ReportScreen = () => {
       scrollViewRef.current.scrollTo({ y: 0, animated: true });
     }
   };
-
-  // Generalized validation function
-  const validateSection = (
-    rules: { field: keyof FormData; message: string }[],
-  ) => {
-    for (const rule of rules) {
-      if (!formData[rule.field]) {
-        Alert.alert("Missing Information", rule.message);
-        return false;
-      }
+  // Updated validation functions for new structure
+  const validateIncidentSection = () => {
+    if (!formData.incident_type) {
+      Alert.alert("Missing Information", "Please select an incident type");
+      return false;
+    }
+    if (!formData.description) {
+      Alert.alert(
+        "Missing Information",
+        "Please provide a description of what happened",
+      );
+      return false;
     }
     return true;
   };
 
-  const validateIncidentSection = () =>
-    validateSection([
-      { field: "Incident_Type", message: "Please select an incident type" },
-      {
-        field: "Description",
-        message: "Please provide a description of what happened",
-      },
-    ]);
+  const validateLocationSection = () => {
+    if (!formData.location?.address) {
+      Alert.alert("Missing Information", "Please enter a location");
+      return false;
+    }
+    return true;
+  };
 
-  const validateLocationSection = () =>
-    validateSection([
-      { field: "Location", message: "Please enter a location" },
-      { field: "Location_Type", message: "Please select a location type" },
-    ]);
-
-  const validatePeopleSection = () =>
-    validateSection([
-      { field: "Reporter_Name", message: "Please enter your name" },
-      {
-        field: "Reporter_Phone",
-        message: "Please enter your phone number for follow-up",
-      },
-    ]);
+  const validatePeopleSection = () => {
+    if (!formData.reporter_info?.name) {
+      Alert.alert("Missing Information", "Please enter your name");
+      return false;
+    }
+    if (!formData.reporter_info?.phone) {
+      Alert.alert(
+        "Missing Information",
+        "Please enter your phone number for follow-up",
+      );
+      return false;
+    }
+    return true;
+  };
 
   const validateCurrentSection = () => {
     switch (currentSection) {
@@ -545,6 +621,85 @@ const ReportScreen = () => {
     }
   };
 
+  // Batch upload all local media files before submission
+  const uploadAllMedia = async () => {
+    const localMediaItems =
+      formData.media?.filter((item) => !item.isUploaded) || [];
+
+    if (localMediaItems.length === 0) {
+      return formData; // No media to upload
+    }
+
+    setIsUploading(true);
+    let uploadedCount = 0;
+    const updatedMedia = [...(formData.media || [])];
+
+    try {
+      for (const mediaItem of localMediaItems) {
+        if (!mediaItem.localUri) {
+          console.warn("Media item missing localUri, skipping:", mediaItem);
+          continue;
+        }
+
+        setUploadProgress((uploadedCount / localMediaItems.length) * 100);
+
+        // Upload to Cloudinary
+        const uploadResponse = await uploadToCloudinary(
+          mediaItem.localUri,
+          mediaItem.file_name_original,
+          mediaItem.media_type,
+          (progress: number) => {
+            const overallProgress =
+              ((uploadedCount + progress / 100) / localMediaItems.length) * 100;
+            setUploadProgress(overallProgress);
+          },
+        );
+
+        // Update the media item with upload details
+        const updatedMediaItem = {
+          ...mediaItem,
+          file_id: uploadResponse.public_id,
+          secure_url: uploadResponse.secure_url,
+          public_id: uploadResponse.public_id,
+          cloudinary_url: uploadResponse.url,
+          format: uploadResponse.format,
+          isUploaded: true,
+        };
+
+        // Replace the local item with uploaded item
+        const itemIndex = updatedMedia.findIndex(
+          (item) => item.file_id === mediaItem.file_id,
+        );
+        if (itemIndex !== -1) {
+          updatedMedia[itemIndex] = updatedMediaItem;
+        }
+
+        uploadedCount++;
+      }
+
+      // Return updated form data with uploaded media
+      return {
+        ...formData,
+        media: updatedMedia,
+      };
+    } catch (error: any) {
+      console.error("Batch upload error:", error);
+
+      let errorMessage = "Failed to upload media: ";
+      if (error.message?.includes("Network")) {
+        errorMessage +=
+          "Network connection failed. Please check your internet connection.";
+      } else {
+        errorMessage += error.message || "Unknown error occurred";
+      }
+
+      throw new Error(errorMessage);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
   // Submit the report with animation
   const handleSubmit = async () => {
     triggerHaptic();
@@ -564,22 +719,29 @@ const ReportScreen = () => {
     ]).start();
 
     setIsSubmitting(true);
-
     console.log("Submitting report:", formData);
-    await submitReport(formData) // Pass formData directly
-      .then(() => {
-        setIsSubmitting(false);
-        Alert.alert(
-          "Report Submitted",
-          "Your crime report has been successfully submitted. A case number will be sent to your phone.",
-          [{ text: "OK", onPress: () => router.back() }],
-        );
-      })
-      .catch((error) => {
-        console.error("Error submitting report:", error);
-        Alert.alert("Error", "There was an error submitting your report.");
-        setIsSubmitting(false);
-      });
+
+    try {
+      // First, upload all media files
+      const updatedFormData = await uploadAllMedia();
+
+      // Then submit the report with uploaded media URLs
+      await submitNormalizedReport(updatedFormData);
+
+      setIsSubmitting(false);
+      Alert.alert(
+        "Report Submitted",
+        "Your crime report has been successfully submitted. A case number will be sent to your phone.",
+        [{ text: "OK", onPress: () => router.back() }],
+      );
+    } catch (error: any) {
+      console.error("Error submitting report:", error);
+      Alert.alert(
+        "Error",
+        `There was an error submitting your report: ${error.message || "Unknown error"}`,
+      );
+      setIsSubmitting(false);
+    }
   };
 
   // Calculate progress based on current section
@@ -671,6 +833,8 @@ const ReportScreen = () => {
             {...commonProps}
             triggerHaptic={triggerHaptic}
             selectorScale={selectorScale}
+            onGetGPS={fetchAndSetCurrentLocation} // Passed prop
+            isLoadingGPS={isLoadingGPS}
           />
         );
       case 2:
@@ -685,6 +849,8 @@ const ReportScreen = () => {
             mediaButtonsScale={mediaButtonsScale}
             handleAttachMedia={handleAttachMedia}
             recording={!!recording} // Pass recording state (as boolean)
+            isUploading={isUploading}
+            uploadProgress={uploadProgress}
           />
         );
       case 4:

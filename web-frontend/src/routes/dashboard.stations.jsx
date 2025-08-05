@@ -1,28 +1,15 @@
+import {
+  emergencyRespondents,
+  policeStations,
+} from "../constants/policeStationsData";
+
 export default function DashboardStations() {
-  const stations = [
-    {
-      id: 1,
-      name: "Central Precinct",
-      address: "123 Police Plaza",
-      phone: "555-1234",
-    },
-    {
-      id: 2,
-      name: "North Station",
-      address: "456 Patrol Ave",
-      phone: "555-5678",
-    },
-    {
-      id: 3,
-      name: "South Division",
-      address: "789 Copse Rd",
-      phone: "555-9012",
-    },
-  ];
+  const stations = policeStations;
+  const responders = emergencyRespondents;
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
+      <h1 className="text-2xl font-semibold text-gray-900 text-white mb-6">
         Police Stations
       </h1>
 
@@ -30,16 +17,46 @@ export default function DashboardStations() {
         {stations.map((station) => (
           <div
             key={station.id}
-            className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow"
+            className="bg-white bg-gray-800 p-6 rounded-lg shadow"
           >
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-gray-900 text-black">
               {station.name}
             </h3>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            <p className="mt-2 text-sm text-gray-600 text-gray-400">
               {station.address}
+            </p>{" "}
+            <p className="mt-1 text-sm text-gray-600 text-gray-400">
+              Phone: {station.contactNumbers.join(", ")}
             </p>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Phone: {station.phone}
+            <p className="mt-1 text-sm text-gray-600 text-gray-400">
+              Barangay: {station.barangay}
+            </p>
+            {/* Optional: Add 'View on Map' button or details link */}
+          </div>
+        ))}{" "}
+      </div>
+
+      <h1 className="text-2xl font-semibold text-gray-900 text-white mb-6 mt-12">
+        Emergency Respondents
+      </h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {responders.map((responder) => (
+          <div
+            key={responder.id}
+            className="bg-white bg-gray-800 p-6 rounded-lg shadow border-l-4 border-red-500"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 text-black">
+              {responder.name}
+            </h3>
+            <p className="mt-2 text-sm text-gray-600 text-gray-400">
+              {responder.address}
+            </p>
+            <p className="mt-1 text-sm text-gray-600 text-gray-400">
+              Phone: {responder.contactNumbers.join(", ")}
+            </p>
+            <p className="mt-1 text-sm text-red-600 text-red-400 font-medium">
+              Emergency Service
             </p>
             {/* Optional: Add 'View on Map' button or details link */}
           </div>

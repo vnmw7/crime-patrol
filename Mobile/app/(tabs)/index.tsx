@@ -5,14 +5,19 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
+  Animated,
   Platform,
   useColorScheme,
-  Animated,
+  Modal,
+  Alert,
+  Linking,
+  PermissionsAndroid,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState, useRef, useEffect } from "react";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import {
   Ionicons,
   MaterialCommunityIcons,
@@ -21,102 +26,175 @@ import {
 import { useRouter } from "expo-router";
 import { getCurrentUser, getCurrentSession } from "../../lib/appwrite";
 import { usePostHog } from "posthog-react-native";
+import BttnEmergencyPing, {
+  getCurrentLocation,
+} from "../_components/bttn_emergency_ping";
 
-// Mock user state - in a real app, this would come from authentication
-const mockUser = {
-  isLoggedIn: false,
-  name: "User",
-  avatar: null,
-};
+interface User {
+  isLoggedIn: boolean;
+  name: string;
+  avatar?: string | null;
+}
 
-// App theme colors
 const themeColors = {
   light: {
-    primary: "#0095F6", // Instagram blue as primary color
-    secondary: "#FF3B30", // Red for danger/emergency
-    tertiary: "#007AFF", // Blue for secondary actions
-    background: "#FAFAFA", // Light background
-    card: "#FFFFFF", // White card background
-    text: "#262626", // Dark text
-    textSecondary: "#8E8E8E", // Gray secondary text
-    border: "#DBDBDB", // Light gray border
-    inactiveTab: "#8E8E8E", // Inactive tab color
+    primary: "#0095F6",
+    secondary: "#FF3B30",
+    tertiary: "#007AFF",
+    background: "#FAFAFA",
+    card: "#FFFFFF",
+    text: "#262626",
+    textSecondary: "#8E8E8E",
+    border: "#DBDBDB",
+    inactiveTab: "#8E8E8E",
   },
   dark: {
-    primary: "#0095F6", // Keep Instagram blue as primary
-    secondary: "#FF453A", // Slightly adjusted red for dark mode
-    tertiary: "#0A84FF", // Adjusted blue for dark mode
-    background: "#121212", // Dark background
-    card: "#1E1E1E", // Dark card background
-    text: "#FFFFFF", // White text
-    textSecondary: "#ABABAB", // Light gray secondary text
-    border: "#2C2C2C", // Dark gray border
-    inactiveTab: "#6E6E6E", // Inactive tab color for dark mode
+    primary: "#0095F6",
+    secondary: "#FF453A",
+    tertiary: "#0A84FF",
+    background: "#121212",
+    card: "#1E1E1E",
+    text: "#FFFFFF",
+    textSecondary: "#ABABAB",
+    border: "#2C2C2C",
+    inactiveTab: "#6E6E6E",
   },
 };
 
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
-  const [user, setUser] = useState(mockUser);
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = themeColors[colorScheme === "dark" ? "dark" : "light"];
   const posthog = usePostHog();
+  const [dictCurrentLocation, setDictCurrentLocation] = useState<{
+    dblLatitude: number;
+    dblLongitude: number;
+  }>({ dblLatitude: 0, dblLongitude: 0 });
 
+  // Call permission modal state
+  const [showCallPermissionModal, setShowCallPermissionModal] = useState(false);
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
   useEffect(() => {
     posthog.capture("Home Screen Viewed");
+
+    // Check CALL_PHONE permission on screen load
+    const checkInitialPermissions = async () => {
+      const hasCallPermission = await checkCallPermission();
+      if (!hasCallPermission) {
+        setShowCallPermissionModal(true);
+      }
+    };
+
+    checkInitialPermissions();
   }, [posthog]);
 
-  // Animated values for button feedback
-  const panicButtonScale = useRef(new Animated.Value(1)).current;
-  const reportButtonScale = useRef(new Animated.Value(1)).current;
+  // Re-check permission when app comes to foreground or modal is visible
+  useEffect(() => {
+    if (showCallPermissionModal) {
+      const recheckPermission = async () => {
+        const hasCallPermission = await checkCallPermission();
+        if (hasCallPermission) {
+          setShowCallPermissionModal(false);
+        }
+      };
 
-  // Function to trigger haptic feedback
+      // Check immediately
+      recheckPermission();
+
+      // Set up an interval to check periodically while modal is visible
+      const interval = setInterval(recheckPermission, 2000);
+
+      return () => clearInterval(interval);
+    }
+  }, [showCallPermissionModal]);
+
+  const reportButtonScale = useRef(new Animated.Value(1)).current;
   const triggerHaptic = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
+  // Function to check CALL_PHONE permission
+  const checkCallPermission = async () => {
+    if (Platform.OS !== "android") {
+      return true; // iOS doesn't need explicit CALL_PHONE permission
+    }
+
+    try {
+      const hasPermission = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.CALL_PHONE,
+      );
+      return hasPermission;
+    } catch (error) {
+      console.error("Error checking CALL_PHONE permission:", error);
+      return false;
+    }
+  };
+
+  // Function to request CALL_PHONE permission
+  const requestCallPermission = async () => {
+    if (Platform.OS !== "android") {
+      return true;
+    }
+
+    setIsCheckingPermissions(true);
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.CALL_PHONE,
+        {
+          title: "Phone Call Permission",
+          message:
+            "Crime Patrol needs phone call permission to enable emergency calling features",
+          buttonNeutral: "Ask Me Later",
+          buttonNegative: "Cancel",
+          buttonPositive: "Grant Permission",
+        },
+      );
+
+      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        console.log("CALL_PHONE permission granted");
+        setShowCallPermissionModal(false);
+        return true;
+      } else {
+        console.log("CALL_PHONE permission denied");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error requesting CALL_PHONE permission:", error);
+      return false;
+    } finally {
+      setIsCheckingPermissions(false);
+    }
+  };
+
+  // Function to open app settings
+  const openAppSettings = () => {
+    triggerHaptic();
+    Alert.alert(
+      "Permission Required",
+      "Please enable phone call permission in your device settings to use emergency calling features.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Open Settings",
+          onPress: () => Linking.openSettings(),
+        },
+      ],
+    );
+  };
+
   const navigateToMenu = () => {
     triggerHaptic();
-    router.push("/menu" as any); // Corrected path with type assertion
+    router.push("/menu" as any);
   };
-
-  // Function to handle the panic button press with animation
-  const handlePanic = () => {
-    triggerHaptic();
-    // Add animation
-    Animated.sequence([
-      Animated.timing(panicButtonScale, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(panicButtonScale, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Add logic for sending location to authorities
-    console.log("PANIC button pressed - sending location");
-    // Show confirmation alert
-  };
-
-  // Function to toggle user login status (for demo purposes)
   const toggleLogin = () => {
     triggerHaptic();
-    setUser({
-      ...user,
-      isLoggedIn: !user.isLoggedIn,
-    });
+    router.push("/(stack)/auth");
   };
-
-  // Function to navigate to the report screen with animation
   const navigateToReport = () => {
     triggerHaptic();
 
-    // Add animation
     Animated.sequence([
       Animated.timing(reportButtonScale, {
         toValue: 0.95,
@@ -154,9 +232,38 @@ const HomeScreen = () => {
         router.replace("/(stack)/auth");
       }
     };
+    const getLocation = async () => {
+      try {
+        // Request location permissions
+        const { status } = await Location.requestForegroundPermissionsAsync();
+
+        if (status !== "granted") {
+          console.log("Location permission denied");
+          return;
+        }
+
+        // Get current location
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+        const { latitude, longitude } = currentLocation.coords;
+
+        // Update location state
+        setDictCurrentLocation({
+          dblLatitude: latitude,
+          dblLongitude: longitude,
+        });
+
+        console.log("Location obtained:", { latitude, longitude });
+      } catch (error) {
+        console.error("Error getting location:", error);
+      }
+    };
 
     checkSession();
-  }, [router]);
+    getLocation();
+  }, [router, posthog]);
 
   return (
     <View
@@ -187,11 +294,11 @@ const HomeScreen = () => {
           style={styles.menuButton} // Added style for menu button
         >
           <Ionicons name="menu" size={30} color={theme.text} />
-        </TouchableOpacity>
+        </TouchableOpacity>{" "}
         <Text style={[styles.instagramLogo, { color: theme.text }]}>
           Crime Patrol
         </Text>
-        {user.isLoggedIn ? (
+        {user?.isLoggedIn ? (
           <TouchableOpacity
             onPress={() => {
               triggerHaptic();
@@ -217,8 +324,9 @@ const HomeScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {" "}
         {/* Instagram Story-like User Status */}
-        {user.isLoggedIn && (
+        {user?.isLoggedIn && (
           <View style={styles.userStatusBar}>
             <View
               style={[
@@ -232,16 +340,15 @@ const HomeScreen = () => {
               {user.name}
             </Text>
           </View>
-        )}
-
+        )}{" "}
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <Text style={[styles.welcomeText, { color: theme.text }]}>
-            {user.isLoggedIn
+            {user?.isLoggedIn
               ? `Welcome, ${user.name}`
               : "Stay Safe, Stay Alert"}
           </Text>
-          {!user.isLoggedIn && (
+          {!user?.isLoggedIn && (
             <TouchableOpacity
               style={[styles.signInButton, { backgroundColor: theme.primary }]}
               onPress={toggleLogin}
@@ -252,49 +359,7 @@ const HomeScreen = () => {
             </TouchableOpacity>
           )}
         </View>
-
-        {/* Emergency Buttons (Instagram Post-like Cards) */}
-        <View style={styles.emergencySection}>
-          <View
-            style={[
-              styles.emergencyCard,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-              },
-            ]}
-          >
-            <View style={styles.cardHeader}>
-              <MaterialCommunityIcons
-                name="shield-alert"
-                size={22}
-                color={theme.secondary}
-              />
-              <Text style={[styles.cardTitle, { color: theme.text }]}>
-                Emergency Options
-              </Text>
-            </View>
-
-            {/* Main Action Buttons */}
-            <Animated.View style={{ transform: [{ scale: panicButtonScale }] }}>
-              <TouchableOpacity
-                style={[
-                  styles.panicButton,
-                  { backgroundColor: theme.secondary },
-                ]}
-                onPress={handlePanic}
-                activeOpacity={0.8}
-                accessibilityLabel="Panic button"
-                accessibilityRole="button"
-                accessibilityHint="Press to send emergency alert with your location"
-              >
-                <Ionicons name="warning" size={26} color="#FFF" />
-                <Text style={styles.panicButtonText}>PANIC</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
-        </View>
-
+        <BttnEmergencyPing />
         {/* Report Incident - Instagram Post-like Card */}
         <Animated.View style={{ transform: [{ scale: reportButtonScale }] }}>
           <View
@@ -355,7 +420,6 @@ const HomeScreen = () => {
             </TouchableOpacity>
           </View>
         </Animated.View>
-
         {/* Location Services - Instagram Post-like Card */}
         <View
           style={[
@@ -366,13 +430,32 @@ const HomeScreen = () => {
             },
           ]}
         >
+          {" "}
           <View style={styles.cardHeader}>
             <Ionicons name="location" size={22} color={theme.primary} />
             <Text style={[styles.cardTitle, { color: theme.text }]}>
               Location Services
             </Text>
-          </View>
-
+          </View>{" "}
+          {(dictCurrentLocation.dblLatitude !== 0 ||
+            dictCurrentLocation.dblLongitude !== 0) && (
+            <View
+              style={[
+                styles.locationInfo,
+                {
+                  backgroundColor:
+                    colorScheme === "dark" ? "#2C2C2C" : "#F8F8F8",
+                },
+              ]}
+            >
+              <Text
+                style={[styles.locationText, { color: theme.textSecondary }]}
+              >
+                Current Location: {dictCurrentLocation.dblLatitude.toFixed(4)},{" "}
+                {dictCurrentLocation.dblLongitude.toFixed(4)}
+              </Text>
+            </View>
+          )}
           <View style={styles.locationButtonsContainer}>
             <TouchableOpacity
               style={[
@@ -404,6 +487,38 @@ const HomeScreen = () => {
                     colorScheme === "dark" ? "#2C2C2C" : "#F8F8F8",
                 },
               ]}
+              onPress={async () => {
+                triggerHaptic();
+                const currentLocation = await getCurrentLocation();
+                if (currentLocation) {
+                  setDictCurrentLocation({
+                    dblLatitude: currentLocation.dblLatitude,
+                    dblLongitude: currentLocation.dblLongitude,
+                  });
+                  console.log("Location refreshed:", currentLocation);
+                } else {
+                  console.log("Failed to get location");
+                }
+              }}
+              activeOpacity={0.7}
+              accessibilityLabel="Refresh Location"
+              accessibilityRole="button"
+            >
+              <Ionicons name="refresh" size={26} color={theme.primary} />
+              <Text style={[styles.locationButtonText, { color: theme.text }]}>
+                Refresh Location
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.locationButtonsContainer}>
+            <TouchableOpacity
+              style={[
+                styles.locationButton,
+                {
+                  backgroundColor:
+                    colorScheme === "dark" ? "#2C2C2C" : "#F8F8F8",
+                },
+              ]}
               onPress={() => {
                 triggerHaptic();
                 console.log("View Police Stations pressed");
@@ -422,9 +537,41 @@ const HomeScreen = () => {
                 Police Stations
               </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.locationButton,
+                {
+                  backgroundColor:
+                    colorScheme === "dark" ? "#2C2C2C" : "#F8F8F8",
+                },
+              ]}
+              onPress={() => {
+                triggerHaptic();
+                if (
+                  dictCurrentLocation.dblLatitude !== 0 ||
+                  dictCurrentLocation.dblLongitude !== 0
+                ) {
+                  console.log("Current location:", {
+                    latitude: dictCurrentLocation.dblLatitude,
+                    longitude: dictCurrentLocation.dblLongitude,
+                  });
+                  // You can use the location data here for other features
+                } else {
+                  console.log("No location available");
+                }
+              }}
+              activeOpacity={0.7}
+              accessibilityLabel="Show Current Location"
+              accessibilityRole="button"
+            >
+              <Ionicons name="locate" size={26} color={theme.primary} />
+              <Text style={[styles.locationButtonText, { color: theme.text }]}>
+                My Location
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
-
         {/* Information Card */}
         <View
           style={[
@@ -445,7 +592,6 @@ const HomeScreen = () => {
               Information
             </Text>
           </View>
-
           <TouchableOpacity
             style={[styles.infoButton, { borderBottomColor: theme.border }]}
             onPress={() => {
@@ -458,11 +604,10 @@ const HomeScreen = () => {
           >
             <Text style={[styles.infoButtonText, { color: theme.text }]}>
               Laws & Safety Guidelines
-            </Text>
+            </Text>{" "}
             <Ionicons name="chevron-forward" size={20} color={theme.primary} />
           </TouchableOpacity>
-
-          {user.isLoggedIn && (
+          {user?.isLoggedIn && (
             <TouchableOpacity
               style={[styles.infoButton, { borderBottomColor: theme.border }]}
               onPress={() => {
@@ -482,8 +627,7 @@ const HomeScreen = () => {
                 color={theme.primary}
               />
             </TouchableOpacity>
-          )}
-
+          )}{" "}
           <TouchableOpacity
             style={[styles.infoButton, { borderBottomColor: theme.border }]}
             onPress={() => {
@@ -500,7 +644,91 @@ const HomeScreen = () => {
             <Ionicons name="chevron-forward" size={20} color={theme.primary} />
           </TouchableOpacity>
         </View>
+        <TouchableOpacity
+          style={[
+            styles.infoButton,
+            { borderBottomColor: theme.border, marginBottom: 20 },
+          ]}
+          onPress={() => {
+            triggerHaptic();
+            router.push("/test_screen");
+          }}
+          activeOpacity={0.7}
+          accessibilityLabel="About"
+          accessibilityRole="button"
+        >
+          <Text style={[styles.infoButtonText, { color: theme.text }]}>
+            Test Screen
+          </Text>{" "}
+        </TouchableOpacity>
       </ScrollView>
+
+      {/* Call Permission Modal */}
+      <Modal
+        visible={showCallPermissionModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {}} // Prevent closing via back button
+      >
+        <View style={styles.modalContainer}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <View style={styles.modalHeader}>
+              <MaterialCommunityIcons
+                name="phone-alert"
+                size={48}
+                color={theme.secondary}
+              />
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Phone Permission Required
+              </Text>
+            </View>
+
+            <Text
+              style={[styles.modalDescription, { color: theme.textSecondary }]}
+            >
+              Crime Patrol needs phone call permission to enable emergency
+              calling features. This permission is essential for the safety
+              features of the app.
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  styles.secondaryButton,
+                  { borderColor: theme.border },
+                ]}
+                onPress={openAppSettings}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.modalButtonText,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  Open Settings
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  styles.primaryButton,
+                  { backgroundColor: theme.primary },
+                ]}
+                onPress={requestCallPermission}
+                disabled={isCheckingPermissions}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalPrimaryButtonText}>
+                  {isCheckingPermissions ? "Requesting..." : "Grant Permission"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -696,6 +924,15 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 8,
   },
+  locationInfo: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  locationText: {
+    fontSize: 12,
+    textAlign: "center",
+  },
   infoButton: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -706,6 +943,97 @@ const styles = StyleSheet.create({
   infoButtonText: {
     fontSize: 15,
     fontWeight: "500",
+  },
+  pingResultContainer: {
+    margin: 12,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  pingResultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  pingResultStatus: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  pingResultMessage: {
+    fontSize: 12,
+    marginBottom: 4,
+    lineHeight: 16,
+  },
+  pingResultTime: {
+    fontSize: 10,
+    fontStyle: "italic",
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  modalContent: {
+    borderRadius: 12,
+    padding: 24,
+    minWidth: 300,
+    maxWidth: 400,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  modalHeader: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginTop: 12,
+    textAlign: "center",
+  },
+  modalDescription: {
+    fontSize: 16,
+    lineHeight: 22,
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  modalButtons: {
+    gap: 12,
+  },
+  modalButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  primaryButton: {
+    // backgroundColor will be set dynamically
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    backgroundColor: "transparent",
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  modalPrimaryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 

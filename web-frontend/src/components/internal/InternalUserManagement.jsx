@@ -2,14 +2,15 @@ import { useEffect, useState } from "react";
 import { account, databases, Query } from "../../lib/appwrite";
 
 const USERS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_USERS_COLLECTION_ID;
-const CONTACTS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_USER_CONTACTS_COLLECTION_ID;
-const DOCUMENTS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_USER_DOCUMENTS_COLLECTION_ID;
+const CONTACTS_COLLECTION_ID = import.meta.env
+  .VITE_APPWRITE_USER_CONTACTS_COLLECTION_ID;
+const DOCUMENTS_COLLECTION_ID = import.meta.env
+  .VITE_APPWRITE_USER_DOCUMENTS_COLLECTION_ID;
 const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
 
 const ROLES = ["Moderator", "Investigator", "Read-Only Analyst"];
 
 export default function InternalUserManagement() {
-
   const [usersList, setUsersList] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [contacts, setContacts] = useState([]);
@@ -80,7 +81,10 @@ export default function InternalUserManagement() {
 
   async function fetchUsers() {
     try {
-      const res = await databases.listDocuments(DATABASE_ID, USERS_COLLECTION_ID);
+      const res = await databases.listDocuments(
+        DATABASE_ID,
+        USERS_COLLECTION_ID
+      );
       setUsersList(res.documents);
     } catch (err) {
       alert("Failed to fetch users: " + err.message);
@@ -89,9 +93,11 @@ export default function InternalUserManagement() {
 
   async function fetchContacts(userId) {
     try {
-      const res = await databases.listDocuments(DATABASE_ID, CONTACTS_COLLECTION_ID, [
-        Query.equal("userId", userId),
-      ]);
+      const res = await databases.listDocuments(
+        DATABASE_ID,
+        CONTACTS_COLLECTION_ID,
+        [Query.equal("userId", userId)]
+      );
       setContacts(res.documents);
     } catch (err) {
       alert("Failed to fetch contacts: " + err.message);
@@ -100,9 +106,11 @@ export default function InternalUserManagement() {
 
   async function fetchDocuments(userId) {
     try {
-      const res = await databases.listDocuments(DATABASE_ID, DOCUMENTS_COLLECTION_ID, [
-        Query.equal("userId", userId),
-      ]);
+      const res = await databases.listDocuments(
+        DATABASE_ID,
+        DOCUMENTS_COLLECTION_ID,
+        [Query.equal("userId", userId)]
+      );
       setDocuments(res.documents);
     } catch (err) {
       alert("Failed to fetch documents: " + err.message);
@@ -206,37 +214,40 @@ export default function InternalUserManagement() {
   }
 
   async function saveDocument() {
-  if (!editingDocumentId) return;
+    if (!editingDocumentId) return;
 
-  try {
-    const currentUser = await account.get();
+    try {
+      const currentUser = await account.get();
 
-    await databases.updateDocument(
-      DATABASE_ID,
-      DOCUMENTS_COLLECTION_ID,
-      editingDocumentId,
-      {
-        documentUrl: documentEditForm.documentUrl,
-        documentType: documentEditForm.documentType,
-        isVerified: documentEditForm.isVerified,
-        verifiedBy: currentUser.Email || currentUser.$id,
-        verifiedAt: documentEditForm.isVerified ? new Date().toISOString() : null,
-      }
-    );
+      await databases.updateDocument(
+        DATABASE_ID,
+        DOCUMENTS_COLLECTION_ID,
+        editingDocumentId,
+        {
+          documentUrl: documentEditForm.documentUrl,
+          documentType: documentEditForm.documentType,
+          isVerified: documentEditForm.isVerified,
+          verifiedBy: currentUser.Email || currentUser.$id,
+          verifiedAt: documentEditForm.isVerified
+            ? new Date().toISOString()
+            : null,
+        }
+      );
 
-    setAuditLogs((prev) => [
-      `${new Date().toISOString()}: Updated document ${documentEditForm.documentUrl} by ${currentUser.email}`,
-      ...prev,
-    ]);
+      setAuditLogs((prev) => [
+        `${new Date().toISOString()}: Updated document ${
+          documentEditForm.documentUrl
+        } by ${currentUser.email}`,
+        ...prev,
+      ]);
 
-    alert("Document updated.");
-    setEditingDocumentId(null);
-    fetchDocuments(selectedUser.$id);
-  } catch (err) {
-    alert("Failed to update document: " + err.message);
+      alert("Document updated.");
+      setEditingDocumentId(null);
+      fetchDocuments(selectedUser.$id);
+    } catch (err) {
+      alert("Failed to update document: " + err.message);
+    }
   }
-}
-
 
   async function addUser() {
     if (!form.contactEmail) {
@@ -246,45 +257,64 @@ export default function InternalUserManagement() {
 
     try {
       // Check for duplicate contact email in contacts collection
-      const existingContacts = await databases.listDocuments(DATABASE_ID, CONTACTS_COLLECTION_ID, [
-        Query.equal("email", form.contactEmail),
-      ]);
+      const existingContacts = await databases.listDocuments(
+        DATABASE_ID,
+        CONTACTS_COLLECTION_ID,
+        [Query.equal("email", form.contactEmail)]
+      );
       if (existingContacts.total > 0) {
         alert("A contact with this email already exists.");
         return;
       }
 
       // 1. Create user (without email)
-      const newUser = await databases.createDocument(DATABASE_ID, USERS_COLLECTION_ID, "unique()", {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        role: form.role,
-        isVerified: form.isVerified,
-      });
+      const newUser = await databases.createDocument(
+        DATABASE_ID,
+        USERS_COLLECTION_ID,
+        "unique()",
+        {
+          firstName: form.firstName,
+          lastName: form.lastName,
+          role: form.role,
+          isVerified: form.isVerified,
+        }
+      );
 
       // 2. Create contact (with email)
-      await databases.createDocument(DATABASE_ID, CONTACTS_COLLECTION_ID, "unique()", {
-        userId: newUser.$id,
-        email: form.contactEmail,
-        phone: form.contactPhone,
-        address: form.contactAddress,
-      });
+      await databases.createDocument(
+        DATABASE_ID,
+        CONTACTS_COLLECTION_ID,
+        "unique()",
+        {
+          userId: newUser.$id,
+          email: form.contactEmail,
+          phone: form.contactPhone,
+          address: form.contactAddress,
+        }
+      );
 
       // 3. Create document
       if (form.documentUrl && form.documentType) {
-        await databases.createDocument(DATABASE_ID, DOCUMENTS_COLLECTION_ID, "unique()", {
-          userId: newUser.$id,
-          documentUrl: form.documentUrl,
-          documentType: form.documentType,
-          isVerified: false,
-          uploadedAt: new Date().toISOString(),
-          verifiedAt: new Date().toISOString(),
-          verifiedBy: form.verifiedBy,
-        });
+        await databases.createDocument(
+          DATABASE_ID,
+          DOCUMENTS_COLLECTION_ID,
+          "unique()",
+          {
+            userId: newUser.$id,
+            documentUrl: form.documentUrl,
+            documentType: form.documentType,
+            isVerified: false,
+            uploadedAt: new Date().toISOString(),
+            verifiedAt: new Date().toISOString(),
+            verifiedBy: form.verifiedBy,
+          }
+        );
       }
 
       setAuditLogs((prev) => [
-        `${new Date().toISOString()}: Added user with contact email ${form.contactEmail}`,
+        `${new Date().toISOString()}: Added user with contact email ${
+          form.contactEmail
+        }`,
         ...prev,
       ]);
       alert("User, contact, and document added.");
@@ -294,20 +324,30 @@ export default function InternalUserManagement() {
       alert("Failed to add user and related data: " + err.message);
     }
   }
-
   async function saveUser() {
     if (!selectedUser) return;
 
+    // Get user's email from contacts for audit log
+    const userContacts = contacts.find(
+      (contact) => contact.userId === selectedUser.$id
+    );
+    const userEmail = userContacts?.email || `User ID: ${selectedUser.$id}`;
+
     try {
-      await databases.updateDocument(DATABASE_ID, USERS_COLLECTION_ID, selectedUser.$id, {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        role: form.role,
-        isVerified: form.isVerified,
-      });
+      await databases.updateDocument(
+        DATABASE_ID,
+        USERS_COLLECTION_ID,
+        selectedUser.$id,
+        {
+          firstName: form.firstName,
+          lastName: form.lastName,
+          role: form.role,
+          isVerified: form.isVerified,
+        }
+      );
 
       setAuditLogs((prev) => [
-        `${new Date().toISOString()}: Updated user ${form.email}`,
+        `${new Date().toISOString()}: Updated user ${userEmail}`,
         ...prev,
       ]);
       alert("User saved.");
@@ -318,13 +358,27 @@ export default function InternalUserManagement() {
       alert("Error saving user: " + err.message);
     }
   }
-
   async function resetPassword() {
     if (!selectedUser) return;
+
+    // Get user's email from contacts
+    const userContacts = contacts.find(
+      (contact) => contact.userId === selectedUser.$id
+    );
+    if (!userContacts || !userContacts.email) {
+      alert("No email found for this user. Cannot reset password.");
+      return;
+    }
+
     try {
-      await account.createRecovery(selectedUser.email, "https://yourapp.com/reset-password");
+      await account.createRecovery(
+        userContacts.email,
+        "https://yourapp.com/reset-password"
+      );
       setAuditLogs((prev) => [
-        `${new Date().toISOString()}: Password reset requested for ${selectedUser.email}`,
+        `${new Date().toISOString()}: Password reset requested for ${
+          userContacts.email
+        }`,
         ...prev,
       ]);
       alert("Password reset email sent");
@@ -332,19 +386,30 @@ export default function InternalUserManagement() {
       alert("Failed to reset password: " + err.message);
     }
   }
-
   async function deactivateUser() {
     if (!selectedUser) return;
     if (selectedUser.isVerified === false) {
       alert("User is already unverified.");
       return;
     }
+
+    // Get user's email from contacts for audit log
+    const userContacts = contacts.find(
+      (contact) => contact.userId === selectedUser.$id
+    );
+    const userEmail = userContacts?.email || `User ID: ${selectedUser.$id}`;
+
     try {
-      await databases.updateDocument(DATABASE_ID, USERS_COLLECTION_ID, selectedUser.$id, {
-        isVerified: false,
-      });
+      await databases.updateDocument(
+        DATABASE_ID,
+        USERS_COLLECTION_ID,
+        selectedUser.$id,
+        {
+          isVerified: false,
+        }
+      );
       setAuditLogs((prev) => [
-        `${new Date().toISOString()}: Unverified user ${selectedUser.email}`,
+        `${new Date().toISOString()}: Unverified user ${userEmail}`,
         ...prev,
       ]);
       alert("User marked as unverified.");
@@ -358,17 +423,17 @@ export default function InternalUserManagement() {
 
   return (
     <div className="p-4 max-w-5xl mx-auto space-y-6">
-      <h2 className="text-xl font-bold">Internal User Management</h2>
+      <h2 className="text-xl text-gray-50 font-bold">Internal User Management</h2>
 
       {/* User List */}
-      <div className="border rounded-xl p-4 shadow max-h-96 overflow-y-auto">
-        <h3 className="text-lg font-semibold mb-2">Users List</h3>
+      <div className="border rounded-xl p-4 shadow max-h-96 overflow-y-auto text-gray-50">
+        <h3 className="text-lg font-semibold mb-2 text-gray-50">Users List</h3>
         {usersList.length === 0 ? (
-          <p>No users found.</p>
+          <h2 className="text-white">No users found.</h2>
         ) : (
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-left text-sm ">
             <thead>
-              <tr className="border-b font-medium text-white-700">
+              <tr className="border-b font-medium text-gray-50">
                 <th className="py-1 px-2">First Name</th>
                 <th className="py-1 px-2">Last Name</th>
                 <th className="py-1 px-2">Role</th>
@@ -384,10 +449,12 @@ export default function InternalUserManagement() {
                   }`}
                   onClick={() => selectUser(user)}
                 >
-                  <td className="py-1 px-2">{user.firstName}</td>
-                  <td className="py-1 px-2">{user.lastName}</td>
-                  <td className="py-1 px-2">{user.role}</td>
-                  <td className="py-1 px-2">{user.isVerified ? "Verified" : "Unverified"}</td>
+                  <td className="py-1 px-2 text-gray-50">{user.firstName}</td>
+                  <td className="py-1 px-2 text-gray-50">{user.lastName}</td>
+                  <td className="py-1 px-2 text-gray-50">{user.role}</td>
+                  <td className="py-1 px-2 text-gray-50">
+                    {user.isVerified ? "Verified" : "Unverified"}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -396,11 +463,12 @@ export default function InternalUserManagement() {
       </div>
 
       {/* User Detail Form */}
-      <div className="border rounded-xl p-4 shadow max-w-6xl w-full">
-        <h3 className="text-lg font-bold">{isEditing ? "Edit User" : "Add New User"}</h3>
-
+      <div className="border rounded-xl p-4 shadow max-w-6xl w-full text-gray-50">
+        <h3 className="text-lg font-bold">
+          {isEditing ? "Edit User" : "Add New User"}
+        </h3>
         {/* Main user info inputs */}
-        <div className="space-y-4 min-w-0 max-w-md">
+        <div className="space-y-4 min-w-0 max-w-md text-gray-50">
           <input
             type="text"
             name="firstName"
@@ -425,13 +493,13 @@ export default function InternalUserManagement() {
           >
             <option value="">Select Role</option>
             {ROLES.map((role) => (
-              <option key={role} value={role}>
+              <option key={role} value={role} className="text-black">
                 {role}
               </option>
             ))}
           </select>
 
-          <label className="flex items-center space-x-2">
+          <label className="flex items-center space-x-2 text-gray-50">
             <input
               type="checkbox"
               name="isVerified"
@@ -441,13 +509,12 @@ export default function InternalUserManagement() {
             <span>Is Verified</span>
           </label>
         </div>
-
         {/* Add New User Contact and Document Inputs */}
         {!isEditing && (
-          <div className="mt-6 max-w-md space-y-6">
+          <div className="mt-6 max-w-md space-y-6 text-gray-50">
             {/* Contact inputs */}
             <div>
-              <h4 className="font-semibold mb-2">Contact Info</h4>
+              <h4 className="font-semibold mb-2 text-gray-50">Contact Info</h4>
               <input
                 type="email"
                 name="contactEmail"
@@ -476,7 +543,7 @@ export default function InternalUserManagement() {
 
             {/* Document inputs */}
             <div>
-              <h4 className="font-semibold mb-2">Document Info</h4>
+              <h4 className="font-semibold mb-2 text-gray-50">Document Info</h4>
               <input
                 type="text"
                 name="documentUrl"
@@ -504,10 +571,9 @@ export default function InternalUserManagement() {
               </label>
             </div>
           </div>
-        )}
-
+        )}{" "}
         {/* Save/Cancel buttons */}
-        <div className="mt-6 space-x-4">
+        <div className="mt-6 space-x-4 text-gray-50">
           {isEditing ? (
             <>
               <button
@@ -515,6 +581,18 @@ export default function InternalUserManagement() {
                 className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
               >
                 Save User
+              </button>
+              <button
+                onClick={resetPassword}
+                className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700"
+              >
+                Reset Password
+              </button>
+              <button
+                onClick={deactivateUser}
+                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+              >
+                Deactivate User
               </button>
               <button
                 onClick={() => setSelectedUser(null)}
@@ -536,10 +614,10 @@ export default function InternalUserManagement() {
 
       {/* If editing user: show contacts and documents with editing */}
       {isEditing && (
-        <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl">
+        <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl text-gray-50">
           {/* Contacts */}
           <div className="border rounded-xl p-4 shadow max-h-[400px] overflow-y-auto">
-            <h3 className="text-lg font-bold mb-3">Contacts</h3>
+            <h3 className="text-lg font-bold mb-3 text-gray-50">Contacts</h3>
             {contacts.length === 0 ? (
               <p>No contacts found for this user.</p>
             ) : (
@@ -547,7 +625,7 @@ export default function InternalUserManagement() {
                 editingContactId === contact.$id ? (
                   <div
                     key={contact.$id}
-                    className="border p-3 rounded mb-2 flex flex-col space-y-2"
+                    className="border p-3 rounded mb-2 flex flex-col space-y-2 text-gray-50"
                   >
                     <input
                       type="email"
@@ -591,19 +669,23 @@ export default function InternalUserManagement() {
                 ) : (
                   <div
                     key={contact.$id}
-                    className="border p-3 rounded mb-2 flex justify-between items-center"
+                    className="border p-3 rounded mb-2 flex justify-between items-center text-gray-50"
                   >
                     <div>
-                      <p>
-                        <strong>Email:</strong> {contact.email}
+                      <p className="text-white">
+                        <strong className="text-white">Email:</strong>{" "}
+                        <span className="text-white">{contact.email}</span>
                       </p>
-                      <p>
-                        <strong>Phone:</strong> {contact.phone}
+                      <p className="text-white">
+                        <strong className="text-white">Phone:</strong>{" "}
+                        <span className="text-white">{contact.phone}</span>
                       </p>
-                      <p>
-                        <strong>Address:</strong> {contact.address}
+                      <p className="text-white">
+                        <strong className="text-white">Address:</strong>{" "}
+                        <span className="text-white">{contact.address}</span>
                       </p>
                     </div>
+
                     <button
                       onClick={() => startEditContact(contact)}
                       className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
@@ -617,8 +699,8 @@ export default function InternalUserManagement() {
           </div>
 
           {/* Documents */}
-          <div className="border rounded-xl p-4 shadow max-h-[400px] overflow-y-auto">
-            <h3 className="text-lg font-bold mb-3">Documents</h3>
+          <div className="border rounded-xl p-4 shadow max-h-[400px] overflow-y-auto text-gray-50">
+            <h3 className="text-lg font-bold mb-3 text-gray-50">Documents</h3>
             {documents.length === 0 ? (
               <p>No documents found for this user.</p>
             ) : (
@@ -626,7 +708,7 @@ export default function InternalUserManagement() {
                 editingDocumentId === doc.$id ? (
                   <div
                     key={doc.$id}
-                    className="border p-3 rounded mb-2 flex flex-col space-y-2"
+                    className="border p-3 rounded mb-2 flex flex-col space-y-2 text-gray-50"
                   >
                     <input
                       type="text"
@@ -674,31 +756,38 @@ export default function InternalUserManagement() {
                     className="border p-3 rounded mb-2 flex justify-between items-center"
                   >
                     <div>
-                      <p>
-                        <strong>URL:</strong>{" "}
+                      <p className="text-white">
+                        <strong className="text-white">URL:</strong>{" "}
                         <a
                           href={doc.documentUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-blue-600 underline"
+                          className="text-white underline"
                         >
                           View Document
                         </a>
                       </p>
-                      <p>
-                        <strong>Type:</strong> {doc.documentType}
+                      <p className="text-white">
+                        <strong className="text-white">Type:</strong>{" "}
+                        <span className="text-white">{doc.documentType}</span>
                       </p>
-                      <p>
-                        <strong>Status:</strong> {doc.isVerified ? "Verified" : "Unverified"}
+                      <p className="text-white">
+                        <strong className="text-white">Status:</strong>{" "}
+                        <span className="text-white">
+                          {doc.isVerified ? "Verified" : "Unverified"}
+                        </span>
                       </p>
-                      <p>
-                        <strong>Uploaded at:</strong> {doc.uploadedAt}
+                      <p className="text-white">
+                        <strong className="text-white">Uploaded at:</strong>{" "}
+                        <span className="text-white">{doc.uploadedAt}</span>
                       </p>
-                      <p>
-                        <strong>Verified at:</strong> {doc.verifiedAt}
+                      <p className="text-white">
+                        <strong className="text-white">Verified at:</strong>{" "}
+                        <span className="text-white">{doc.verifiedAt}</span>
                       </p>
-                      <p>
-                        <strong>Verified by:</strong> {doc.verifiedBy}
+                      <p className="text-white">
+                        <strong className="text-white">Verified by:</strong>{" "}
+                        <span className="text-white">{doc.verifiedBy}</span>
                       </p>
                     </div>
                     <button
@@ -717,8 +806,8 @@ export default function InternalUserManagement() {
 
       {/* Audit Logs */}
       <div className="mt-10 max-w-6xl">
-        <h3 className="text-lg font-bold mb-2">Audit Logs</h3>
-        <div className=" border rounded-xl p-3 max-h-48 overflow-y-auto text-xs font-mono whitespace-pre-line">
+        <h3 className="text-lg font-bold mb-2 text-white">Audit Logs</h3>
+        <div className=" border rounded-xl p-3 max-h-48 overflow-y-auto text-xs font-mono whitespace-pre-line text-white">
           {auditLogs.length === 0 ? "No logs yet." : auditLogs.join("\n")}
         </div>
       </div>

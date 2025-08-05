@@ -85,9 +85,8 @@ export default function AuthScreen() {
           // Then sign in
           const session = await signIn(email, password);
           console.log("Session created:", session);
-
           Alert.alert("Success", "Account created successfully!");
-          router.replace("/(tabs)");
+          router.replace("/(stack)/(verification)/screen1");
         } catch (error) {
           console.error("Account creation error:", error);
           Alert.alert(

@@ -20,15 +20,17 @@ interface LocationSectionProps {
   colorScheme: string;
   triggerHaptic: () => void;
   selectorScale: Animated.Value;
+  onGetGPS: () => void;
+  isLoadingGPS?: boolean;
 }
 
-// Address field component
 const AddressField: React.FC<{
   location: string;
   updateLocation: (text: string) => void;
   theme: any;
   triggerHaptic: () => void;
-}> = ({ location, updateLocation, theme, triggerHaptic }) => (
+  onGetGPS: () => void;
+}> = ({ location, updateLocation, theme, triggerHaptic, onGetGPS }) => (
   <View style={styles.formField}>
     <Text style={[styles.fieldLabel, { color: theme.text }]}>
       Specific Address <Text style={styles.requiredStar}>*</Text>
@@ -59,8 +61,7 @@ const AddressField: React.FC<{
         style={styles.gpsButton}
         onPress={() => {
           triggerHaptic();
-          // In a real app, this would get current GPS coordinates
-          console.log("Getting GPS location");
+          onGetGPS();
         }}
       >
         <Ionicons name="locate" size={20} color={theme.primary} />
@@ -69,7 +70,6 @@ const AddressField: React.FC<{
   </View>
 );
 
-// Location type selector component
 const LocationTypeSelector: React.FC<{
   locationType: string;
   theme: any;
@@ -191,6 +191,101 @@ const LocationDetailsField: React.FC<{
   </View>
 );
 
+// GPS Coordinates display component
+const GPSCoordinatesField: React.FC<{
+  latitude?: number;
+  longitude?: number;
+  theme: any;
+  triggerHaptic: () => void;
+  onGetGPS: () => void;
+  isLoading?: boolean;
+}> = ({
+  latitude,
+  longitude,
+  theme,
+  triggerHaptic,
+  onGetGPS,
+  isLoading = false,
+}) => (
+  <View style={styles.formField}>
+    <Text style={[styles.fieldLabel, { color: theme.text }]}>
+      GPS Coordinates
+    </Text>
+    <View
+      style={[
+        styles.coordinatesContainer,
+        {
+          borderColor: theme.border,
+          backgroundColor: theme.inputBackground,
+        },
+      ]}
+    >
+      <View style={styles.coordinatesContent}>
+        <Ionicons
+          name="navigate"
+          size={20}
+          color={theme.primary}
+          style={styles.coordinatesIcon}
+        />
+        <View style={styles.coordinatesText}>
+          {latitude && longitude ? (
+            <>
+              <Text
+                style={[styles.coordinateLabel, { color: theme.textSecondary }]}
+              >
+                Latitude:{" "}
+                <Text style={[styles.coordinateValue, { color: theme.text }]}>
+                  {latitude.toFixed(6)}
+                </Text>
+              </Text>
+              <Text
+                style={[styles.coordinateLabel, { color: theme.textSecondary }]}
+              >
+                Longitude:{" "}
+                <Text style={[styles.coordinateValue, { color: theme.text }]}>
+                  {longitude.toFixed(6)}
+                </Text>
+              </Text>
+            </>
+          ) : (
+            <Text
+              style={[
+                styles.coordinatePlaceholder,
+                { color: theme.textSecondary },
+              ]}
+            >
+              No GPS coordinates set
+            </Text>
+          )}
+        </View>
+      </View>
+      <TouchableOpacity
+        style={[
+          styles.refreshGpsButton,
+          {
+            backgroundColor: theme.primary,
+            opacity: isLoading ? 0.6 : 1,
+          },
+        ]}
+        onPress={() => {
+          triggerHaptic();
+          onGetGPS();
+        }}
+        disabled={isLoading}
+      >
+        <Ionicons
+          name={isLoading ? "hourglass" : "refresh"}
+          size={18}
+          color="#FFFFFF"
+        />
+      </TouchableOpacity>
+    </View>
+    <Text style={[styles.coordinatesHint, { color: theme.textSecondary }]}>
+      Tap the refresh button to get your current GPS coordinates
+    </Text>
+  </View>
+);
+
 // Main component
 const LocationSection: React.FC<LocationSectionProps> = ({
   formData,
@@ -199,6 +294,8 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   colorScheme,
   triggerHaptic,
   selectorScale,
+  onGetGPS,
+  isLoadingGPS = false, // Add the new prop with default value
 }) => {
   const [showLocationTypeSelectorModal, setShowLocationTypeSelectorModal] =
     useState(false);
@@ -222,12 +319,30 @@ const LocationSection: React.FC<LocationSectionProps> = ({
     ]).start();
 
     setShowLocationTypeSelectorModal(true);
-  };
-  // Select location type
+  }; // Select location type
   const selectLocationType = (type: string) => {
     triggerHaptic();
-    updateFormData("Location_Type", type);
+    updateFormData("location", {
+      ...formData.location,
+      type: type,
+    });
     setShowLocationTypeSelectorModal(false);
+  };
+
+  // Update location address
+  const updateLocationAddress = (text: string) => {
+    updateFormData("location", {
+      ...formData.location,
+      address: text,
+    });
+  };
+
+  // Update location details
+  const updateLocationDetails = (text: string) => {
+    updateFormData("location", {
+      ...formData.location,
+      details: text,
+    });
   };
 
   return (
@@ -235,16 +350,16 @@ const LocationSection: React.FC<LocationSectionProps> = ({
       <Text style={[styles.sectionTitle, { color: theme.text }]}>
         Location Information
       </Text>
-
+      <Text> </Text>
       <AddressField
-        location={formData.Location}
-        updateLocation={(text) => updateFormData("Location", text)}
+        location={formData.location?.address || ""}
+        updateLocation={updateLocationAddress}
         theme={theme}
         triggerHaptic={triggerHaptic}
-      />
-
+        onGetGPS={onGetGPS} // Pass down the prop
+      />{" "}
       <LocationTypeSelector
-        locationType={formData.Location_Type}
+        locationType={formData.location?.type || ""}
         theme={theme}
         colorScheme={colorScheme}
         selectorScale={selectorScale}
@@ -252,10 +367,17 @@ const LocationSection: React.FC<LocationSectionProps> = ({
         showSelector={showLocationTypeSelectorModal}
         selectLocationType={selectLocationType}
       />
-
+      <GPSCoordinatesField
+        latitude={formData.location?.latitude}
+        longitude={formData.location?.longitude}
+        theme={theme}
+        triggerHaptic={triggerHaptic}
+        onGetGPS={onGetGPS}
+        isLoading={isLoadingGPS}
+      />
       <LocationDetailsField
-        locationDetails={formData.Location_Details}
-        updateDetails={(text) => updateFormData("Location_Details", text)}
+        locationDetails={formData.location?.details || ""}
+        updateDetails={updateLocationDetails}
         theme={theme}
       />
     </View>
@@ -341,6 +463,50 @@ const styles = StyleSheet.create({
   },
   gpsButton: {
     padding: 8,
+  },
+  coordinatesContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  coordinatesContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  coordinatesIcon: {
+    marginRight: 8,
+  },
+  coordinatesText: {
+    flex: 1,
+  },
+  coordinateLabel: {
+    fontSize: 14,
+    fontWeight: "400",
+  },
+  coordinateValue: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  coordinatePlaceholder: {
+    fontSize: 14,
+    fontStyle: "italic",
+  },
+  refreshGpsButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
+  },
+  coordinatesHint: {
+    marginTop: 8,
+    fontSize: 12,
+    textAlign: "center",
   },
 });
 

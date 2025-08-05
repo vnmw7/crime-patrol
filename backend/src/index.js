@@ -1,57 +1,69 @@
 require("dotenv").config();
 const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
 const port = process.env.PORT || 3000;
 
-const { setupNormalizedCollections } = require("./services/appwriteService.js");
+const {
+  setupNormalizedCollections,
+  setupAppwriteBuckets,
+} = require("./services/appwriteService.js");
 
-// Middleware
+const {
+  setupEmergencyPingsCollection,
+} = require("./services/emergencyService.js");
+
+const { setupUserCollections } = require("./services/userServices.js");
+const { initializeSocketHandlers } = require("./services/socketHandlers.js");
+
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
+app.set("io", io);
+initializeSocketHandlers(io);
+
 const reportsRouter = require("./routes/reports");
+const emergencyRouter = require("./routes/emergency");
+const usersRouter = require("./routes/users");
 app.use("/api/reports", reportsRouter);
+app.use("/api/emergency", emergencyRouter);
+app.use("/api/users", usersRouter);
 
 async function initializeAppwrite() {
   try {
     console.log("Initializing Appwrite normalized collections setup...");
     await setupNormalizedCollections();
+    await setupAppwriteBuckets();
+    await setupEmergencyPingsCollection();
+    await setupUserCollections();
     console.log(
-      "Appwrite normalized collections setup completed successfully."
+      "Appwrite normalized collections, emergency pings, and user collections setup completed successfully."
     );
   } catch (error) {
     console.error("Error during Appwrite initialization:", error);
-    // Don't exit the process, just log the error and continue
+
     console.log("Server will continue running despite database setup errors.");
   }
 }
 
 app.get("/", (req, res) => {
   res.json({
-    message: "Crime Patrol API - Normalized Database",
-    version: "2.0.0",
-    collections: {
-      reports: "Core incident information (8 attributes)",
-      report_locations: "Location details with coordinates (6 attributes)",
-      report_reporter_info: "Reporter contact information (4 attributes)",
-      report_victims: "Victim information (3 attributes)",
-      report_suspects: "Suspect information (3 attributes)",
-      report_witnesses: "Witness information (2 attributes)",
-      report_media: "Photos, videos, and audio files (5 attributes)",
-    },
-    endpoints: {
-      "POST /api/reports": "Create new report",
-      "GET /api/reports": "List reports with filters",
-      "GET /api/reports/:id": "Get complete report by ID",
-      "PATCH /api/reports/:id/status": "Update report status",
-      "GET /api/reports/location/:lat/:lng": "Get reports by location",
-    },
-    status_values: ["pending", "approved", "rejected", "responded", "solved"],
+    message: "Backend server is running",
+    status: "OK",
   });
 });
 
-app.listen(port, async () => {
+server.listen(port, async () => {
   console.log(`Server listening on port ${port}`);
   await initializeAppwrite();
 });

@@ -1,6 +1,5 @@
 import React from "react";
 import { StyleSheet, ScrollView, TouchableOpacity, Text } from "react-native";
-import * as Haptics from "expo-haptics";
 
 type BarangayFiltersProps = {
   theme: any;
