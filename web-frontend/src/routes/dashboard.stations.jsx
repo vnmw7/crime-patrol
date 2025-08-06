@@ -1,6 +1,6 @@
 import {
-  policeStations,
   emergencyRespondents,
+  policeStations,
 } from "../constants/policeStationsData";
 
 export default function DashboardStations() {
@@ -19,7 +19,7 @@ export default function DashboardStations() {
             key={station.id}
             className="bg-white bg-gray-800 p-6 rounded-lg shadow"
           >
-            <h3 className="text-lg font-semibold text-gray-900 text-white">
+            <h3 className="text-lg font-semibold text-gray-900 text-black">
               {station.name}
             </h3>
             <p className="mt-2 text-sm text-gray-600 text-gray-400">
@@ -46,7 +46,7 @@ export default function DashboardStations() {
             key={responder.id}
             className="bg-white bg-gray-800 p-6 rounded-lg shadow border-l-4 border-red-500"
           >
-            <h3 className="text-lg font-semibold text-gray-900 text-white">
+            <h3 className="text-lg font-semibold text-gray-900 text-black">
               {responder.name}
             </h3>
             <p className="mt-2 text-sm text-gray-600 text-gray-400">
