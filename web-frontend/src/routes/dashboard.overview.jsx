@@ -1,31 +1,30 @@
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Cell,
-  PieChart,
-  Pie,
-  LineChart,
-  Line,
-  CartesianGrid,
-  Tooltip,
-  LabelList,
-  AreaChart,
-  Area,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
-} from "recharts";
-import { useEffect, useState, useMemo, useCallback } from "react";
-import { databases, Query, account } from "../lib/appwrite";
-import { INCIDENT_TYPES, LOCATION_TYPES } from "../constants/reportConstants";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  LabelList,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { account, databases, Query } from "../lib/appwrite";
 
 // Database configuration from your .env
 const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
@@ -41,7 +40,7 @@ const COLLECTIONS = {
 const LoadingSpinner = () => (
   <div className="flex justify-center items-center h-full min-h-[200px]">
     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-    <p className="ml-3 text-gray-500 text-gray-400">Loading data...</p>
+    <h2 className="ml-3 text-gray-100 text-gray-100">Loading data...</h2>
   </div>
 );
 
@@ -548,7 +547,7 @@ export default function DashboardOverview() {
           Dashboard Overview
         </h1>
         {currentUser && (
-          <div className="text-sm text-gray-600 text-gray-400">
+          <div className="text-sm text-gray-100 text-gray-100">
             Welcome back, {currentUser.name || currentUser.email}
           </div>
         )}
@@ -582,7 +581,7 @@ export default function DashboardOverview() {
 
       {/* Primary Statistics Bar Chart */}
       <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 text-black mb-4">
           Key Metrics Overview
         </h2>
         <div className="h-80">
@@ -622,7 +621,7 @@ export default function DashboardOverview() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Incident Types Distribution */}
         <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 text-black mb-4">
             Incident Types
           </h2>
           {dashboardData.incidentTypes.length > 0 ? (
@@ -663,7 +662,7 @@ export default function DashboardOverview() {
 
         {/* Status Distribution */}
         <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 text-black mb-4">
             Case Status Distribution
           </h2>
           {dashboardData.statusDistribution.length > 0 ? (
@@ -702,7 +701,7 @@ export default function DashboardOverview() {
 
       {/* Timeline Chart */}
       <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 text-black mb-4">
           Reports Timeline (Last 30 Days)
         </h2>
         {dashboardData.timelineData.length > 0 ? (
@@ -758,7 +757,7 @@ export default function DashboardOverview() {
 
       {/* Crime Trends - Line Chart */}
       <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 text-black mb-4">
           Crime Trends
         </h2>
         {dashboardData.incidentTypes.length > 0 ? (
@@ -857,7 +856,7 @@ export default function DashboardOverview() {
 
       {/* Law Enforcement & Response */}
       <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 text-black mb-4">
           Law Enforcement & Response
         </h2>
         {dashboardData.lawEnforcementStats.length > 0 ? (
@@ -926,7 +925,7 @@ export default function DashboardOverview() {
         {" "}
         {/* Incident Locations Map */}
         <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 text-black mb-4">
             Incident Locations Map
           </h2>
           <div className="mb-3">
@@ -951,7 +950,7 @@ export default function DashboardOverview() {
         </div>
         {/* User Statistics */}
         <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 text-black mb-4">
             User Statistics
           </h2>
           {dashboardData.userStats.length > 0 ? (
@@ -983,7 +982,7 @@ export default function DashboardOverview() {
 
       {/* Recent Activity */}
       <div className="bg-white bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 text-white mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 text-black mb-4">
           Recent Activity
         </h2>
         {dashboardData.recentActivity.length > 0 ? (

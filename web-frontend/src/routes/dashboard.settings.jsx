@@ -8,7 +8,7 @@ export default function DashboardSettings() {
       <div className="space-y-6 bg-white bg-gray-800 p-6 rounded-lg shadow">
         {/* Profile Settings */}
         <div>
-          <h2 className="text-lg font-medium text-gray-900 text-white">
+          <h2 className="text-lg font-medium text-gray-900 text-black">
             Profile
           </h2>
           <div className="mt-4 space-y-4">
@@ -48,7 +48,7 @@ export default function DashboardSettings() {
 
         {/* Notification Settings */}
         <div>
-          <h2 className="text-lg font-medium text-gray-900 text-white">
+          <h2 className="text-lg font-medium text-gray-900 text-black">
             Notifications
           </h2>
           <div className="mt-4 space-y-2">
@@ -84,7 +84,7 @@ export default function DashboardSettings() {
 
         {/* Theme Settings */}
         <div>
-          <h2 className="text-lg font-medium text-gray-900 text-white">
+          <h2 className="text-lg font-medium text-gray-900 text-black">
             Theme
           </h2>
           <div className="mt-4">

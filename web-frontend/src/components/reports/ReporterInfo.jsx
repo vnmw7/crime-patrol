@@ -73,19 +73,19 @@ const ReporterInfo = () => {
           <table className="min-w-full bg-white bg-gray-800 rounded shadow">
             <thead className="bg-gray-100 bg-gray-700">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 text-gray-300">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-100 text-gray-100">
                   Name
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 text-gray-300">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-100 text-gray-100">
                   Phone
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 text-gray-300">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-100 text-gray-100">
                   Email
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 text-gray-300">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-100 text-gray-100">
                   Report ID
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 text-gray-300">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-100 text-gray-100">
                   Actions
                 </th>
               </tr>

@@ -96,9 +96,9 @@ const MapPage = () => {
       {/* Header */}
       <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
         <h1 className="text-2xl font-bold text-blue-500">Crime Map</h1>
-        <p className="text-gray-300 text-sm mt-1">
+        <h2 className="text-gray-300 text-sm mt-1">
           Real-time crime incidents in Bacolod City
-        </p>
+        </h2>
       </div>
 
       {/* Map Container */}

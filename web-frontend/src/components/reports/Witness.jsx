@@ -73,13 +73,13 @@ const Witnesses = () => {
           <table className="min-w-full bg-white bg-gray-800 rounded shadow">
             <thead className="bg-gray-100 bg-gray-700">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 text-gray-300">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-300 text-gray-300">
                   Witness Info
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 text-gray-300">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-300 text-gray-300">
                   Report ID
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 text-gray-300">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-300 text-gray-300">
                   Actions
                 </th>
               </tr>

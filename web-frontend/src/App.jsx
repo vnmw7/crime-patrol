@@ -1,28 +1,27 @@
-import React from "react";
 import {
+  Navigate,
+  Route,
   BrowserRouter as Router,
   Routes,
-  Route,
-  Navigate,
 } from "react-router-dom";
 
 // Import layout and pages
-import Dashboard from "./routes/Dashboard.jsx";
-import DashboardOverview from "./routes/dashboard.overview.jsx";
-import DashboardSettings from "./routes/dashboard.settings.jsx";
-import DashboardChat from "./routes/dashboard.chats.jsx";
-import DashboardStations from "./routes/dashboard.stations.jsx";
-import Index from "./routes/index.jsx";
 import {
   default as DashboardLogin,
   default as Login,
 } from "./components/login/Login.jsx";
+import MapPage from "./components/page/MapPage";
 import {
   default as DashboardRegister,
   default as Signup,
 } from "./components/register/Register.jsx";
-import MapPage from "./components/page/MapPage";
 import Reports from "./components/reports/reports.jsx";
+import DashboardChat from "./routes/dashboard.chats.jsx";
+import Dashboard from "./routes/Dashboard.jsx";
+import DashboardOverview from "./routes/dashboard.overview.jsx";
+import DashboardSettings from "./routes/dashboard.settings.jsx";
+import DashboardStations from "./routes/dashboard.stations.jsx";
+import Index from "./routes/index.jsx";
 import Users from "./routes/users.jsx";
 
 // Report components
@@ -41,7 +40,7 @@ import UserDocuments from "./components/internal/UserDocuments.jsx";
 
 // New: Blank placeholder page for dashboard root
 const DashboardBlank = () => (
-  <div className="text-gray-400 text-center mt-10 text-lg">
+  <div className="text-gray-100 text-center mt-10 text-lg">
     Welcome to the Crime Patrol Dashboard.
     <br />
     Select a menu option from the left to get started.
