@@ -108,6 +108,8 @@ This project is a full-stack application designed to help users report incidents
   npx expo run:android
   ```
 
+  note: the url should be http://localhost:{port}
+
 ## Building for Production (Android Release)
 
 ### 1. Generate an Upload Key
