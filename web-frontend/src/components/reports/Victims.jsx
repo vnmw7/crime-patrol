@@ -65,7 +65,7 @@ const Victims = () => {
       {loading ? (
         <p className="text-gray-500 text-gray-400">Loading...</p>
       ) : victims.length === 0 ? (
-        <p className="text-gray-500 text-gray-400">No victim records found.</p>
+        <h2 className="text-gray-50 text-gray-50">No victim records found.</h2>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white bg-gray-800 rounded shadow">

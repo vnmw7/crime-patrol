@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 // --- ICONS ---
@@ -197,7 +197,7 @@ export default function Index() {
             <br />
             Excellence
           </h1>
-          <p className="mt-6 max-w-2xl mx-auto text-base md:text-lg text-gray-600 leading-relaxed">
+          <p className="mt-6 max-w-2xl mx-auto text-base md:text-lg text-gray-950 leading-relaxed">
             Integrating real-time reporting, cutting-edge technology, and
             community engagement, our advanced safety platform connects citizens
             with authorities and empowers communities to stay informed and

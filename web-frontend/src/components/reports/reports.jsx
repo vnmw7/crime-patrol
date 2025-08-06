@@ -1,21 +1,20 @@
 import {
-  Check,
-  Trash,
-  X,
-  Eye,
-  RefreshCw,
-  Filter,
-  Calendar,
-  MapPin,
-  User,
   AlertTriangle,
-  FileText,
-  Image,
-  Video,
-  Music,
+  Calendar,
+  Check,
   Download,
+  FileText,
+  Filter,
+  Image,
+  MapPin,
+  Music,
+  RefreshCw,
+  Trash,
+  User,
+  Video,
+  X
 } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { databases, Query } from "../../lib/appwrite";
 
@@ -446,11 +445,12 @@ const Reports = () => {
   if (loading && !refreshing) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600 text-gray-300">Loading reports...</p>
-        </div>
+      <div className="text-center text-white">
+        <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+        <h2 className="text-white">Loading reports...</h2>
       </div>
+    </div>
+
     );
   }
 
@@ -479,9 +479,9 @@ const Reports = () => {
           <h1 className="text-2xl font-semibold text-gray-900 text-white">
             All Reports
           </h1>
-          <p className="text-gray-600 text-gray-300 mt-1">
+          <h2 className="text-gray-100 text-gray-100 mt-1">
             {reports.length} reports found
-          </p>
+          </h2>
         </div>
         <div className="flex items-center space-x-4 mt-4 sm:mt-0">
           <button
@@ -576,7 +576,7 @@ const Reports = () => {
       {currentReports.length === 0 ? (
         <div className="text-center py-12">
           <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-          <p className="text-gray-600 text-gray-300 text-lg">
+          <p className="text-gray-50 text-lg">
             No reports found.
           </p>
         </div>
@@ -591,7 +591,7 @@ const Reports = () => {
               <div className="p-6">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900 text-white text-lg">
+                  <h3 className="font-semibold text-gray-900 text-ray-900 text-lg">
                     {report.incident_type || "N/A"}
                   </h3>
                   <span
@@ -796,23 +796,23 @@ const Reports = () => {
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 text-gray-300">
+                              <label className="block text-sm font-medium text-gray-50 text-gray-50">
                                 Type:
                               </label>
-                              <p className="mt-1 text-sm text-gray-900 text-white">
+                              <p className="mt-1 text-sm text-gray-50 text-white">
                                 {selectedReport.incident_type}
                               </p>
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 text-gray-300">
+                              <label className="block text-sm font-medium text-gray-50 text-gray-50">
                                 Date:
                               </label>
-                              <p className="mt-1 text-sm text-gray-900 text-white">
+                              <p className="mt-1 text-sm text-gray-50 text-white">
                                 {formatDate(selectedReport.incident_date)}
                               </p>
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 text-gray-300">
+                              <label className="block text-sm font-medium text-gray-50 text-gray-300">
                                 Status:
                               </label>
                               <div className="mt-1">
@@ -839,7 +839,7 @@ const Reports = () => {
                             </div>
                             {selectedReport.metadata?.priority_level && (
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 text-gray-300">
+                                <label className="block text-sm font-medium text-gray-50 text-gray-300">
                                   Priority:
                                 </label>
                                 <p
@@ -860,7 +860,7 @@ const Reports = () => {
                             <h4 className="text-lg font-semibold text-gray-900 text-white mb-3">
                               Description
                             </h4>
-                            <p className="text-sm text-gray-700 text-gray-300">
+                            <p className="text-sm text-gray-50 text-gray-300">
                               {selectedReport.metadata.description}
                             </p>
                           </div>
@@ -869,36 +869,36 @@ const Reports = () => {
                         {/* Location Information */}
                         {selectedReport.location && (
                           <div className="bg-gray-50 bg-gray-700 rounded-lg p-4">
-                            <h4 className="text-lg font-semibold text-gray-900 text-white mb-3">
+                            <h4 className="text-lg font-semibold text-gray-50 text-white mb-3">
                               Location
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {selectedReport.location.location_address && (
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 text-gray-300">
+                                  <label className="block text-sm font-medium text-gray-50 text-gray-300">
                                     Address:
                                   </label>
-                                  <p className="mt-1 text-sm text-gray-900 text-white">
+                                  <p className="mt-1 text-sm text-gray-50 text-white">
                                     {selectedReport.location.location_address}
                                   </p>
                                 </div>
                               )}
                               {selectedReport.location.location_type && (
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 text-gray-300">
+                                  <label className="block text-sm font-medium text-gray-50 text-gray-300">
                                     Type:
                                   </label>
-                                  <p className="mt-1 text-sm text-gray-900 text-white">
+                                  <p className="mt-1 text-sm text-gray-50 text-white">
                                     {selectedReport.location.location_type}
                                   </p>
                                 </div>
                               )}
                               {selectedReport.location.location_details && (
                                 <div className="col-span-2">
-                                  <label className="block text-sm font-medium text-gray-700 text-gray-300">
+                                  <label className="block text-sm font-medium text-gray-50 text-gray-300">
                                     Details:
                                   </label>
-                                  <p className="mt-1 text-sm text-gray-900 text-white">
+                                  <p className="mt-1 text-sm text-gray-50 text-white">
                                     {selectedReport.location.location_details}
                                   </p>
                                 </div>
@@ -916,7 +916,7 @@ const Reports = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {selectedReport.reporter_info.reporter_name && (
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 text-gray-300">
+                                  <label className="block text-sm font-medium text-gray-50 text-gray-300">
                                     Name:
                                   </label>
                                   <p className="mt-1 text-sm text-gray-900 text-white">
@@ -926,7 +926,7 @@ const Reports = () => {
                               )}
                               {selectedReport.reporter_info.reporter_phone && (
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 text-gray-300">
+                                  <label className="block text-sm font-medium text-gray-50 text-gray-300">
                                     Phone:
                                   </label>
                                   <p className="mt-1 text-sm text-gray-900 text-white">
@@ -939,7 +939,7 @@ const Reports = () => {
                               )}
                               {selectedReport.reporter_info.reporter_email && (
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 text-gray-300">
+                                  <label className="block text-sm font-medium text-gray-50 text-gray-300">
                                     Email:
                                   </label>
                                   <p className="mt-1 text-sm text-gray-900 text-white">
